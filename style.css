@@ -1,0 +1,106 @@
+/* Theme Name: Forest */
+/* var for nice green color*/
+:root {
+    --bg: rgb(240, 240, 240);
+    --text: rgb(34, 34, 34);
+    --forest-bg: #a37642;
+    --button-bg: #c9c9c9;
+}
+
+/* Dark mode */
+body.dark {
+    --bg: #1a1a1a;
+    --text: rgb(173, 173, 173);
+    --forest-bg: #a37642;
+    --button-bg: #303030;
+}
+
+
+
+body {
+    overflow-y: scroll;
+    background-color: var(--bg);
+    color: var(--text);
+    font-family: 'Arial', sans-serif;
+    margin: 0;
+    padding: 0;
+}
+
+pre {
+    color: inherit;
+}
+
+button {
+    background-color: var(--button-bg);
+    color: var(--text);
+    border: none;
+    padding: 10px 20px;
+    margin: 10px;
+    cursor: pointer;
+}
+button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.forest {
+    user-select: none;
+    background-color: var(--forest-bg);
+    margin: 100px;
+}
+
+.forest-tile {
+    /* border: 1px solid #000; */
+    box-shadow: 0 0 10px 0 rgba(0, 0, 0, 0.5);
+    text-align: center;
+    display: inline-block;
+    vertical-align: bottom;
+    /* line-height: 0.5em; */
+    transition: background-color 0.25s;
+    position: relative;
+
+    .progress {
+        visibility: hidden;
+        position: absolute;
+        top: 0;
+        left: 0;        
+        background-color: #00ff00;
+        height: 1px;
+        width: 50%;
+    }
+
+    
+}
+.forest-tile:hover:not(.wiggle) {
+    .progress {
+        visibility: visible;
+    }
+}
+.forest-tile.unclaimed {
+    cursor: not-allowed;
+    background-color:rgba(0, 0, 0, 0.5);
+}
+
+.wiggle {
+    /* play once */
+    animation: wiggle 0.25s 1;
+}
+
+/* Animation to wiggle the tree, to simulate being chopped */
+@keyframes wiggle {
+    0% {
+        transform: rotate(0deg);
+    }
+    25% {
+        transform: rotate(5deg);
+    }
+    50% {
+        transform: rotate(-5deg);
+    }
+    75% {
+        transform: rotate(5deg);
+    }
+    100% {
+        transform: rotate(0deg);
+    }
+}

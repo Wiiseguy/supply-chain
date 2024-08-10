@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Idle Game Prototype</title>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body class="dark">
+    <div id="app" class="m-3">
+        <!-- Game UI components will go here -->
+        <h1>Idle Game Prototype</h1>
+        <div class="row">
+            <div class="col-6">
+                <div :style="forestStyle" class="forest">
+                    <div v-for="tile in forestView" :style="tile.style" class="forest-tile" :class="tile.classes"
+                        @click="clickTile(tile.tile)">
+                        {{tile.icon}}
+                        <div class="progress" :style="tile.progressStyle"></div>
+                    </div>
+                </div>
+                <div @click="money+=1000000">Money: {{ num(money) }}</div>
+                <div>Wood: {{ num(wood) }} / {{ num(woodStorage) }}
+                    <div v-if="woodLost" class="text-danger">
+                        Wood Lost: {{ num(woodLost) }}
+                    </div>
+                </div>
+                <div>
+                    Seeds: {{ seeds }} / {{ seedsStorage }}
+                    <div v-if="seedsLost" class="text-danger">
+                        Seeds Lost: {{ num(seedsLost) }}
+                    </div>
+                </div>
+                <div class="mt-4">
+                    <button @click="sellAllWood" :disabled="!canSellWood">
+                        Sell All Wood<br>
+                        <small class="text-success">+ $ {{ num(sellPriceWood) }}</small>
+                    </button>
+                    <button @click="sellSeeds(1)" :disabled="!canSellSeeds">
+                        Sell Seed<br>
+                        <small class="text-success">+ $ {{ num(sellPriceSeeds) }}</small>
+                    </button>
+                </div>
+
+                <div class="mt-4">
+                    <p v-if="boughtUpgrades['Auto Digger'] > 0">
+                        Auto Diggers: {{ boughtUpgrades['Auto Digger'] }} -
+                        {{Math.round(autoDiggersSaturation*100)}}%<br>
+                        <button @click="toggleAutoDiggers">
+                            Toggle Auto Diggers
+                        </button>
+                    </p>
+                    <p v-if="boughtUpgrades['Auto Seeder'] > 0">
+                        Auto Seeders: {{ boughtUpgrades['Auto Seeder'] }} -
+                        {{Math.round(autoSeedersSaturation*100)}}%<br>
+                        <button @click="toggleAutoSeeders">
+                            Toggle Auto Seeders
+                        </button>
+                    </p>
+                    <p v-if="boughtUpgrades['Auto Chopper'] > 0">
+                        Auto Choppers: {{ boughtUpgrades['Auto Chopper'] }} -
+                        {{Math.round(autoChoppersSaturation*100)}}%<br>
+                        <button @click="toggleAutoChoppers">
+                            Toggle Auto Choppers
+                        </button>
+                    </p>
+                    <p v-if="boughtUpgrades['Auto Seller'] > 0">
+                        Auto Sellers: {{ boughtUpgrades['Auto Seller'] }} -
+                        {{Math.round(autoSellersSaturation*100)}}%<br>
+                        <button @click="toggleAutoSellers">
+                            Toggle Auto Sellers
+                        </button>
+                    </p>
+                </div>
+
+                <div class="mt-4">
+                    <h5>Statistics</h5>
+                    <div>
+                        Trees chopped: {{ num(treesChopped) }}
+                    </div>
+                </div>
+            </div>
+            <div class="col-6">
+                <div v-for="category in upgradesByCategoryView" class="mb-4">
+                    <h3>{{ category.groupTitle }}</h3>
+                    <button v-for="item in category.items" @click="buyUpgrade(item)" :disabled="!item.canBuy">
+                        {{ item.displayName ?? item.name }} <sup>{{num(item.owned)}}</sup><br>
+                        <small>$ {{ num(item.cost) }}</small>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script src="game.js"></script>
+
+</body>
+
+</html>
