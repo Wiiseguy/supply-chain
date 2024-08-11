@@ -3,7 +3,7 @@
 :root {
     --bg: rgb(240, 240, 240);
     --text: rgb(34, 34, 34);
-    --forest-bg: #a37642;
+    --land-bg: #a37642;
     --button-bg: #c9c9c9;
 }
 
@@ -11,7 +11,7 @@
 body.dark {
     --bg: #1a1a1a;
     --text: rgb(173, 173, 173);
-    --forest-bg: #a37642;
+    --land-bg: #a37642;
     --button-bg: #303030;
 }
 
@@ -34,8 +34,8 @@ button {
     background-color: var(--button-bg);
     color: var(--text);
     border: none;
-    padding: 10px 20px;
-    margin: 10px;
+    padding: 0.5em 1em;
+    margin: 0.3em;
     cursor: pointer;
 }
 button:disabled {
@@ -43,19 +43,35 @@ button:disabled {
     cursor: not-allowed;
 }
 
-.forest {
+.message {
+    background-color: rgba(0, 0, 0, 0.5);
+    color: white;
+    padding: 1em;
+    margin: 1em;
+    border-radius: 0.5em;
+    position: absolute;
+    pointer-events: none;
+}
+
+.blur {
+    filter: blur(5px);
+}
+.can-blur {
+    transition: filter 0.5s;
+}
+
+.land {
     user-select: none;
-    background-color: var(--forest-bg);
+    background-color: var(--land-bg);
     margin: 100px;
 }
 
-.forest-tile {
-    /* border: 1px solid #000; */
+.land-tile {
+    cursor: pointer;
     box-shadow: 0 0 10px 0 rgba(0, 0, 0, 0.5);
     text-align: center;
     display: inline-block;
     vertical-align: bottom;
-    /* line-height: 0.5em; */
     transition: background-color 0.25s;
     position: relative;
 
@@ -64,19 +80,25 @@ button:disabled {
         position: absolute;
         top: 0;
         left: 0;        
-        background-color: #00ff00;
-        height: 1px;
-        width: 50%;
-    }
-
-    
+        background-color: #ffa600;
+        border-bottom: 1px solid rgba(0, 0, 0, 0.25);
+        height: 2px;
+        width: 0%;
+    } 
+    .level {
+        font-size: 0.3em;
+        position: absolute;
+        top: 0;
+        right: 4px;
+        text-shadow: 0 0 1px rgba(0, 0, 0, 0.5);
+    }   
 }
-.forest-tile:hover:not(.wiggle) {
+.land-tile:hover:not(.wiggle) {
     .progress {
         visibility: visible;
     }
 }
-.forest-tile.unclaimed {
+.land-tile.unclaimed {
     cursor: not-allowed;
     background-color:rgba(0, 0, 0, 0.5);
 }

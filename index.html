@@ -12,27 +12,41 @@
 
 <body class="dark">
     <div id="app" class="m-3">
-        <!-- Game UI components will go here -->
-        <h1>Idle Game Prototype</h1>
+        <h1>Supply Chain Prototype</h1>
         <div class="row">
+            <div class="message" v-if="message" :style="messageStyle">{{ message }}</div>
             <div class="col-6">
-                <div :style="forestStyle" class="forest">
-                    <div v-for="tile in forestView" :style="tile.style" class="forest-tile" :class="tile.classes"
-                        @click="clickTile(tile.tile)">
+                <div :style="landStyle" class="land">
+                    <div v-for="tile in landView" :style="tile.style" class="land-tile" :class="tile.classes"
+                        :title="tile.tooltip" @click="clickTile(tile.tile)">
                         {{tile.icon}}
                         <div class="progress" :style="tile.progressStyle"></div>
+                        <div class="level" v-if="tile.level != null">{{tile.level}}</div>
                     </div>
                 </div>
-                <div @click="money+=1000000">Money: {{ num(money) }}</div>
-                <div>Wood: {{ num(wood) }} / {{ num(woodStorage) }}
+                <h5 @click="money+=1;money*=10">$ {{ num(money) }}</h5>                
+                <div @click="gainWood(1000)">
+                    <span :class="{'text-warning': wood == woodStorage}">
+                        Wood: {{ num(wood) }} / {{ num(woodStorage) }}
+                    </span>
                     <div v-if="woodLost" class="text-danger">
                         Wood Lost: {{ num(woodLost) }}
                     </div>
                 </div>
-                <div>
-                    Seeds: {{ seeds }} / {{ seedsStorage }}
+                <div @click="gainSeeds(1)">
+                    <span :class="{'text-warning': seeds == seedsStorage}" :title="`Seeds are used to plant new trees. There is a ${luckySeedChance*100}% chance of gaining an extra seed upon felling a tree`">
+                        Seeds: {{ seeds }} / {{ seedsStorage }}
+                    </span>
                     <div v-if="seedsLost" class="text-danger">
                         Seeds Lost: {{ num(seedsLost) }}
+                    </div>
+                </div>
+                <div v-if="mineLand.length > 0" @click="gainDiamonds(1)">
+                    <span :class="{'text-warning': diamonds == diamondsStorage}">
+                        Diamonds: {{ diamonds }} / {{ diamondsStorage }}
+                    </span>
+                    <div v-if="diamondsLost" class="text-danger">
+                        Diamonds Lost: {{ num(diamondsLost) }}
                     </div>
                 </div>
                 <div class="mt-4">
@@ -44,51 +58,44 @@
                         Sell Seed<br>
                         <small class="text-success">+ $ {{ num(sellPriceSeeds) }}</small>
                     </button>
+                    <button @click="sellDiamonds(1)" :disabled="!canSellDiamonds" v-if="mineLand.length > 0">
+                        Sell Diamond<br>
+                        <small class="text-success">+ $ {{ num(sellPriceDiamonds) }}</small>
+                    </button>
                 </div>
 
                 <div class="mt-4">
-                    <p v-if="boughtUpgrades['Auto Digger'] > 0">
-                        Auto Diggers: {{ boughtUpgrades['Auto Digger'] }} -
-                        {{Math.round(autoDiggersSaturation*100)}}%<br>
-                        <button @click="toggleAutoDiggers">
-                            Toggle Auto Diggers
+                    <div v-for="a in automatorsView">
+                        <button @click="toggleAutomator(a)" type="button" class="btn-sm">
+                            {{ a.enabled ? 'ON' : 'OFF' }}
                         </button>
-                    </p>
-                    <p v-if="boughtUpgrades['Auto Seeder'] > 0">
-                        Auto Seeders: {{ boughtUpgrades['Auto Seeder'] }} -
-                        {{Math.round(autoSeedersSaturation*100)}}%<br>
-                        <button @click="toggleAutoSeeders">
-                            Toggle Auto Seeders
-                        </button>
-                    </p>
-                    <p v-if="boughtUpgrades['Auto Chopper'] > 0">
-                        Auto Choppers: {{ boughtUpgrades['Auto Chopper'] }} -
-                        {{Math.round(autoChoppersSaturation*100)}}%<br>
-                        <button @click="toggleAutoChoppers">
-                            Toggle Auto Choppers
-                        </button>
-                    </p>
-                    <p v-if="boughtUpgrades['Auto Seller'] > 0">
-                        Auto Sellers: {{ boughtUpgrades['Auto Seller'] }} -
-                        {{Math.round(autoSellersSaturation*100)}}%<br>
-                        <button @click="toggleAutoSellers">
-                            Toggle Auto Sellers
-                        </button>
-                    </p>
+                        {{ a.upgradeName }}: {{ boughtUpgrades[a.upgradeName] }}
+                        <!-- - {{num(a.saturation*100)}}% -->
+                    </div>
+
                 </div>
 
                 <div class="mt-4">
-                    <h5>Statistics</h5>
+                    <h5>Statistics</h5>                    
                     <div>
                         Trees chopped: {{ num(treesChopped) }}
+                    </div>
+                    <div>
+                        Time played: {{ num(minutesSinceStart) }} minutes
+                    </div>
+                    <div>
+                        Money p/s: $ {{ num(perS.money) }}
                     </div>
                 </div>
             </div>
             <div class="col-6">
                 <div v-for="category in upgradesByCategoryView" class="mb-4">
-                    <h3>{{ category.groupTitle }}</h3>
-                    <button v-for="item in category.items" @click="buyUpgrade(item)" :disabled="!item.canBuy">
-                        {{ item.displayName ?? item.name }} <sup>{{num(item.owned)}}</sup><br>
+                    <h4>{{ category.groupTitle }}</h4>
+                    <button v-for="item in category.items" @click="buyUpgrade(item)" :disabled="!item.canBuy"
+                        :title="item.blurred ? '?' : item.description">
+                        <span class="can-blur" :class="{blur: item.blurred}">{{ item.displayName ?? item.name }}</span>
+                        <sup
+                            v-if="item.max !== 1 && item.owned > 0">&nbsp;{{num(item.owned)}}</sup><br>
                         <small>$ {{ num(item.cost) }}</small>
                     </button>
                 </div>
