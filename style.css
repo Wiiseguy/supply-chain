@@ -15,8 +15,6 @@ body.dark {
     --button-bg: #303030;
 }
 
-
-
 body {
     overflow-y: scroll;
     background-color: var(--bg);
@@ -24,6 +22,8 @@ body {
     font-family: 'Arial', sans-serif;
     margin: 0;
     padding: 0;
+
+    user-select: none;
 }
 
 pre {
@@ -31,12 +31,14 @@ pre {
 }
 
 button {
+    position: relative;
     background-color: var(--button-bg);
     color: var(--text);
     border: none;
     padding: 0.5em 1em;
     margin: 0.3em;
     cursor: pointer;
+    overflow: hidden;
 }
 button:disabled {
     opacity: 0.5;
@@ -77,35 +79,77 @@ button:disabled {
 
     .progress {
         visibility: hidden;
-        position: absolute;
-        top: 0;
-        left: 0;        
-        background-color: #ffa600;
-        border-bottom: 1px solid rgba(0, 0, 0, 0.25);
-        height: 2px;
-        width: 0%;
-    } 
+    }
+
     .level {
         font-size: 0.3em;
         position: absolute;
         top: 0;
         right: 4px;
         text-shadow: 0 0 1px rgba(0, 0, 0, 0.5);
-    }   
+    }
 }
-.land-tile:hover:not(.wiggle) {
+.progress {    
+    position: absolute;
+    top: 0;
+    left: 0;
+    background-color: #ffa600;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.25);
+    height: 2px;
+    width: 0%;
+}
+.progress-alt {
+    top: inherit;
+    bottom: 0;
+    background-color: #fd5b5b;
+    border-bottom: none;
+    height: 3px;
+    border-top: 1px solid rgba(0, 0, 0, 0.25);
+}
+/* .land-tile:hover:not(.wiggle) { */
+.land-tile:hover {
     .progress {
         visibility: visible;
     }
 }
 .land-tile.unclaimed {
     cursor: not-allowed;
-    background-color:rgba(0, 0, 0, 0.5);
+    background-color: rgba(0, 0, 0, 0.5);
 }
 
 .wiggle {
-    /* play once */
-    animation: wiggle 0.25s 1;
+    .wiggle-target {
+        animation: wiggle 0.25s 10;
+    }
+}
+.wiggle-target {
+    display: inline-block;
+}
+
+.btn-upgrade {
+    position: relative;
+    .group-icon {
+        position: absolute;
+        bottom: 0;
+        right: 0;
+        opacity: 0.2;
+        pointer-events: none;
+    }
+    .num {
+        position: absolute;
+        bottom: 0.25em;
+        left: 0.5em;
+        font-size: 0.5em;
+    }
+}
+
+.btn-toggle-automator {
+    .progress {
+        top: inherit;
+        bottom: 0;
+        height: 1px;
+        opacity: 0.5;
+    }
 }
 
 /* Animation to wiggle the tree, to simulate being chopped */

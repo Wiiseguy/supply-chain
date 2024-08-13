@@ -5,6 +5,11 @@ const TILE_TYPES = {
     none: 'none',
     forest: 'forest',
     mine: 'mine'
+    // What other types could there be?
+    // Farm: plant seeds, harvest crops
+    // Oil rig: drill for oil
+    // Metal mine: mine for metals, use metals to build stuff
+    // Factory: process raw materials into goods
 }
 const FOREST_TILE_TYPES = {
     empty: 'empty',
@@ -15,6 +20,16 @@ const MINE_TILE_TYPES = {
     rock: 'rock',
     tunnel: 'tunnel',
     diamond: 'diamond'
+}
+const GROUPS = {
+    land: 'land',
+    forest: 'forest',
+    mine: 'mine'
+}
+const GROUP_ICONS = {
+    land: '🔲',
+    forest: '🌲',
+    mine: '⛏️'
 }
 
 const INITIAL_MONEY = 50
@@ -30,19 +45,20 @@ const TREE_GROWTH_STAGES_BASE_INTERVAL = TREE_BASE_MATURE_TIME / TREE_GROWTH_STA
 // Define the gains per stage, if a tree is not fully grown yet, it should give much less wood exponentially
 const TREE_WOOD_GAINS = [0.1, 0.25, 0.5, 1]
 const TREE_WOOD_GAINS_BASE = 10
-const EXTRA_SEED_CHANCE_BASE = 0.1
+const TREE_SELF_SEED_CHANCE = 1 / 100
+const EXTRA_SEED_CHANCE_BASE = 1 / 10
 const EXTRA_SEED_CHANCE_MULTIPLIER = 2
-const LUCKY_DIAMOND_MINE = 0.1
+const LUCKY_DIAMOND_MINE = 1 / 10
 
 // Price base
 const TREE_WOOD_PRICE_BASE = 5
 const SEED_PRICE_BASE = 50
-const DIAMOND_PRICE_BASE = 10_000
+const DIAMOND_PRICE_BASE = 5_000
 
 // Define the size of the storage
 const WOOD_STORAGE_SIZE = 100
 const SEEDS_STORAGE_SIZE = 10
-const DIAMONDS_STORAGE_SIZE = 5
+const DIAMONDS_STORAGE_SIZE = 1
 
 // Mine stuff
 const MINE_STAGES = ['⛰️', '⛏️', '💎']
@@ -53,9 +69,9 @@ const MINE_STAGES = ['⛰️', '⛏️', '💎']
 // Once the third stage is reached it is a fully operational mine.
 // Automators for the mine: Auto Excavator, Auto Tunneler, Auto Diamond Miner
 const MINE_STAGE_LEVELS = [1, 3, Infinity]
-const MINE_EXCAVATOR_POWER = 1/50 // 50 clicks to get to the next stage
-const MINE_TUNNELER_POWER = 1/100
-const MINE_DIAMOND_MINER_POWER = 1/200
+const MINE_EXCAVATOR_POWER = 1 / 50 // 50 clicks to get to the next stage
+const MINE_TUNNELER_POWER = 1 / 100
+const MINE_DIAMOND_MINER_POWER = 1 / 200
 const MINE_SUPPORT_BEAM_COST = 250 // wood
 
 const DEFAULT_UPGRADE_VISIBILITY_THRESHOLD = 0.25
@@ -82,7 +98,8 @@ const UPGRADES = [
         baseCost: 100,
         costMultiplier: 1.5,
         speed: undefined,
-        category: 'tools'
+        category: 'tools',
+        group: GROUPS.forest
     },
     {
         name: 'Fertilizer',
@@ -92,7 +109,8 @@ const UPGRADES = [
         baseCost: 100,
         costMultiplier: 2,
         speed: undefined,
-        category: 'tools'
+        category: 'tools',
+        group: GROUPS.forest
     },
     {
         name: 'Shovel',
@@ -102,7 +120,8 @@ const UPGRADES = [
         baseCost: 10000,
         costMultiplier: 1.5,
         speed: undefined,
-        category: 'tools'
+        category: 'tools',
+        group: GROUPS.mine
     },
     {
         name: 'Tunneling',
@@ -112,7 +131,8 @@ const UPGRADES = [
         baseCost: 10000,
         costMultiplier: 1.75,
         speed: undefined,
-        category: 'tools'
+        category: 'tools',
+        group: GROUPS.mine
     },
     {
         name: 'Pickaxe',
@@ -122,7 +142,8 @@ const UPGRADES = [
         baseCost: 10000,
         costMultiplier: 2,
         speed: undefined,
-        category: 'tools'
+        category: 'tools',
+        group: GROUPS.mine
     },
     {
         name: 'Forest Tile',
@@ -132,7 +153,8 @@ const UPGRADES = [
         baseCost: 100,
         costMultiplier: 1.1,
         speed: undefined,
-        category: 'land'
+        category: 'land',
+        group: GROUPS.forest
     },
     {
         name: 'Mine Tile',
@@ -142,7 +164,8 @@ const UPGRADES = [
         baseCost: 5000,
         costMultiplier: 1.25,
         speed: undefined,
-        category: 'land'
+        category: 'land',
+        group: GROUPS.mine
     },
     {
         name: 'Extra Column',
@@ -151,7 +174,8 @@ const UPGRADES = [
         baseCost: 100,
         costMultiplier: 5,
         speed: undefined,
-        category: 'land'
+        category: 'land',
+        group: GROUPS.land
     },
     {
         name: 'Extra Row',
@@ -160,7 +184,8 @@ const UPGRADES = [
         baseCost: 100,
         costMultiplier: 5,
         speed: undefined,
-        category: 'land'
+        category: 'land',
+        group: GROUPS.land
     },
     {
         name: 'Wood Storage',
@@ -169,7 +194,8 @@ const UPGRADES = [
         baseCost: 1000,
         costMultiplier: DEFAULT_COST_MULTIPLIER,
         speed: undefined,
-        category: 'storage'
+        category: 'storage',
+        group: GROUPS.forest
     },
     {
         name: 'Seed Storage',
@@ -179,44 +205,50 @@ const UPGRADES = [
         baseCost: 1500,
         costMultiplier: DEFAULT_COST_MULTIPLIER,
         speed: undefined,
-        category: 'storage'
+        category: 'storage',
+        group: GROUPS.forest
     },
     {
         name: 'Diamond Storage',
         displayName: 'Diamond Box',
         description: 'Increase the amount of diamonds you can store',
         initialOwned: 1,
-        baseCost: 10000,
+        baseCost: 12_500,
         costMultiplier: 2,
         speed: undefined,
-        category: 'storage'
+        category: 'storage',
+        group: GROUPS.mine
     },
+    // Automation
     {
         name: 'Auto Digger',
         description: 'Automatically dig holes on empty land',
         initialOwned: 0,
-        baseCost: 1000,
+        baseCost: 800,
         costMultiplier: DEFAULT_COST_MULTIPLIER,
         speed: 0.75,
-        category: 'automation'
+        category: 'automation',
+        group: GROUPS.forest
     },
     {
         name: 'Auto Seeder',
         description: 'Automatically plant seeds in dug holes',
         initialOwned: 0,
-        baseCost: 1500,
+        baseCost: 1000,
         costMultiplier: DEFAULT_COST_MULTIPLIER,
-        speed: 0.3,
-        category: 'automation'
+        speed: 1 / 3,
+        category: 'automation',
+        group: GROUPS.forest
     },
     {
         name: 'Auto Chopper',
         description: 'Automatically chop down trees',
         initialOwned: 0,
-        baseCost: 2000,
-        costMultiplier: DEFAULT_COST_MULTIPLIER,
+        baseCost: 1250,
+        costMultiplier: 1.5,
         speed: 1,
-        category: 'automation'
+        category: 'automation',
+        group: GROUPS.forest
     },
     {
         name: 'Wood Seller',
@@ -224,8 +256,9 @@ const UPGRADES = [
         initialOwned: 0,
         baseCost: 2500,
         costMultiplier: DEFAULT_COST_MULTIPLIER,
-        speed: 1,
-        category: 'automation'
+        speed: 1 / 2,
+        category: 'automation',
+        group: GROUPS.forest
     },
     {
         name: 'Seed Seller',
@@ -233,8 +266,9 @@ const UPGRADES = [
         initialOwned: 0,
         baseCost: 3000,
         costMultiplier: DEFAULT_COST_MULTIPLIER,
-        speed: 0.5,
-        category: 'automation'
+        speed: 1 / 8,
+        category: 'automation',
+        group: GROUPS.forest
     },
     {
         name: 'Wood Reclaimer',
@@ -242,7 +276,19 @@ const UPGRADES = [
         initialOwned: 0,
         baseCost: 2500,
         costMultiplier: DEFAULT_COST_MULTIPLIER,
-        speed: 1,
+        speed: 1 / 4,
+        category: 'automation',
+        group: GROUPS.forest
+    },
+    // Reclaimer for seeds
+    {
+        name: 'Seed Reclaimer',
+        displayName: 'Seed Scouter',
+        description: 'Send out a scout to find lost seeds all over your forest land',
+        initialOwned: 0,
+        baseCost: 3500,
+        costMultiplier: DEFAULT_COST_MULTIPLIER,
+        speed: 1 / 30,
         category: 'automation'
     },
     {
@@ -253,7 +299,8 @@ const UPGRADES = [
         baseCost: 10000,
         costMultiplier: DEFAULT_COST_MULTIPLIER,
         speed: 1,
-        category: 'automation'
+        category: 'automation',
+        group: GROUPS.mine
     },
     {
         name: 'Auto Tunneler',
@@ -262,7 +309,8 @@ const UPGRADES = [
         baseCost: 12000,
         costMultiplier: DEFAULT_COST_MULTIPLIER,
         speed: 1,
-        category: 'automation'
+        category: 'automation',
+        group: GROUPS.mine
     },
     {
         name: 'Diamond Miner',
@@ -271,7 +319,8 @@ const UPGRADES = [
         baseCost: 15000,
         costMultiplier: DEFAULT_COST_MULTIPLIER,
         speed: 1,
-        category: 'automation'
+        category: 'automation',
+        group: GROUPS.mine
     },
     {
         name: 'Diamond Seller',
@@ -279,8 +328,20 @@ const UPGRADES = [
         initialOwned: 0,
         baseCost: 15000,
         costMultiplier: DEFAULT_COST_MULTIPLIER,
-        speed: 1,
-        category: 'automation'
+        speed: 1 / 120,
+        category: 'automation',
+        group: GROUPS.mine
+    },
+    {
+        name: 'Diamond Reclaimer',
+        displayName: 'Mine Magpie',
+        description: 'Send a magpie into your caves to find the diamonds you haphazardly dropped all over the place',
+        initialOwned: 0,
+        baseCost: 20000,
+        costMultiplier: DEFAULT_COST_MULTIPLIER,
+        speed: 1 / 300,
+        category: 'automation',
+        group: GROUPS.mine
     },
     // Special one-time upgrades
     {
@@ -290,7 +351,8 @@ const UPGRADES = [
         initialOwned: 0,
         baseCost: 1000,
         category: 'special',
-        max: 1
+        max: 1,
+        group: GROUPS.forest
     },
     {
         name: 'Seed Luck 1',
@@ -299,7 +361,8 @@ const UPGRADES = [
         initialOwned: 0,
         baseCost: 2000,
         category: 'special',
-        max: 1
+        max: 1,
+        group: GROUPS.forest
     },
     {
         name: 'Seed Marketing 1',
@@ -308,7 +371,18 @@ const UPGRADES = [
         initialOwned: 0,
         baseCost: 3000,
         category: 'special',
-        max: 1
+        max: 1,
+        group: GROUPS.forest
+    },
+    {
+        name: 'Seed Marketing 2',
+        displayName: 'Seed Marketing 1',
+        description: 'Increase seed price by 3x',
+        initialOwned: 0,
+        baseCost: 16_000,
+        category: 'special',
+        max: 1,
+        group: GROUPS.forest
     },
     {
         name: 'Wood Marketing 2',
@@ -317,7 +391,38 @@ const UPGRADES = [
         initialOwned: 0,
         baseCost: 8000,
         category: 'special',
-        max: 1
+        max: 1,
+        group: GROUPS.forest
+    },
+    {
+        name: 'Wood Marketing 3',
+        displayName: 'Wood Marketing 3',
+        description: 'Increase wood price by 2x',
+        initialOwned: 0,
+        baseCost: 20_000,
+        category: 'special',
+        max: 1,
+        group: GROUPS.forest
+    },
+    {
+        name: 'Diamond Marketing 1',
+        displayName: 'Diamond Polishing',
+        description: 'Give diamonds a shiny polish and increase their price by 2x',
+        initialOwned: 0,
+        baseCost: 25_000,
+        category: 'special',
+        max: 1,
+        group: GROUPS.mine
+    },
+    {
+        name: 'Diamond Marketing 2',
+        displayName: 'Diamond Shine',
+        description: 'Give diamonds an even shinier polish and increase their price by 2x',
+        initialOwned: 0,
+        baseCost: 50_000,
+        category: 'special',
+        max: 1,
+        group: GROUPS.mine
     }
 ]
 
@@ -399,6 +504,8 @@ class Automator {
         this.saturation = 0
         this.upgradeName = upgradeName // To determine the amount via boughtUpgrades
         this.logic = logic
+        this.speed = 0 // Calculated
+        this.displayName = UPGRADES_INDEX[upgradeName].displayName ?? upgradeName
     }
 }
 
@@ -448,6 +555,7 @@ const app = Vue.createApp({
             counters: [],
             boughtUpgrades: {},
             visibleUpgrades: [],
+            unblurredUpgrades: [],
             message: '',
             messageFade: 0
         }
@@ -505,6 +613,12 @@ const app = Vue.createApp({
                     this.sellSeeds(1)
                 }
             }),
+            new Automator('Seed Reclaimer', () => {
+                if (this.seeds < this.seedsStorage && this.seedsLost > 0) {
+                    this.gainSeeds(1)
+                    this.seedsLost -= 1
+                }
+            }),
             new Automator('Auto Shoveler', () => {
                 const tile = pick(this.mineLand.filter(tile => tile.type === MINE_TILE_TYPES.rock))
                 if (tile) {
@@ -524,7 +638,7 @@ const app = Vue.createApp({
                     return
                 }
                 this.mineDiamond(tile)
-                
+
                 // The more diamond miners, the higher the chance of mining the same tile again
                 diamondTiles.forEach(tile => {
                     if (isLucky(LUCKY_DIAMOND_MINE)) {
@@ -535,6 +649,12 @@ const app = Vue.createApp({
             }),
             new Automator('Diamond Seller', () => {
                 this.sellDiamonds(1)
+            }),
+            new Automator('Diamond Reclaimer', () => {
+                if (this.diamonds < this.diamondsStorage && this.diamondsLost > 0) {
+                    this.gainDiamonds(1)
+                    this.diamondsLost -= 1
+                }
             })
         ]
         this.counters = [new Counter('money', () => this.money)]
@@ -592,10 +712,15 @@ const app = Vue.createApp({
                             if (tile.progress < 0) {
                                 tile.progress = 0
                             }
+                            let prevStage = tile.stage
                             tile.stage = Math.min(
                                 TREE_GROWTH_STAGES.length - 1,
                                 Math.floor(tile.age / TREE_GROWTH_STAGES_BASE_INTERVAL)
                             )
+                            // If stage has changed, wiggly wiggle
+                            if (prevStage !== tile.stage) {
+                                tile.animateWiggle()
+                            }
                             // stageP is the percentage of the age until it has reached the final stage
                             tile.stageP = Math.min(
                                 1,
@@ -613,11 +738,17 @@ const app = Vue.createApp({
             // Determine if upgrade should be made visible. Once visible, it should stay visible.
             // An upgrade should become visible if the player has a certain % of the cost of the upgrade
             UPGRADES.forEach(upgrade => {
-                if (this.visibleUpgrades.includes(upgrade.name)) {
-                    return
-                }
-                if (this.money >= upgrade.baseCost * DEFAULT_UPGRADE_VISIBILITY_THRESHOLD) {
+                if (
+                    !this.visibleUpgrades.includes(upgrade.name) &&
+                    this.money >= upgrade.baseCost * DEFAULT_UPGRADE_VISIBILITY_THRESHOLD
+                ) {
                     this.visibleUpgrades.push(upgrade.name)
+                }
+                if (
+                    !this.unblurredUpgrades.includes(upgrade.name) &&
+                    this.money >= upgrade.baseCost * DEFAULT_UPGRADE_BLUR_THRESHOLD
+                ) {
+                    this.unblurredUpgrades.push(upgrade.name)
                 }
             })
 
@@ -625,7 +756,9 @@ const app = Vue.createApp({
             this.automators.forEach(automator => {
                 const num = this.boughtUpgrades[automator.upgradeName]
                 if (automator.enabled && num > 0) {
-                    automator.saturation += UPGRADES_INDEX[automator.upgradeName].speed * elapsed * num
+                    const speed = UPGRADES_INDEX[automator.upgradeName].speed * num
+                    automator.saturation += speed * elapsed
+                    automator.speed = speed
                     while (automator.saturation >= 1) {
                         automator.saturation -= 1
                         automator.logic(elapsed)
@@ -671,12 +804,22 @@ const app = Vue.createApp({
                 this.gainWood(woodGains)
                 this.gainSeeds(1)
                 this.treesChopped += 1
+                let msg = ''
                 // If lucky, get an extra seed
                 if (isLucky(this.luckySeedChance)) {
-                    this.showMessage('Lucky! Got an extra seed!')
+                    msg += 'Lucky! Got an extra seed! '
                     this.gainSeeds(1)
                 }
-                this.resetTile(tile)
+                // If super lucky, automatically plant a seed
+                if (isLucky(TREE_SELF_SEED_CHANCE)) {
+                    msg += 'Super lucky! Another tree is already growing here!'
+                    tile.age = 0
+                } else {
+                    this.resetTile(tile)
+                }
+                if (msg) {
+                    this.showMessage(msg)
+                }
             }
         },
         digMineTile(tile) {
@@ -698,6 +841,7 @@ const app = Vue.createApp({
                 return
             }
             tile.progress += this.tunnelerPower
+            tile.animateWiggle()
             if (tile.progress >= 1) {
                 if (this.wood >= MINE_SUPPORT_BEAM_COST) {
                     this.wood -= MINE_SUPPORT_BEAM_COST
@@ -721,6 +865,7 @@ const app = Vue.createApp({
                 return
             }
             tile.progress += this.diamondMinerPower
+            tile.animateWiggle()
             if (tile.progress >= 1) {
                 tile.progress = 0
                 tile.stage += 1
@@ -793,6 +938,7 @@ const app = Vue.createApp({
 
         clickTile(tile) {
             if (!tile) {
+                this.showMessage('Buy a tile to claim this land!')
                 return
             }
             //console.log('Clicked tile:', JSON.parse(JSON.stringify(tile)))
@@ -949,6 +1095,20 @@ const app = Vue.createApp({
                     return 'Unknown tile'
             }
         },
+        getTileProgressAltStyle(tile) {
+            // Some tiles have a different progress bar style
+            switch (tile.tileType) {
+                case TILE_TYPES.forest:
+                    switch (tile.type) {
+                        case FOREST_TILE_TYPES.tree:
+                            return {
+                                // width based on progress. if progress = 0, width = 100% (health bar)
+                                width: `${(1 - tile.progress) * 100}%`
+                            }
+                    }
+            }
+            return {}
+        },
 
         getUpgradeCost(upgrade) {
             return (
@@ -980,8 +1140,20 @@ const app = Vue.createApp({
                 case 'Seed Marketing 1':
                     this.seedPrice *= 2
                     break
+                case 'Seed Marketing 2':
+                    this.seedPrice *= 3
+                    break
                 case 'Wood Marketing 2':
                     this.woodPrice *= 2
+                    break
+                case 'Wood Marketing 3':
+                    this.woodPrice *= 2
+                    break
+                case 'Diamond Marketing 1':
+                    this.diamondPrice *= 2
+                    break
+                case 'Diamond Marketing 2':
+                    this.diamondPrice *= 2
                     break
             }
         },
@@ -1036,6 +1208,7 @@ const app = Vue.createApp({
                     progressStyle: {
                         width: `${tile.stageP * 100}%`
                     },
+                    progressAltStyle: this.getTileProgressAltStyle(tile),
                     level: this.getTileLevel(tile),
                     classes: this.getLandTileClass(tile),
                     tooltip: this.getTileTooltip(tile)
@@ -1120,9 +1293,10 @@ const app = Vue.createApp({
                 return {
                     ...upgrade,
                     cost: Math.ceil(this.getUpgradeCost(upgrade)),
-                    blurred: this.money < this.getUpgradeCost(upgrade) * DEFAULT_UPGRADE_BLUR_THRESHOLD,
+                    blurred: !this.unblurredUpgrades.includes(upgrade.name),
                     canBuy: this.canBuyUpgrade(upgrade),
-                    owned: this.boughtUpgrades[upgrade.name] || 0
+                    owned: this.boughtUpgrades[upgrade.name] || 0,
+                    groupIcon: GROUP_ICONS[upgrade.group]
                 }
             })
         },

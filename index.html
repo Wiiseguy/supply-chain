@@ -19,8 +19,9 @@
                 <div :style="landStyle" class="land">
                     <div v-for="tile in landView" :style="tile.style" class="land-tile" :class="tile.classes"
                         :title="tile.tooltip" @click="clickTile(tile.tile)">
-                        {{tile.icon}}
+                        <span class="wiggle-target">{{tile.icon}}</span>
                         <div class="progress" :style="tile.progressStyle"></div>
+                        <div class="progress progress-alt" :style="tile.progressAltStyle"></div>
                         <div class="level" v-if="tile.level != null">{{tile.level}}</div>
                     </div>
                 </div>
@@ -66,10 +67,12 @@
 
                 <div class="mt-4">
                     <div v-for="a in automatorsView">
-                        <button @click="toggleAutomator(a)" type="button" class="btn-sm">
+                        <button @click="toggleAutomator(a)" type="button" class="btn-sm btn-toggle-automator" 
+                        :title="`Every ${(1/a.speed).toFixed(1)}s`">
                             {{ a.enabled ? 'ON' : 'OFF' }}
+                            <span class="progress" :style="{width: (a.speed < 5 ? (a.saturation*100) : 100) + '%'}"></span>
                         </button>
-                        {{ a.upgradeName }}: {{ boughtUpgrades[a.upgradeName] }}
+                        {{ a.displayName }}: {{ boughtUpgrades[a.upgradeName] }} 
                         <!-- - {{num(a.saturation*100)}}% -->
                     </div>
 
@@ -91,12 +94,15 @@
             <div class="col-6">
                 <div v-for="category in upgradesByCategoryView" class="mb-4">
                     <h4>{{ category.groupTitle }}</h4>
-                    <button v-for="item in category.items" @click="buyUpgrade(item)" :disabled="!item.canBuy"
+                    <button v-for="item in category.items" class="btn-upgrade"
+                    @click="buyUpgrade(item)" :disabled="!item.canBuy"
                         :title="item.blurred ? '?' : item.description">
                         <span class="can-blur" :class="{blur: item.blurred}">{{ item.displayName ?? item.name }}</span>
                         <sup
-                            v-if="item.max !== 1 && item.owned > 0">&nbsp;{{num(item.owned)}}</sup><br>
+                            v-if="item.max !== 1 && item.owned > 0"></sup><br>
                         <small>$ {{ num(item.cost) }}</small>
+                        <span class="num" v-if="item.owned > 0">{{ num(item.owned) }}</span>
+                        <span class="group-icon">{{item.blurred ? '❔' : item.groupIcon}}</span>
                     </button>
                 </div>
             </div>
