@@ -1,3 +1,4 @@
+const DEBUG = false
 const FPS = 30
 
 const TILE_SIZE = 64
@@ -19,7 +20,14 @@ const FOREST_TILE_TYPES = {
 const MINE_TILE_TYPES = {
     rock: 'rock',
     tunnel: 'tunnel',
-    diamond: 'diamond'
+    resource: 'resource'
+}
+const MILE_RESOURCE_TYPES = {
+    diamond: 'diamond',
+    metal: 'metal',
+    oil: 'oil',
+    coal: 'coal',
+    gold: 'gold'
 }
 const GROUPS = {
     land: 'land',
@@ -33,6 +41,7 @@ const GROUP_ICONS = {
 }
 
 const INITIAL_MONEY = 50
+const INITIAL_SEEDS = 4
 
 const CHOP_POWER_BASE = 0.025
 // Define tree aging - let's say a tree takes a minute to grow fully
@@ -48,31 +57,50 @@ const TREE_WOOD_GAINS_BASE = 10
 const TREE_SELF_SEED_CHANCE = 1 / 100
 const EXTRA_SEED_CHANCE_BASE = 1 / 10
 const EXTRA_SEED_CHANCE_MULTIPLIER = 2
-const LUCKY_DIAMOND_MINE = 1 / 10
+const LUCKY_RESOURCE_MINE_CHANCE = 1 / 10
 
 // Price base
 const TREE_WOOD_PRICE_BASE = 5
 const SEED_PRICE_BASE = 50
 const DIAMOND_PRICE_BASE = 5_000
+const METAL_PRICE_BASE = 500
 
 // Define the size of the storage
 const WOOD_STORAGE_SIZE = 100
 const SEEDS_STORAGE_SIZE = 10
 const DIAMONDS_STORAGE_SIZE = 1
+const METAL_STORAGE_SIZE = 10
 
 // Mine stuff
-const MINE_STAGES = ['⛰️', '⛏️', '💎']
 // Mines work different from forests, each stage has levels. The first stage has one level, the second has 3, the third has Infinite
 // The first stage uses dugPower and only has one level but should require like 50 clicks to get to the next stage
 // The second stage is when a mine has openened, but to be able to go deeper, wood is required, because you need to build support beams (250 wood per level)
-// The third stage is when you can mine for diamonds, but it requires a diamond pickaxe, each level will gain 1 diamond
-// Once the third stage is reached it is a fully operational mine.
+// The third stage is when you can mine for resources. Once the third stage is reached it is a fully operational mine.
 // Automators for the mine: Auto Excavator, Auto Tunneler, Auto Diamond Miner
-const MINE_STAGE_LEVELS = [1, 3, Infinity]
 const MINE_EXCAVATOR_POWER = 1 / 50 // 50 clicks to get to the next stage
 const MINE_TUNNELER_POWER = 1 / 100
 const MINE_DIAMOND_MINER_POWER = 1 / 200
 const MINE_SUPPORT_BEAM_COST = 250 // wood
+const MINE_RESOURCE_ICONS = {
+    diamond: '💎',
+    metal: '🔧'
+}
+const MINE_RESOURCE_OPENING_LEVELS = {
+    diamond: 1,
+    metal: 1
+}
+const MINE_RESOURCE_TUNNELING_LEVELS = {
+    diamond: 3,
+    metal: 1
+}
+const MINE_MAX_RESOURCES_PER_LEVEL = {
+    diamond: 5,
+    metal: 10
+}
+const MINE_RESOURCE_CLICKS = {
+    diamond: 200,
+    metal: 50
+}
 
 const DEFAULT_UPGRADE_VISIBILITY_THRESHOLD = 0.25
 const DEFAULT_UPGRADE_BLUR_THRESHOLD = 0.5
@@ -137,7 +165,7 @@ const UPGRADES = [
     {
         name: 'Pickaxe',
         displayName: 'Harden Pickaxe',
-        description: 'Mine diamonds faster with a hardened pickaxe',
+        description: 'Mine resources faster with a hardened pickaxe',
         initialOwned: 0,
         baseCost: 10000,
         costMultiplier: 2,
@@ -147,19 +175,27 @@ const UPGRADES = [
     },
     {
         name: 'Forest Tile',
-        displayName: 'Forest Tile',
         description: 'Claim a tile of land to grow trees on',
         initialOwned: 1,
         baseCost: 100,
-        costMultiplier: 1.1,
+        costMultiplier: 1.2,
         speed: undefined,
         category: 'land',
         group: GROUPS.forest
     },
     {
-        name: 'Mine Tile',
-        displayName: 'Mine Tile',
-        description: 'Claim a tile of land to dig for resources',
+        name: 'Metal Mine Tile',
+        description: 'Claim a tile of land to dig for metal',
+        initialOwned: 0,
+        baseCost: 2000,
+        costMultiplier: 1.25,
+        speed: undefined,
+        category: 'land',
+        group: GROUPS.mine
+    },
+    {
+        name: 'Diamond Mine Tile',
+        description: 'Claim a tile of land to dig for diamonds',
         initialOwned: 0,
         baseCost: 5000,
         costMultiplier: 1.25,
@@ -208,6 +244,18 @@ const UPGRADES = [
         category: 'storage',
         group: GROUPS.forest
     },
+    // Metal storage
+    {
+        name: 'Metal Storage',
+        displayName: 'Metal Crate',
+        description: 'Increase the amount of metal you can store',
+        initialOwned: 1,
+        baseCost: 5000,
+        costMultiplier: 2,
+        speed: undefined,
+        category: 'storage',
+        group: GROUPS.mine
+    },
     {
         name: 'Diamond Storage',
         displayName: 'Diamond Box',
@@ -246,7 +294,7 @@ const UPGRADES = [
         initialOwned: 0,
         baseCost: 1250,
         costMultiplier: 1.5,
-        speed: 1,
+        speed: 2 / 3,
         category: 'automation',
         group: GROUPS.forest
     },
@@ -313,12 +361,34 @@ const UPGRADES = [
         group: GROUPS.mine
     },
     {
-        name: 'Diamond Miner',
-        description: 'Automatically mine diamonds',
+        name: 'Resource Miner',
+        description: 'Automatically mine resources',
         initialOwned: 0,
-        baseCost: 15000,
+        baseCost: 15_000,
         costMultiplier: DEFAULT_COST_MULTIPLIER,
         speed: 1,
+        category: 'automation',
+        group: GROUPS.mine
+    },
+    {
+        name: 'Metal Seller',
+        description: 'Automatically sell metal',
+        initialOwned: 0,
+        baseCost: 15_000,
+        costMultiplier: DEFAULT_COST_MULTIPLIER,
+        speed: 1 / 60,
+        category: 'automation',
+        group: GROUPS.mine
+    },
+    // Metal reclaimer
+    {
+        name: 'Metal Reclaimer',
+        displayName: 'Metal Detector',
+        description: 'Send out a metal detector to find lost metal in your mine',
+        initialOwned: 0,
+        baseCost: 20_000,
+        costMultiplier: DEFAULT_COST_MULTIPLIER,
+        speed: 1 / 120,
         category: 'automation',
         group: GROUPS.mine
     },
@@ -326,9 +396,9 @@ const UPGRADES = [
         name: 'Diamond Seller',
         description: 'Automatically sell diamonds',
         initialOwned: 0,
-        baseCost: 15000,
+        baseCost: 20_000,
         costMultiplier: DEFAULT_COST_MULTIPLIER,
-        speed: 1 / 120,
+        speed: 1 / 180,
         category: 'automation',
         group: GROUPS.mine
     },
@@ -337,9 +407,9 @@ const UPGRADES = [
         displayName: 'Mine Magpie',
         description: 'Send a magpie into your caves to find the diamonds you haphazardly dropped all over the place',
         initialOwned: 0,
-        baseCost: 20000,
+        baseCost: 50_000,
         costMultiplier: DEFAULT_COST_MULTIPLIER,
-        speed: 1 / 300,
+        speed: 1 / 240,
         category: 'automation',
         group: GROUPS.mine
     },
@@ -369,17 +439,17 @@ const UPGRADES = [
         displayName: 'Seed Marketing 1',
         description: 'Increase seed price by 2x',
         initialOwned: 0,
-        baseCost: 3000,
+        baseCost: 2000,
         category: 'special',
         max: 1,
         group: GROUPS.forest
     },
     {
         name: 'Seed Marketing 2',
-        displayName: 'Seed Marketing 1',
+        displayName: 'Seed Marketing 2',
         description: 'Increase seed price by 3x',
         initialOwned: 0,
-        baseCost: 16_000,
+        baseCost: 10_000,
         category: 'special',
         max: 1,
         group: GROUPS.forest
@@ -407,9 +477,9 @@ const UPGRADES = [
     {
         name: 'Diamond Marketing 1',
         displayName: 'Diamond Polishing',
-        description: 'Give diamonds a shiny polish and increase their price by 2x',
+        description: 'Give diamonds a shiny polish and increase their price by 1.5x',
         initialOwned: 0,
-        baseCost: 25_000,
+        baseCost: 50_000,
         category: 'special',
         max: 1,
         group: GROUPS.mine
@@ -419,12 +489,15 @@ const UPGRADES = [
         displayName: 'Diamond Shine',
         description: 'Give diamonds an even shinier polish and increase their price by 2x',
         initialOwned: 0,
-        baseCost: 50_000,
+        baseCost: 150_000,
         category: 'special',
         max: 1,
         group: GROUPS.mine
     }
 ]
+const UPGRADES_INDEX = makeIndex(UPGRADES, 'name')
+
+let haltAnimation = false
 
 function makeIndex(arr, key) {
     return arr.reduce((acc, item) => {
@@ -447,8 +520,10 @@ function pluck(arr) {
 }
 
 function bigNum(n) {
+    const sign = Math.sign(n)
+    n = Math.abs(n)
     if (n < 1000000) {
-        return Math.round(n).toLocaleString()
+        return Math.round(sign * n).toLocaleString()
     }
     const suffixes = [
         '',
@@ -468,33 +543,50 @@ function bigNum(n) {
         n /= 1000
         suffixIndex++
     }
+    n *= sign
     const formatted = n.toLocaleString(undefined, { maximumFractionDigits: 2 })
     return `${formatted} ${suffixes[suffixIndex]}`
 }
 
-const UPGRADES_INDEX = makeIndex(UPGRADES, 'name')
+function setBoolPropTimeout(obj, prop, timeOutProp, time) {
+    if (haltAnimation) return
+    clearTimeout(obj[timeOutProp])
+    setTimeout(() => {
+        obj[prop] = false
+    }, 1)
+    setTimeout(() => {
+        obj[prop] = true
+    }, 2)
+    obj[timeOutProp] = setTimeout(() => {
+        obj[prop] = false
+    }, time)
+}
 
 class Tile {
     constructor() {
         this.tileType = TILE_TYPES.none
         this.type = FOREST_TILE_TYPES.empty
+        this.subType = '' // Used e.g. by mines to determine what resource is in the tile
         this.progress = 0
         this.age = 0
         this.stage = 0
         this.stageP = 0
         this.wiggle = false
+        this.fail = false
+        this.grow = false
+
+        this.wiggleTimeout = -1
+        this.failTimeout = -1
+        this.growTimeout = -1
     }
     animateWiggle() {
-        this.wiggle = true
-        setTimeout(() => {
-            this.wiggle = false
-        }, 1)
-        setTimeout(() => {
-            this.wiggle = true
-        }, 2)
-        setTimeout(() => {
-            this.wiggle = false
-        }, 250)
+        setBoolPropTimeout(this, 'wiggle', 'wiggleTimeout', 250)
+    }
+    animateFail() {
+        setBoolPropTimeout(this, 'fail', 'failTimeout', 1000)
+    }
+    animateGrow() {
+        setBoolPropTimeout(this, 'grow', 'growTimeout', 250)
     }
 }
 
@@ -527,6 +619,7 @@ class Counter {
 const app = Vue.createApp({
     data() {
         return {
+            DEBUG,
             UPGRADES,
 
             now: Date.now(),
@@ -535,18 +628,25 @@ const app = Vue.createApp({
             money: INITIAL_MONEY,
             moneyPs: 0,
             land: [],
+
+            // Resources
+            // TODO: refactor to Resource class
             wood: 0,
             diamonds: 0,
-            seeds: 3,
+            seeds: INITIAL_SEEDS,
+            metal: 0,
+
             woodLost: 0,
             seedsLost: 0,
             diamondsLost: 0,
-
-            treesChopped: 0,
+            metalLost: 0,
 
             woodPrice: TREE_WOOD_PRICE_BASE,
             seedPrice: SEED_PRICE_BASE,
             diamondPrice: DIAMOND_PRICE_BASE,
+            metalPrice: METAL_PRICE_BASE,
+
+            // Vars
             digPower: 0.2,
             plantPower: 0.5,
             luckySeedChance: EXTRA_SEED_CHANCE_BASE,
@@ -557,7 +657,10 @@ const app = Vue.createApp({
             visibleUpgrades: [],
             unblurredUpgrades: [],
             message: '',
-            messageFade: 0
+            messageFade: 0,
+
+            // Stats
+            treesChopped: 0
         }
     },
     mounted() {
@@ -631,21 +734,29 @@ const app = Vue.createApp({
                     this.tunnelMineTile(tile)
                 }
             }),
-            new Automator('Diamond Miner', () => {
-                const diamondTiles = this.mineLand.filter(tile => tile.type === MINE_TILE_TYPES.diamond)
-                const tile = pick(diamondTiles)
+            new Automator('Resource Miner', () => {
+                const resourceTiles = this.mineLand.filter(tile => tile.type === MINE_TILE_TYPES.resource)
+                const tile = pick(resourceTiles)
                 if (!tile) {
                     return
                 }
-                this.mineDiamond(tile)
+                this.mineResource(tile)
 
-                // The more diamond miners, the higher the chance of mining the same tile again
-                diamondTiles.forEach(tile => {
-                    if (isLucky(LUCKY_DIAMOND_MINE)) {
-                        console.log('Lucky! Mining another diamond tile in one stroke!', tile)
-                        this.mineDiamond(tile)
+                // The more resource miners, the higher the chance of mining the same tile again
+                resourceTiles.forEach(tile => {
+                    if (isLucky(LUCKY_RESOURCE_MINE_CHANCE)) {
+                        this.mineResource(tile)
                     }
                 })
+            }),
+            new Automator('Metal Seller', () => {
+                this.sellMetal(1)
+            }),
+            new Automator('Metal Reclaimer', () => {
+                if (this.metal < this.metalStorage && this.metalLost > 0) {
+                    this.gainMetal(1)
+                    this.metalLost -= 1
+                }
             }),
             new Automator('Diamond Seller', () => {
                 this.sellDiamonds(1)
@@ -668,6 +779,10 @@ const app = Vue.createApp({
                 console.error(`Automator for upgrade ${upgrade.name} is missing!`)
             }
         })
+
+        this.showMessage(
+            `Welcome to your land! You start out with one tile of forest land and ${INITIAL_SEEDS} seeds. Good luck!`
+        )
 
         this.startGameLoop()
     },
@@ -699,7 +814,19 @@ const app = Vue.createApp({
             this.counters.forEach(counter => counter.update())
         },
         updateGame(elapsed) {
+            haltAnimation = false
+
+            // If elapsed is massive, the game was paused maybe due to hibernation or tab switch
+            // In that case, animations caused by setTimeout should not be triggered this update
+            if (elapsed > 10) {
+                console.warn('Massive elapsed time detected, halting animations. Elapsed seconds:', elapsed)
+                haltAnimation = true
+            }
+
             this.messageFade -= elapsed / 10
+            if (this.messageFade < 0) {
+                this.messageFade = 0
+            }
 
             this.land.forEach(tile => {
                 tile.stageP = 0
@@ -719,7 +846,7 @@ const app = Vue.createApp({
                             )
                             // If stage has changed, wiggly wiggle
                             if (prevStage !== tile.stage) {
-                                tile.animateWiggle()
+                                tile.animateGrow()
                             }
                             // stageP is the percentage of the age until it has reached the final stage
                             tile.stageP = Math.min(
@@ -830,9 +957,10 @@ const app = Vue.createApp({
             if (tile.progress >= 1) {
                 tile.stage += 1
                 tile.progress = 0
-                if (tile.stage >= MINE_STAGE_LEVELS[0]) {
+                if (tile.stage >= MINE_RESOURCE_OPENING_LEVELS[tile.subType]) {
                     tile.stage = 0
                     tile.type = MINE_TILE_TYPES.tunnel
+                    this.showMessage('Mine entrance opened!')
                 }
             }
         },
@@ -847,11 +975,15 @@ const app = Vue.createApp({
                     this.wood -= MINE_SUPPORT_BEAM_COST
                     tile.stage += 1
                     tile.progress = 0
-                    if (tile.stage >= MINE_STAGE_LEVELS[1]) {
+                    if (tile.stage >= MINE_RESOURCE_TUNNELING_LEVELS[tile.subType]) {
                         tile.stage = 0
-                        tile.type = MINE_TILE_TYPES.diamond
+                        tile.type = MINE_TILE_TYPES.resource
+                        this.showMessage(`Cave full of ${tile.subType}s found!`)
+                    } else {
+                        this.showMessage(`Support beams built with ${this.num(MINE_SUPPORT_BEAM_COST)} wood!`)
                     }
                 } else {
+                    tile.animateFail()
                     this.showMessage(
                         `Not enough wood to build support beams! You need ${this.num(
                             MINE_SUPPORT_BEAM_COST
@@ -860,16 +992,32 @@ const app = Vue.createApp({
                 }
             }
         },
-        mineDiamond(tile) {
-            if (tile.type !== MINE_TILE_TYPES.diamond) {
+        mineResource(tile) {
+            if (tile.type !== MINE_TILE_TYPES.resource) {
                 return
             }
-            tile.progress += this.diamondMinerPower
+            tile.progress += this.resourceMinerPower / MINE_RESOURCE_CLICKS[tile.subType]
             tile.animateWiggle()
             if (tile.progress >= 1) {
                 tile.progress = 0
                 tile.stage += 1
-                this.gainDiamonds(1)
+                switch (tile.subType) {
+                    case MILE_RESOURCE_TYPES.diamond:
+                        this.gainDiamonds(1)
+                        break
+                    case MILE_RESOURCE_TYPES.metal:
+                        this.gainMetal(1)
+                        break
+                    default:
+                        console.error('mineResource: Unknown resource type:', tile.subType)
+                        break
+                }
+                // If max amount of resources per cave is reached, go back to tunneling
+                if (tile.stage >= MINE_MAX_RESOURCES_PER_LEVEL[tile.subType]) {
+                    tile.stage = 0
+                    tile.type = MINE_TILE_TYPES.tunnel
+                    this.showMessage('Resource cave depleted! Time to dig deeper.')
+                }
             }
         },
         gainWood(gains) {
@@ -891,6 +1039,13 @@ const app = Vue.createApp({
             if (this.diamonds > this.diamondsStorage) {
                 this.diamondsLost += this.diamonds - this.diamondsStorage
                 this.diamonds = this.diamondsStorage
+            }
+        },
+        gainMetal(gains) {
+            this.metal += gains
+            if (this.metal > this.metalStorage) {
+                this.metalLost += this.metal - this.metalStorage
+                this.metal = this.metalStorage
             }
         },
         /**
@@ -927,6 +1082,22 @@ const app = Vue.createApp({
             }
             this.diamonds -= amount
             this.money += amount * this.diamondPrice
+        },
+        sellMetal(amount) {
+            if (this.metal < amount) {
+                return
+            }
+            this.metal -= amount
+            this.money += amount * this.metalPrice
+        },
+        sellAutomator(automator) {
+            // Get the cost of the current automator
+            let upgrade = UPGRADES_INDEX[automator.upgradeName]
+            let owned = this.boughtUpgrades[automator.upgradeName]
+            const price = this.getUpgradeCostNum(upgrade, owned - 1)
+            this.money += price
+            this.boughtUpgrades[automator.upgradeName] -= 1
+            console.log('Sold automator:', automator, 'for', price)
         },
         incur(money) {
             if (this.money < money) {
@@ -978,8 +1149,8 @@ const app = Vue.createApp({
                 case MINE_TILE_TYPES.tunnel:
                     this.tunnelMineTile(tile)
                     break
-                case MINE_TILE_TYPES.diamond:
-                    this.mineDiamond(tile)
+                case MINE_TILE_TYPES.resource:
+                    this.mineResource(tile)
                     break
                 default:
                     console.error('Unknown tile type:', tile.type)
@@ -993,10 +1164,11 @@ const app = Vue.createApp({
             tile.type = FOREST_TILE_TYPES.empty
             return tile
         },
-        createMineTile() {
+        createMineTile(subType) {
             const tile = new Tile()
             tile.tileType = TILE_TYPES.mine
             tile.type = MINE_TILE_TYPES.rock
+            tile.subType = subType
             return tile
         },
         getTileIcon(tile) {
@@ -1018,8 +1190,8 @@ const app = Vue.createApp({
                             return '⛰️'
                         case MINE_TILE_TYPES.tunnel:
                             return '⛏️'
-                        case MINE_TILE_TYPES.diamond:
-                            return '💎'
+                        case MINE_TILE_TYPES.resource:
+                            return MINE_RESOURCE_ICONS[tile.subType]
                         default:
                             return '❓'
                     }
@@ -1028,8 +1200,10 @@ const app = Vue.createApp({
             }
         },
         getLandTileClass(tile) {
-            let result = tile.wiggle ? 'wiggle' : ''
-            return result
+            return {
+                wiggle: tile.wiggle,
+                'grow-bounce': tile.grow
+            }
         },
         getTileStyle(tile) {
             let opacity = tile.progress
@@ -1061,11 +1235,11 @@ const app = Vue.createApp({
                 case TILE_TYPES.mine:
                     switch (tile.type) {
                         case MINE_TILE_TYPES.rock:
-                            return MINE_STAGE_LEVELS[0] > 1 ? tile.stage : null
+                            return MINE_RESOURCE_OPENING_LEVELS[tile.subType] > 1 ? MINE_RESOURCE_OPENING_LEVELS[tile.subType] - tile.stage : null
                         case MINE_TILE_TYPES.tunnel:
-                            return MINE_STAGE_LEVELS[1] > 1 ? tile.stage : null
-                        case MINE_TILE_TYPES.diamond:
-                            return tile.stage
+                            return MINE_RESOURCE_TUNNELING_LEVELS[tile.subType] > 1 ? MINE_RESOURCE_TUNNELING_LEVELS[tile.subType]- tile.stage : null
+                        case MINE_TILE_TYPES.resource:
+                            return MINE_MAX_RESOURCES_PER_LEVEL[tile.subType] - tile.stage
                     }
                 default:
                     return null
@@ -1081,15 +1255,23 @@ const app = Vue.createApp({
                             return 'Dug hole - click to plant a seed'
                         case FOREST_TILE_TYPES.tree:
                             return `Tree - click to chop it down - the older the tree, the more wood you get`
+                        default:
+                            return 'Unknown forest tile'
                     }
                 case TILE_TYPES.mine:
                     switch (tile.type) {
                         case MINE_TILE_TYPES.rock:
                             return 'Rock - click to dig an entrance for a mine'
                         case MINE_TILE_TYPES.tunnel:
-                            return `Mine Tunnel - at level ${tile.stage} of ${MINE_STAGE_LEVELS[1]} - click to dig deeper`
-                        case MINE_TILE_TYPES.diamond:
-                            return 'Diamond mine - click to mine diamonds - found diamonds: ' + tile.stage
+                            return `Mine Tunnel (${tile.subType}) - at level ${tile.stage} of ${
+                                MINE_RESOURCE_TUNNELING_LEVELS[tile.subType]
+                            } - click to dig deeper`
+                        case MINE_TILE_TYPES.resource:
+                            return `Mine (${tile.subType}) - click to mine resources - found resources: ${
+                                tile.stage
+                            } of ${MINE_MAX_RESOURCES_PER_LEVEL[tile.subType]}`
+                        default:
+                            return 'Unknown mine tile'
                     }
                 default:
                     return 'Unknown tile'
@@ -1111,10 +1293,10 @@ const app = Vue.createApp({
         },
 
         getUpgradeCost(upgrade) {
-            return (
-                upgrade.baseCost *
-                Math.pow(upgrade.costMultiplier, this.boughtUpgrades[upgrade.name] - upgrade.initialOwned)
-            )
+            return this.getUpgradeCostNum(upgrade, this.boughtUpgrades[upgrade.name])
+        },
+        getUpgradeCostNum(upgrade, num) {
+            return upgrade.baseCost * Math.pow(upgrade.costMultiplier, num - upgrade.initialOwned)
         },
         buyUpgrade(upgrade) {
             let cost = this.getUpgradeCost(upgrade)
@@ -1127,8 +1309,11 @@ const app = Vue.createApp({
                 case 'Forest Tile':
                     this.land.push(this.createForestTile())
                     break
-                case 'Mine Tile':
-                    this.land.push(this.createMineTile())
+                case 'Diamond Mine Tile':
+                    this.land.push(this.createMineTile(MILE_RESOURCE_TYPES.diamond))
+                    break
+                case 'Metal Mine Tile':
+                    this.land.push(this.createMineTile(MILE_RESOURCE_TYPES.metal))
                     break
                 // Specials
                 case 'Wood Marketing 1':
@@ -1150,7 +1335,7 @@ const app = Vue.createApp({
                     this.woodPrice *= 2
                     break
                 case 'Diamond Marketing 1':
-                    this.diamondPrice *= 2
+                    this.diamondPrice *= 1.5
                     break
                 case 'Diamond Marketing 2':
                     this.diamondPrice *= 2
@@ -1163,7 +1348,8 @@ const app = Vue.createApp({
         canBuyUpgrade(upgrade) {
             switch (upgrade.name) {
                 case 'Forest Tile':
-                case 'Mine Tile':
+                case 'Diamond Mine Tile':
+                case 'Metal Mine Tile':
                     if (this.hasRoomForTile()) {
                         return false
                     }
@@ -1184,6 +1370,12 @@ const app = Vue.createApp({
         },
         mineLand() {
             return this.land.filter(tile => tile.tileType === TILE_TYPES.mine)
+        },
+        anyDiamondMines() {
+            return this.mineLand.some(tile => tile.subType === MILE_RESOURCE_TYPES.diamond)
+        },
+        anyMetalMines() {
+            return this.mineLand.some(tile => tile.subType === MILE_RESOURCE_TYPES.metal)
         },
         landSize() {
             return [this.boughtUpgrades['Extra Column'], this.boughtUpgrades['Extra Row']]
@@ -1240,8 +1432,8 @@ const app = Vue.createApp({
         tunnelerPower() {
             return MINE_TUNNELER_POWER * (this.boughtUpgrades['Tunneling'] + 1)
         },
-        diamondMinerPower() {
-            return MINE_DIAMOND_MINER_POWER * (this.boughtUpgrades['Pickaxe'] + 1)
+        resourceMinerPower() {
+            return this.boughtUpgrades['Pickaxe'] + 1
         },
         canSellWood() {
             return this.wood > 0
@@ -1252,6 +1444,9 @@ const app = Vue.createApp({
         canSellDiamonds() {
             return this.diamonds > 0
         },
+        canSellMetal() {
+            return this.metal > 0
+        },
         sellPriceWood() {
             return this.wood * this.woodPrice
         },
@@ -1261,6 +1456,9 @@ const app = Vue.createApp({
         sellPriceDiamonds() {
             return 1 * this.diamondPrice
         },
+        sellPriceMetal() {
+            return 1 * this.metalPrice
+        },
         woodStorage() {
             return WOOD_STORAGE_SIZE * this.boughtUpgrades['Wood Storage']
         },
@@ -1269,6 +1467,9 @@ const app = Vue.createApp({
         },
         diamondsStorage() {
             return DIAMONDS_STORAGE_SIZE * this.boughtUpgrades['Diamond Storage']
+        },
+        metalStorage() {
+            return METAL_STORAGE_SIZE * this.boughtUpgrades['Metal Storage']
         },
 
         perS() {

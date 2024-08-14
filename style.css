@@ -125,6 +125,30 @@ button:disabled {
 .wiggle-target {
     display: inline-block;
 }
+.grow-bounce {
+    .grow-bounce-target {
+        animation: growBounce 0.25s;
+    }
+}
+.grow-bounce-target {
+    display: inline-block;
+}
+
+.fail {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    text-align: center;
+    font-size: 1em;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.fade-out {
+    /* once, 1s, ease-out */
+    animation: fadeOut 1s ease-out;
+}
 
 .btn-upgrade {
     position: relative;
@@ -169,4 +193,41 @@ button:disabled {
     100% {
         transform: rotate(0deg);
     }
+}
+
+/* Grow bounce animation */
+@keyframes growBounce {
+    0% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.1);
+    }
+    100% {
+        transform: scale(1);
+    }
+}
+
+/* Fade out animation */
+@keyframes fadeOut {
+    0% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 1;
+    }
+    100% {
+        opacity: 0;
+    }
+}
+
+/* Vue transitions */
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.5s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
 }

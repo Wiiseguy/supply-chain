@@ -12,44 +12,55 @@
 
 <body class="dark">
     <div id="app" class="m-3">
-        <h1>Supply Chain Prototype</h1>
+        <h1 @dblclick="DEBUG = !DEBUG">Supply Chain Prototype</h1>
         <div class="row">
             <div class="message" v-if="message" :style="messageStyle">{{ message }}</div>
             <div class="col-6">
                 <div :style="landStyle" class="land">
                     <div v-for="tile in landView" :style="tile.style" class="land-tile" :class="tile.classes"
                         :title="tile.tooltip" @click="clickTile(tile.tile)">
-                        <span class="wiggle-target">{{tile.icon}}</span>
+                        <span class="wiggle-target grow-bounce-target">{{tile.icon}}</span>
+                        <span v-if="tile.tile?.fail" class="fail fade-out">❌</span>
                         <div class="progress" :style="tile.progressStyle"></div>
                         <div class="progress progress-alt" :style="tile.progressAltStyle"></div>
                         <div class="level" v-if="tile.level != null">{{tile.level}}</div>
                     </div>
                 </div>
-                <h5 @click="money+=1;money*=10">$ {{ num(money) }}</h5>                
-                <div @click="gainWood(1000)">
+                <h5 @click="DEBUG && (money+=1, money*=10)">$ {{ num(money) }}</h5>
+                <div @click="DEBUG && gainWood(1000)">
                     <span :class="{'text-warning': wood == woodStorage}">
-                        Wood: {{ num(wood) }} / {{ num(woodStorage) }}
+                        <span>Wood: {{ num(wood) }} / {{ num(woodStorage) }}</span>
+                        <span v-if="woodLost" class="ml-3 text-danger"
+                            title="Lost wood: caused by not having enough Wood Storage">
+                            {{ num(-woodLost) }}</span>
                     </span>
-                    <div v-if="woodLost" class="text-danger">
-                        Wood Lost: {{ num(woodLost) }}
-                    </div>
                 </div>
-                <div @click="gainSeeds(1)">
-                    <span :class="{'text-warning': seeds == seedsStorage}" :title="`Seeds are used to plant new trees. There is a ${luckySeedChance*100}% chance of gaining an extra seed upon felling a tree`">
-                        Seeds: {{ seeds }} / {{ seedsStorage }}
+                <div @click="DEBUG && gainSeeds(1)">
+                    <span :class="{'text-warning': seeds == seedsStorage}"
+                        :title="`Seeds are used to plant new trees. There is a ${luckySeedChance*100}% chance of gaining an extra seed upon felling a tree`">
+                        <span>Seeds: {{ seeds }} / {{ seedsStorage }}</span>
+                        <span v-if="seedsLost" class="ml-3 text-danger"
+                            title="Lost seeds: caused by not having enough Seed Bottles">
+                            {{ num(-seedsLost) }}</span>
                     </span>
-                    <div v-if="seedsLost" class="text-danger">
-                        Seeds Lost: {{ num(seedsLost) }}
-                    </div>
+                </div>                
+                <div v-if="anyMetalMines" @click="DEBUG && gainMetal(1)">
+                    <span :class="{'text-warning': metal == metalStorage}">
+                        <span>Metal: {{ metal }} / {{ metalStorage }}</span>
+                        <span v-if="metalLost" class="ml-3 text-danger"
+                            title="Lost metal: caused by not having enough Metal Crates">
+                            {{ num(-metalLost) }}</span>
+                    </span>
                 </div>
-                <div v-if="mineLand.length > 0" @click="gainDiamonds(1)">
+                <div v-if="anyDiamondMines" @click="DEBUG && gainDiamonds(1)">
                     <span :class="{'text-warning': diamonds == diamondsStorage}">
-                        Diamonds: {{ diamonds }} / {{ diamondsStorage }}
+                        <span>Diamonds: {{ diamonds }} / {{ diamondsStorage }}</span>
+                        <span v-if="diamondsLost" class="ml-3 text-danger"
+                            title="Lost diamonds: caused by not having enough Diamond Boxes">
+                            {{ num(-diamondsLost) }}</span>
                     </span>
-                    <div v-if="diamondsLost" class="text-danger">
-                        Diamonds Lost: {{ num(diamondsLost) }}
-                    </div>
                 </div>
+
                 <div class="mt-4">
                     <button @click="sellAllWood" :disabled="!canSellWood">
                         Sell All Wood<br>
@@ -59,7 +70,11 @@
                         Sell Seed<br>
                         <small class="text-success">+ $ {{ num(sellPriceSeeds) }}</small>
                     </button>
-                    <button @click="sellDiamonds(1)" :disabled="!canSellDiamonds" v-if="mineLand.length > 0">
+                    <button @click="sellMetal(1)" :disabled="!canSellMetal" v-if="anyMetalMines">
+                        Sell Metal<br>
+                        <small class="text-success">+ $ {{ num(sellPriceMetal) }}</small>
+                    </button>
+                    <button @click="sellDiamonds(1)" :disabled="!canSellDiamonds" v-if="anyDiamondMines">
                         Sell Diamond<br>
                         <small class="text-success">+ $ {{ num(sellPriceDiamonds) }}</small>
                     </button>
@@ -67,19 +82,21 @@
 
                 <div class="mt-4">
                     <div v-for="a in automatorsView">
-                        <button @click="toggleAutomator(a)" type="button" class="btn-sm btn-toggle-automator" 
-                        :title="`Every ${(1/a.speed).toFixed(1)}s`">
+                        <button @click="toggleAutomator(a)" type="button" class="btn-sm btn-toggle-automator"
+                            :title="`Every ${(1/a.speed).toFixed(1)}s`">
                             {{ a.enabled ? 'ON' : 'OFF' }}
-                            <span class="progress" :style="{width: (a.speed < 5 ? (a.saturation*100) : 100) + '%'}"></span>
+                            <span class="progress"
+                                :style="{width: (a.speed < 5 ? (a.saturation*100) : 100) + '%'}"></span>
                         </button>
-                        {{ a.displayName }}: {{ boughtUpgrades[a.upgradeName] }} 
-                        <!-- - {{num(a.saturation*100)}}% -->
+                        {{ a.displayName }}: {{ boughtUpgrades[a.upgradeName] }}
+                        <button @click="sellAutomator(a)" type="button" class="btn-sm btn-sell-automator">Sell
+                            1</button>
                     </div>
 
                 </div>
 
                 <div class="mt-4">
-                    <h5>Statistics</h5>                    
+                    <h5>Statistics</h5>
                     <div>
                         Trees chopped: {{ num(treesChopped) }}
                     </div>
@@ -92,19 +109,22 @@
                 </div>
             </div>
             <div class="col-6">
-                <div v-for="category in upgradesByCategoryView" class="mb-4">
-                    <h4>{{ category.groupTitle }}</h4>
-                    <button v-for="item in category.items" class="btn-upgrade"
-                    @click="buyUpgrade(item)" :disabled="!item.canBuy"
-                        :title="item.blurred ? '?' : item.description">
-                        <span class="can-blur" :class="{blur: item.blurred}">{{ item.displayName ?? item.name }}</span>
-                        <sup
-                            v-if="item.max !== 1 && item.owned > 0"></sup><br>
-                        <small>$ {{ num(item.cost) }}</small>
-                        <span class="num" v-if="item.owned > 0">{{ num(item.owned) }}</span>
-                        <span class="group-icon">{{item.blurred ? '❔' : item.groupIcon}}</span>
-                    </button>
-                </div>
+                <transition-group name="fade">
+                    <div v-for="category in upgradesByCategoryView" class="mb-4" :key="category.groupTitle">
+                        <h4>{{ category.groupTitle }}</h4>
+                        <transition-group name="fade">
+                        <button v-for="item in category.items" class="btn-upgrade" :key="item.name" @click="buyUpgrade(item)"
+                            :disabled="!item.canBuy" :title="item.blurred ? '?' : item.description">
+                            <span class="can-blur" :class="{blur: item.blurred}">{{ item.displayName ?? item.name
+                                }}</span>
+                            <sup v-if="item.max !== 1 && item.owned > 0"></sup><br>
+                            <small>$ {{ num(item.cost) }}</small>
+                            <span class="num" v-if="item.owned > 0">{{ num(item.owned) }}</span>
+                            <span class="group-icon">{{item.blurred ? '❔' : item.groupIcon}}</span>
+                        </button>
+                    </transition-group>
+                    </div>
+                </transition-group>
             </div>
         </div>
 
