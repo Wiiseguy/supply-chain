@@ -31,7 +31,8 @@
                 <!-- Resource stats -->
                 <div v-for="r in resourcesView" @click="DEBUG && r.gain(r.storageSize)">
                     <span :class="{'text-warning': r.owned == r.storageSize}">
-                        <span>{{r.icon}} {{ r.displayName }}: {{ num(r.owned) }} / {{ num(r.storageSize) }}</span>
+                        <span>{{r.icon}}</span>
+                        <span>{{ r.displayName }}: {{ num(r.owned) }} / {{ num(r.storageSize) }}</span>
                         <span v-if="r.lost" class="ml-3 text-danger"
                             :title="`Lost ${r.displayName.toLowerCase()}: caused by not having enough storage`">
                             {{ num(-r.lost) }}</span>
@@ -56,7 +57,7 @@
                                 :style="{width: (a.speed < 5 ? (a.saturation*100) : 100) + '%'}"></span>
                         </button>
                         {{ a.displayName }}: {{ boughtUpgrades[a.upgradeName] }}
-                        <button @click="sellAutomator(a)" type="button" class="btn-sm p-0 btn-sell-automator">Sell
+                        <button @click="sellAutomator(a)" type="button" class="btn-sm p-0 px-1 btn-sell-automator">Sell
                             1</button>
                     </div>
 
@@ -67,27 +68,66 @@
                     <div>
                         Money p/s: $ {{ num(perS.money) }}
                     </div>
-                    <div>
+                    <div class="mb-3">
                         Time played: {{ num(minutesSinceStart) }} minutes
                     </div>
                     <div>
                         Trees chopped: {{ num(treesChopped) }}
                     </div>
-                    <div>
+                    <div v-if="luckySeeds > 0">
                         Lucky seeds: {{ num(luckySeeds) }}
                     </div>
-                    <div>
+                    <div v-if="luckyTrees > 0">
                         Lucky trees: {{ num(luckyTrees) }}
                     </div>
-                    <div>
+                    <div v-if="minesOwned > 0">
                         Mines opened: {{ num(minesOwned) }}
                     </div>
-                    <div>
+                    <div v-if="resourcesMined > 0">
                         Resources mined: {{ num(resourcesMined) }}
                     </div>
-                    <div>
+                    <div v-if="tunnelsDug > 0">
                         Tunnels dug: {{ num(tunnelsDug) }}
                     </div>
+                </div>
+                <!-- Earnings report -->
+                <div class="mt-5">
+                    <a v-if="hasUpgrade('Ledger')" @click="showEarnings = !showEarnings" class="btn btn-sm btn-secondary">
+                        {{ showEarnings ? 'Close' : 'Open'}} ledger</a>
+                    <table class="table table-sm" v-if="showEarnings">
+                        <tr>
+                            <th>Resource</th>
+                            <th class="text-right">Owned</th>
+                            <th class="text-right">Sold</th>
+                            <th class="text-right">Used</th>
+                            <th class="text-right">Earnings</th>
+                        </tr>
+                        <tr v-for="r in resourcesView">
+                            <td>{{ r.displayName }}</td>
+                            <td class="text-right num">{{ num(r.totalOwned) }}</td>
+                            <td class="text-right num">{{ num(r.sold) }}</td>
+                            <td class="text-right num">{{ num(r.incurred) }}</td>
+                            <td class="text-right num">$ {{ num(r.earnings) }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Total</strong></td>
+                            <td class="text-right num"><strong>{{ num(totalResourcesOwned) }}</strong></td>
+                            <td class="text-right num"><strong>{{ num(totalResourcesSold) }}</strong></td>
+                            <td class="text-right num"><strong>{{ num(totalResourcesIncurred) }}</strong></td>
+                            <td class="text-right num"><strong>$ {{ num(totalResourceEarnings) }}</strong></td>
+                        </tr>
+                        <tr>
+                            <td colspan="4"><strong>Money spent</strong></td>
+                            <td class="text-right num"><strong>$ {{ num(moneySpent) }}</strong></td>
+                        </tr>
+                        <tr>
+                            <td colspan="4"><strong>Total profit</strong></td>
+                            <td class="text-right num" :class="{
+                                'text-success': totalProfit > 0,
+                                'text-danger': totalProfit < 0
+                            }"><strong>$ {{ num(totalProfit) }}</strong></td>
+                        </tr>
+                    </table>
                 </div>
             </div>
             <div class="col-6">

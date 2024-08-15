@@ -45,6 +45,17 @@ button:disabled {
     cursor: not-allowed;
 }
 
+.table {
+    color: inherit;
+    td, th {
+        border-top: none;
+    }
+}
+
+.num {
+    font-family: monospace;
+}
+
 .message {
     background-color: rgba(0, 0, 0, 0.5);
     color: white;

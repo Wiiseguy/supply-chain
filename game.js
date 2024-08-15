@@ -32,12 +32,14 @@ const MILE_RESOURCE_TYPES = {
 const GROUPS = {
     land: 'land',
     forest: 'forest',
-    mine: 'mine'
+    mine: 'mine',
+    ui: 'ui'
 }
 const GROUP_ICONS = {
     land: '🔲',
     forest: '🌲',
-    mine: '⛏️'
+    mine: '⛏️',
+    ui: '🖥️'
 }
 
 const INITIAL_MONEY = 0
@@ -46,6 +48,7 @@ const INITIAL_SEEDS = 4
 const CHOP_POWER_BASE = 0.025
 // Define tree aging - let's say a tree takes a minute to grow fully
 const TREE_BASE_MATURE_TIME = 60 // 60 seconds
+const TREE_DEATH_AGE = TREE_BASE_MATURE_TIME * 5
 // While growing there should be a few stages of growth, represented by an emoji
 const TREE_GROWTH_STAGES = ['🌱', '🌿', '🌳', '🌲']
 // Define the age per stage
@@ -452,6 +455,16 @@ const UPGRADES = [
         group: GROUPS.forest
     },
     {
+        name: 'Ledger',
+        displayName: 'Ledger',
+        description: 'Keep detailed track of your profits in a ledger!',
+        initialOwned: 0,
+        baseCost: 5000,
+        category: 'special',
+        max: 1,
+        group: GROUPS.ui
+    },
+    {
         name: 'Seed Marketing 2',
         displayName: 'Seed Marketing 2',
         description: 'Increase seed price by 3x',
@@ -645,6 +658,10 @@ class Resource {
         this.lost = 0
         this.sellNum = 1 // How many to sell per click
         this.owned = initialOwned
+        this.sold = 0
+        this.incurred = 0
+        this.earnings = 0
+        this.totalOwned = 0
     }
     get storageSize() {
         return this.storageBaseSize * this.storage
@@ -663,6 +680,7 @@ class Resource {
     }
     gain(n) {
         this.owned += n
+        this.totalOwned += n
         if (this.owned > this.storageSize) {
             this.lost += this.owned - this.storageSize
             this.owned = this.storageSize
@@ -674,12 +692,16 @@ class Resource {
             return false
         }
         this.owned -= n
+        this.incurred += n
         return true
     }
     sell(n) {
         n = Math.min(n, this.owned)
         this.owned -= n
-        return n * this.price
+        const sellPrice = n * this.price
+        this.sold += n
+        this.earnings += sellPrice
+        return sellPrice
     }
     reclaim(n = 1) {
         let toReclaim = Math.min(this.lost, n)
@@ -710,6 +732,7 @@ const app = Vue.createApp({
             unblurredUpgrades: [],
             message: '',
             messageFade: 0,
+            showEarnings: false,
 
             // Vars
             money: INITIAL_MONEY,
@@ -718,6 +741,7 @@ const app = Vue.createApp({
             luckySeedChance: EXTRA_SEED_CHANCE_BASE,
 
             // Stats
+            moneySpent: 0,
             treesChopped: 0,
             luckySeeds: 0,
             luckyTrees: 0,
@@ -895,7 +919,11 @@ const app = Vue.createApp({
                         // Increase age of all trees
                         if (tile.type === FOREST_TILE_TYPES.tree) {
                             tile.age += elapsed * (this.boughtUpgrades['Fertilizer'] + 1)
-                            tile.progress -= elapsed / (TREE_BASE_MATURE_TIME * 2)
+                            let healthRegain = elapsed / (TREE_BASE_MATURE_TIME * 2)
+                            if (tile.age > TREE_DEATH_AGE) {
+                                healthRegain *= -1
+                            }                                
+                            tile.progress -= healthRegain
                             if (tile.progress < 0) {
                                 tile.progress = 0
                             }
@@ -913,6 +941,9 @@ const app = Vue.createApp({
                                 1,
                                 tile.age / (TREE_BASE_MATURE_TIME - TREE_GROWTH_STAGES_BASE_INTERVAL)
                             )
+                            if (tile.progress > 1) {                                
+                                this.chopTree(tile)
+                            }
                         }
                         break
                     case TILE_TYPES.mine:
@@ -1109,6 +1140,7 @@ const app = Vue.createApp({
             let owned = this.boughtUpgrades[automator.upgradeName]
             const price = this.getUpgradeCostNum(upgrade, owned - 1)
             this.money += price
+            this.moneySpent -= price
             this.boughtUpgrades[automator.upgradeName] -= 1
             console.log('Sold automator:', automator, 'for', price)
         },
@@ -1117,6 +1149,7 @@ const app = Vue.createApp({
                 return false
             }
             this.money -= money
+            this.moneySpent += money
             return true
         },
 
@@ -1125,7 +1158,7 @@ const app = Vue.createApp({
                 this.showMessage('Buy a tile to claim this land!')
                 return
             }
-            //console.log('Clicked tile:', JSON.parse(JSON.stringify(tile)))
+            console.log('Clicked tile:', JSON.parse(JSON.stringify(tile)))
             switch (tile.tileType) {
                 case TILE_TYPES.forest:
                     this.clickForestTile(tile)
@@ -1380,6 +1413,9 @@ const app = Vue.createApp({
                     break
             }
         },
+        hasUpgrade(upgradeName) {
+            return this.boughtUpgrades[upgradeName] > 0
+        },
         hasRoomForTile() {
             return this.land.length >= this.boughtUpgrades['Extra Column'] * this.boughtUpgrades['Extra Row']
         },
@@ -1474,6 +1510,26 @@ const app = Vue.createApp({
         },
         resourceMinerPower() {
             return this.boughtUpgrades['Pickaxe'] + 1
+        },
+        totalResourceEarnings() {
+            /** @ts-ignore */
+            return this.resourcesView.reduce((acc, resource) => acc + resource.earnings, 0)
+        },
+        totalResourcesOwned() {
+            /** @ts-ignore */
+            return this.resourcesView.reduce((acc, resource) => acc + resource.totalOwned, 0)
+        },
+        totalResourcesSold() {
+            /** @ts-ignore */
+            return this.resourcesView.reduce((acc, resource) => acc + resource.sold, 0)
+        },
+        totalResourcesIncurred() {
+            /** @ts-ignore */
+            return this.resourcesView.reduce((acc, resource) => acc + resource.incurred, 0)
+        },
+        totalProfit() {
+            /** @ts-ignore */
+            return this.totalResourceEarnings - this.moneySpent
         },
 
         perS() {
