@@ -62,16 +62,31 @@
 
                 </div>
 
-                <div class="mt-4">
+                <div class="mt-5">
                     <h5>Statistics</h5>
                     <div>
-                        Trees chopped: {{ num(treesChopped) }}
+                        Money p/s: $ {{ num(perS.money) }}
                     </div>
                     <div>
                         Time played: {{ num(minutesSinceStart) }} minutes
                     </div>
                     <div>
-                        Money p/s: $ {{ num(perS.money) }}
+                        Trees chopped: {{ num(treesChopped) }}
+                    </div>
+                    <div>
+                        Lucky seeds: {{ num(luckySeeds) }}
+                    </div>
+                    <div>
+                        Lucky trees: {{ num(luckyTrees) }}
+                    </div>
+                    <div>
+                        Mines opened: {{ num(minesOwned) }}
+                    </div>
+                    <div>
+                        Resources mined: {{ num(resourcesMined) }}
+                    </div>
+                    <div>
+                        Tunnels dug: {{ num(tunnelsDug) }}
                     </div>
                 </div>
             </div>
@@ -80,16 +95,17 @@
                     <div v-for="category in upgradesByCategoryView" class="mb-4" :key="category.groupTitle">
                         <h4>{{ category.groupTitle }}</h4>
                         <transition-group name="fade">
-                        <button v-for="item in category.items" class="btn-upgrade" :key="item.name" @click="buyUpgrade(item)"
-                            :disabled="!item.canBuy" :title="item.blurred ? '?' : item.description">
-                            <span class="can-blur" :class="{blur: item.blurred}">{{ item.displayName ?? item.name
-                                }}</span>
-                            <sup v-if="item.max !== 1 && item.owned > 0"></sup><br>
-                            <small>$ {{ num(item.cost) }}</small>
-                            <span class="num" v-if="item.owned > 0">{{ num(item.owned) }}</span>
-                            <span class="group-icon">{{item.blurred ? '❔' : item.groupIcon}}</span>
-                        </button>
-                    </transition-group>
+                            <button v-for="item in category.items" class="btn-upgrade" :key="item.name"
+                                @click="buyUpgrade(item)" :disabled="!item.canBuy"
+                                :title="item.blurred ? '?' : item.description">
+                                <span class="can-blur" :class="{blur: item.blurred}">{{ item.displayName ?? item.name
+                                    }}</span>
+                                <sup v-if="item.max !== 1 && item.owned > 0"></sup><br>
+                                <small>$ {{ num(item.cost) }}</small>
+                                <span class="num" v-if="item.owned > 0">{{ num(item.owned) }}</span>
+                                <span class="group-icon">{{item.blurred ? '❔' : item.groupIcon}}</span>
+                            </button>
+                        </transition-group>
                     </div>
                 </transition-group>
             </div>

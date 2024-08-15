@@ -718,7 +718,12 @@ const app = Vue.createApp({
             luckySeedChance: EXTRA_SEED_CHANCE_BASE,
 
             // Stats
-            treesChopped: 0
+            treesChopped: 0,
+            luckySeeds: 0,
+            luckyTrees: 0,
+            resourcesMined: 0,
+            tunnelsDug: 0,
+            minesOwned: 0,
         }
     },
     created() {
@@ -990,11 +995,13 @@ const app = Vue.createApp({
                 if (isLucky(this.luckySeedChance)) {
                     msg += 'Lucky! Got an extra seed! '
                     this.resources.seeds.gain(1)
+                    this.luckySeeds += 1
                 }
                 // If super lucky, automatically plant a seed
                 if (isLucky(TREE_SELF_SEED_CHANCE)) {
                     msg += 'Super lucky! Another tree is already growing here!'
                     tile.age = 0
+                    this.luckyTrees += 1
                 } else {
                     this.resetTile(tile)
                 }
@@ -1015,6 +1022,7 @@ const app = Vue.createApp({
                     tile.stage = 0
                     tile.type = MINE_TILE_TYPES.tunnel
                     this.showMessage('Mine entrance opened!')
+                    this.minesOwned += 1
                 }
             }
         },
@@ -1028,6 +1036,7 @@ const app = Vue.createApp({
                 if (this.resources.wood.incur(MINE_SUPPORT_BEAM_COST)) {
                     tile.stage += 1
                     tile.progress = 0
+                    this.tunnelsDug += 1
                     if (tile.stage >= MINE_RESOURCE_TUNNELING_LEVELS[tile.subType]) {
                         tile.stage = 0
                         tile.type = MINE_TILE_TYPES.resource
@@ -1054,6 +1063,7 @@ const app = Vue.createApp({
             if (tile.progress >= 1) {
                 tile.progress = 0
                 tile.stage += 1
+                this.resourcesMined += 1
                 switch (tile.subType) {
                     case MILE_RESOURCE_TYPES.diamond:
                         this.resources.diamonds.gain(1)
