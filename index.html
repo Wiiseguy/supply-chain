@@ -26,60 +26,27 @@
                         <div class="level" v-if="tile.level != null">{{tile.level}}</div>
                     </div>
                 </div>
-                <h5 @click="DEBUG && (money+=1, money*=10)">$ {{ num(money) }}</h5>
-                <div @click="DEBUG && gainWood(1000)">
-                    <span :class="{'text-warning': wood == woodStorage}">
-                        <span>Wood: {{ num(wood) }} / {{ num(woodStorage) }}</span>
-                        <span v-if="woodLost" class="ml-3 text-danger"
-                            title="Lost wood: caused by not having enough Wood Storage">
-                            {{ num(-woodLost) }}</span>
-                    </span>
-                </div>
-                <div @click="DEBUG && gainSeeds(1)">
-                    <span :class="{'text-warning': seeds == seedsStorage}"
-                        :title="`Seeds are used to plant new trees. There is a ${luckySeedChance*100}% chance of gaining an extra seed upon felling a tree`">
-                        <span>Seeds: {{ seeds }} / {{ seedsStorage }}</span>
-                        <span v-if="seedsLost" class="ml-3 text-danger"
-                            title="Lost seeds: caused by not having enough Seed Bottles">
-                            {{ num(-seedsLost) }}</span>
-                    </span>
-                </div>                
-                <div v-if="anyMetalMines" @click="DEBUG && gainMetal(1)">
-                    <span :class="{'text-warning': metal == metalStorage}">
-                        <span>Metal: {{ metal }} / {{ metalStorage }}</span>
-                        <span v-if="metalLost" class="ml-3 text-danger"
-                            title="Lost metal: caused by not having enough Metal Crates">
-                            {{ num(-metalLost) }}</span>
-                    </span>
-                </div>
-                <div v-if="anyDiamondMines" @click="DEBUG && gainDiamonds(1)">
-                    <span :class="{'text-warning': diamonds == diamondsStorage}">
-                        <span>Diamonds: {{ diamonds }} / {{ diamondsStorage }}</span>
-                        <span v-if="diamondsLost" class="ml-3 text-danger"
-                            title="Lost diamonds: caused by not having enough Diamond Boxes">
-                            {{ num(-diamondsLost) }}</span>
+                <h5 class="pl-1" @click="DEBUG && (money+=1, money*=10)"><strong>$</strong>&nbsp; {{ num(money) }}</h5>
+
+                <!-- Resource stats -->
+                <div v-for="r in resourcesView" @click="DEBUG && r.gain(r.storageSize)">
+                    <span :class="{'text-warning': r.owned == r.storageSize}">
+                        <span>{{r.icon}} {{ r.displayName }}: {{ num(r.owned) }} / {{ num(r.storageSize) }}</span>
+                        <span v-if="r.lost" class="ml-3 text-danger"
+                            :title="`Lost ${r.displayName.toLowerCase()}: caused by not having enough storage`">
+                            {{ num(-r.lost) }}</span>
                     </span>
                 </div>
 
+                <!-- Resource sell buttons -->
                 <div class="mt-4">
-                    <button @click="sellAllWood" :disabled="!canSellWood">
-                        Sell All Wood<br>
-                        <small class="text-success">+ $ {{ num(sellPriceWood) }}</small>
-                    </button>
-                    <button @click="sellSeeds(1)" :disabled="!canSellSeeds">
-                        Sell Seed<br>
-                        <small class="text-success">+ $ {{ num(sellPriceSeeds) }}</small>
-                    </button>
-                    <button @click="sellMetal(1)" :disabled="!canSellMetal" v-if="anyMetalMines">
-                        Sell Metal<br>
-                        <small class="text-success">+ $ {{ num(sellPriceMetal) }}</small>
-                    </button>
-                    <button @click="sellDiamonds(1)" :disabled="!canSellDiamonds" v-if="anyDiamondMines">
-                        Sell Diamond<br>
-                        <small class="text-success">+ $ {{ num(sellPriceDiamonds) }}</small>
+                    <button v-for="r in resourcesView" @click="sellResource(r)" :disabled="!r.any">
+                        Sell {{r.sellNum > 1 ? r.sellNum : ''}} {{ r.displayName }}<br>
+                        <small class="text-success">+ {{ num(r.sellNumPrice) }}</small>
                     </button>
                 </div>
 
+                <!-- Automators -->
                 <div class="mt-4">
                     <div v-for="a in automatorsView">
                         <button @click="toggleAutomator(a)" type="button" class="btn-sm btn-toggle-automator"
@@ -89,7 +56,7 @@
                                 :style="{width: (a.speed < 5 ? (a.saturation*100) : 100) + '%'}"></span>
                         </button>
                         {{ a.displayName }}: {{ boughtUpgrades[a.upgradeName] }}
-                        <button @click="sellAutomator(a)" type="button" class="btn-sm btn-sell-automator">Sell
+                        <button @click="sellAutomator(a)" type="button" class="btn-sm p-0 btn-sell-automator">Sell
                             1</button>
                     </div>
 

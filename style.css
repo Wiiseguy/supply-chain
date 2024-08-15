@@ -65,7 +65,7 @@ button:disabled {
 .land {
     user-select: none;
     background-color: var(--land-bg);
-    margin: 100px;
+    margin: 90px;
 }
 
 .land-tile {

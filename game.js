@@ -40,7 +40,7 @@ const GROUP_ICONS = {
     mine: '⛏️'
 }
 
-const INITIAL_MONEY = 50
+const INITIAL_MONEY = 0
 const INITIAL_SEEDS = 4
 
 const CHOP_POWER_BASE = 0.025
@@ -48,7 +48,6 @@ const CHOP_POWER_BASE = 0.025
 const TREE_BASE_MATURE_TIME = 60 // 60 seconds
 // While growing there should be a few stages of growth, represented by an emoji
 const TREE_GROWTH_STAGES = ['🌱', '🌿', '🌳', '🌲']
-const WOOD_ICON = '🪵'
 // Define the age per stage
 const TREE_GROWTH_STAGES_BASE_INTERVAL = TREE_BASE_MATURE_TIME / TREE_GROWTH_STAGES.length
 // Define the gains per stage, if a tree is not fully grown yet, it should give much less wood exponentially
@@ -60,7 +59,7 @@ const EXTRA_SEED_CHANCE_MULTIPLIER = 2
 const LUCKY_RESOURCE_MINE_CHANCE = 1 / 10
 
 // Price base
-const TREE_WOOD_PRICE_BASE = 5
+const WOOD_PRICE_BASE = 5
 const SEED_PRICE_BASE = 50
 const DIAMOND_PRICE_BASE = 5_000
 const METAL_PRICE_BASE = 500
@@ -244,7 +243,6 @@ const UPGRADES = [
         category: 'storage',
         group: GROUPS.forest
     },
-    // Metal storage
     {
         name: 'Metal Storage',
         displayName: 'Metal Crate',
@@ -328,7 +326,6 @@ const UPGRADES = [
         category: 'automation',
         group: GROUPS.forest
     },
-    // Reclaimer for seeds
     {
         name: 'Seed Reclaimer',
         displayName: 'Seed Scouter',
@@ -380,7 +377,6 @@ const UPGRADES = [
         category: 'automation',
         group: GROUPS.mine
     },
-    // Metal reclaimer
     {
         name: 'Metal Reclaimer',
         displayName: 'Metal Detector',
@@ -413,11 +409,22 @@ const UPGRADES = [
         category: 'automation',
         group: GROUPS.mine
     },
-    // Special one-time upgrades
+    // Special upgrades
+    {
+        name: 'Wooden Finger',
+        displayName: 'Wooden Finger',
+        description: 'Sell 10 times the amount of wood with one click',
+        initialOwned: 0,
+        baseCost: 200,
+        costMultiplier: 5,
+        category: 'special',
+        max: 2,
+        group: GROUPS.forest
+    },
     {
         name: 'Wood Marketing 1',
         displayName: 'Wood Marketing 1',
-        description: 'Increase wood price by 1.5x',
+        description: 'Increase wood price by 2x',
         initialOwned: 0,
         baseCost: 1000,
         category: 'special',
@@ -599,19 +606,87 @@ class Automator {
         this.speed = 0 // Calculated
         this.displayName = UPGRADES_INDEX[upgradeName].displayName ?? upgradeName
     }
+    get name() {
+        return this.displayName
+    }
 }
 
+const COUNTER_SAMPLE_LENGTH = 3
 class Counter {
     constructor(name, fn) {
         this.name = name
-        this.last = Infinity
-        this.current = 0
         this.fn = fn
+        this.delta = 0
+        this.prevValues = []
     }
     update() {
-        this.last = this.current
-        this.current = this.fn()
-        this.delta = this.current - this.last
+        this.prevValues.push(this.fn())
+        if (this.prevValues.length > COUNTER_SAMPLE_LENGTH) {
+            this.prevValues.shift()
+
+            let deltas = []
+            for (let i = 1; i < this.prevValues.length; i++) {
+                deltas.push(this.prevValues[i] - this.prevValues[i - 1])
+            }
+            this.delta = deltas.reduce((acc, val) => acc + val, 0) / deltas.length
+        }
+    }
+}
+
+class Resource {
+    constructor(name, displayName, icon, basePrice, storageBaseSize, initialOwned = 0) {
+        this.name = name
+        this.displayName = displayName
+        this.icon = icon
+        this.basePrice = basePrice
+        this.storageBaseSize = storageBaseSize
+        this.price = basePrice
+        this.storage = 1 // Number of storage units
+        this.lost = 0
+        this.sellNum = 1 // How many to sell per click
+        this.owned = initialOwned
+    }
+    get storageSize() {
+        return this.storageBaseSize * this.storage
+    }
+    get any() {
+        return this.owned > 0
+    }
+    get sellNumPrice() {
+        return Math.min(this.sellNum, this.owned) * this.price
+    }
+    sellPriceTheoretical(n) {
+        return n * this.price
+    }
+    sellPrice(n) {
+        return Math.min(n, this.owned) * this.price
+    }
+    gain(n) {
+        this.owned += n
+        if (this.owned > this.storageSize) {
+            this.lost += this.owned - this.storageSize
+            this.owned = this.storageSize
+        }
+    }
+    // Subtract n from owned if sufficient, return false if not
+    incur(n) {
+        if (this.owned < n) {
+            return false
+        }
+        this.owned -= n
+        return true
+    }
+    sell(n) {
+        n = Math.min(n, this.owned)
+        this.owned -= n
+        return n * this.price
+    }
+    reclaim(n = 1) {
+        let toReclaim = Math.min(this.lost, n)
+        if (this.owned + toReclaim <= this.storageSize) {
+            this.lost -= toReclaim
+            this.owned += toReclaim
+        }
     }
 }
 
@@ -625,32 +700,9 @@ const app = Vue.createApp({
             now: Date.now(),
             startTime: Date.now(),
             lastUpdate: Date.now(),
-            money: INITIAL_MONEY,
-            moneyPs: 0,
+
             land: [],
-
-            // Resources
-            // TODO: refactor to Resource class
-            wood: 0,
-            diamonds: 0,
-            seeds: INITIAL_SEEDS,
-            metal: 0,
-
-            woodLost: 0,
-            seedsLost: 0,
-            diamondsLost: 0,
-            metalLost: 0,
-
-            woodPrice: TREE_WOOD_PRICE_BASE,
-            seedPrice: SEED_PRICE_BASE,
-            diamondPrice: DIAMOND_PRICE_BASE,
-            metalPrice: METAL_PRICE_BASE,
-
-            // Vars
-            digPower: 0.2,
-            plantPower: 0.5,
-            luckySeedChance: EXTRA_SEED_CHANCE_BASE,
-
+            resources: {},
             automators: [],
             counters: [],
             boughtUpgrades: {},
@@ -659,11 +711,17 @@ const app = Vue.createApp({
             message: '',
             messageFade: 0,
 
+            // Vars
+            money: INITIAL_MONEY,
+            digPower: 0.2,
+            plantPower: 0.5,
+            luckySeedChance: EXTRA_SEED_CHANCE_BASE,
+
             // Stats
             treesChopped: 0
         }
     },
-    mounted() {
+    created() {
         // Initialize bought upgrades obj
         this.UPGRADES.forEach(upgrade => {
             this.boughtUpgrades[upgrade.name] = upgrade.initialOwned ?? 0
@@ -672,6 +730,15 @@ const app = Vue.createApp({
         // Initialize land
         for (let i = 0; i < this.boughtUpgrades['Forest Tile']; i++) {
             this.land.push(this.createForestTile())
+        }
+
+        // Initialize resources
+        this.resources = {
+            money: new Resource('money', 'Money', '💰', 1, Infinity, INITIAL_MONEY),
+            wood: new Resource('wood', 'Wood', '🪓', WOOD_PRICE_BASE, WOOD_STORAGE_SIZE),
+            seeds: new Resource('seeds', 'Seeds', '🌱', SEED_PRICE_BASE, SEEDS_STORAGE_SIZE, INITIAL_SEEDS),
+            diamonds: new Resource('diamonds', 'Diamonds', '💎', DIAMOND_PRICE_BASE, DIAMONDS_STORAGE_SIZE),
+            metal: new Resource('metal', 'Metal', '🔧', METAL_PRICE_BASE, METAL_STORAGE_SIZE)
         }
 
         // Initialize automators
@@ -699,28 +766,22 @@ const app = Vue.createApp({
                 }
             }),
             new Automator('Wood Seller', () => {
-                this.sellWood(1)
+                this.sellResource(this.resources.wood, 1)
             }),
             new Automator('Wood Reclaimer', () => {
-                if (this.wood < this.woodStorage && this.woodLost > 0) {
-                    this.gainWood(1)
-                    this.woodLost -= 1
-                }
+                this.resources.wood.reclaim(1)
             }),
             new Automator('Seed Seller', () => {
                 // Determine excess seeds: each tree counts as 1 seed
                 // So if forestLand has 4 tiles and 2 have trees and we have 3 seeds, we have 1 excess seed
                 const treeTiles = this.forestLand.filter(tile => tile.type === FOREST_TILE_TYPES.tree)
-                const excessSeeds = this.seeds + treeTiles.length - this.landLength
+                const excessSeeds = this.resources.seeds.owned + treeTiles.length - this.forestLand.length
                 if (excessSeeds > 0) {
-                    this.sellSeeds(1)
+                    this.sellResource(this.resources.seeds, 1)
                 }
             }),
             new Automator('Seed Reclaimer', () => {
-                if (this.seeds < this.seedsStorage && this.seedsLost > 0) {
-                    this.gainSeeds(1)
-                    this.seedsLost -= 1
-                }
+                this.resources.seeds.reclaim(1)
             }),
             new Automator('Auto Shoveler', () => {
                 const tile = pick(this.mineLand.filter(tile => tile.type === MINE_TILE_TYPES.rock))
@@ -750,22 +811,16 @@ const app = Vue.createApp({
                 })
             }),
             new Automator('Metal Seller', () => {
-                this.sellMetal(1)
+                this.sellResource(this.resources.metal, 1)
             }),
             new Automator('Metal Reclaimer', () => {
-                if (this.metal < this.metalStorage && this.metalLost > 0) {
-                    this.gainMetal(1)
-                    this.metalLost -= 1
-                }
+                this.resources.metal.reclaim(1)
             }),
             new Automator('Diamond Seller', () => {
-                this.sellDiamonds(1)
+                this.sellResource(this.resources.diamonds, 1)
             }),
             new Automator('Diamond Reclaimer', () => {
-                if (this.diamonds < this.diamondsStorage && this.diamondsLost > 0) {
-                    this.gainDiamonds(1)
-                    this.diamondsLost -= 1
-                }
+                this.resources.diamonds.reclaim(1)
             })
         ]
         this.counters = [new Counter('money', () => this.money)]
@@ -779,11 +834,11 @@ const app = Vue.createApp({
                 console.error(`Automator for upgrade ${upgrade.name} is missing!`)
             }
         })
-
+    },
+    mounted() {
         this.showMessage(
             `Welcome to your land! You start out with one tile of forest land and ${INITIAL_SEEDS} seeds. Good luck!`
         )
-
         this.startGameLoop()
     },
     methods: {
@@ -909,8 +964,7 @@ const app = Vue.createApp({
             }
             tile.progress += this.plantPower
             if (tile.progress >= 1) {
-                if (this.seeds > 0) {
-                    this.seeds -= 1
+                if (this.resources.seeds.incur(1)) {
                     tile.progress = 0
                     tile.type = FOREST_TILE_TYPES.tree
                 } else {
@@ -928,14 +982,14 @@ const app = Vue.createApp({
                 tile.progress = 0
                 let woodGainM = TREE_WOOD_GAINS[tile.stage]
                 let woodGains = TREE_WOOD_GAINS_BASE * woodGainM
-                this.gainWood(woodGains)
-                this.gainSeeds(1)
+                this.resources.wood.gain(woodGains)
+                this.resources.seeds.gain(1)
                 this.treesChopped += 1
                 let msg = ''
                 // If lucky, get an extra seed
                 if (isLucky(this.luckySeedChance)) {
                     msg += 'Lucky! Got an extra seed! '
-                    this.gainSeeds(1)
+                    this.resources.seeds.gain(1)
                 }
                 // If super lucky, automatically plant a seed
                 if (isLucky(TREE_SELF_SEED_CHANCE)) {
@@ -971,8 +1025,7 @@ const app = Vue.createApp({
             tile.progress += this.tunnelerPower
             tile.animateWiggle()
             if (tile.progress >= 1) {
-                if (this.wood >= MINE_SUPPORT_BEAM_COST) {
-                    this.wood -= MINE_SUPPORT_BEAM_COST
+                if (this.resources.wood.incur(MINE_SUPPORT_BEAM_COST)) {
                     tile.stage += 1
                     tile.progress = 0
                     if (tile.stage >= MINE_RESOURCE_TUNNELING_LEVELS[tile.subType]) {
@@ -1003,10 +1056,10 @@ const app = Vue.createApp({
                 tile.stage += 1
                 switch (tile.subType) {
                     case MILE_RESOURCE_TYPES.diamond:
-                        this.gainDiamonds(1)
+                        this.resources.diamonds.gain(1)
                         break
                     case MILE_RESOURCE_TYPES.metal:
-                        this.gainMetal(1)
+                        this.resources.metal.gain(1)
                         break
                     default:
                         console.error('mineResource: Unknown resource type:', tile.subType)
@@ -1020,34 +1073,6 @@ const app = Vue.createApp({
                 }
             }
         },
-        gainWood(gains) {
-            this.wood += gains
-            if (this.wood > this.woodStorage) {
-                this.woodLost += this.wood - this.woodStorage
-                this.wood = this.woodStorage
-            }
-        },
-        gainSeeds(gains) {
-            this.seeds += gains
-            if (this.seeds > this.seedsStorage) {
-                this.seedsLost += this.seeds - this.seedsStorage
-                this.seeds = this.seedsStorage
-            }
-        },
-        gainDiamonds(gains) {
-            this.diamonds += gains
-            if (this.diamonds > this.diamondsStorage) {
-                this.diamondsLost += this.diamonds - this.diamondsStorage
-                this.diamonds = this.diamondsStorage
-            }
-        },
-        gainMetal(gains) {
-            this.metal += gains
-            if (this.metal > this.metalStorage) {
-                this.metalLost += this.metal - this.metalStorage
-                this.metal = this.metalStorage
-            }
-        },
         /**
          *
          * @param {Tile} tile
@@ -1059,36 +1084,14 @@ const app = Vue.createApp({
             tile.stage = 0
             tile.stageP = 0
         },
-        sellWood(amount) {
-            if (this.wood < amount) {
-                return
-            }
-            this.wood -= amount
-            this.money += amount * this.woodPrice
-        },
-        sellAllWood() {
-            this.sellWood(this.wood)
-        },
-        sellSeeds(amount) {
-            if (this.seeds < amount) {
-                return
-            }
-            this.seeds -= amount
-            this.money += amount * this.seedPrice
-        },
-        sellDiamonds(amount) {
-            if (this.diamonds < amount) {
-                return
-            }
-            this.diamonds -= amount
-            this.money += amount * this.diamondPrice
-        },
-        sellMetal(amount) {
-            if (this.metal < amount) {
-                return
-            }
-            this.metal -= amount
-            this.money += amount * this.metalPrice
+        /**
+         *
+         * @param {Resource} resource
+         * @param {number} amount
+         */
+        sellResource(resource, amount = 0) {
+            if (amount === 0) amount = resource.sellNum
+            this.money += resource.sell(amount)
         },
         sellAutomator(automator) {
             // Get the cost of the current automator
@@ -1235,11 +1238,17 @@ const app = Vue.createApp({
                 case TILE_TYPES.mine:
                     switch (tile.type) {
                         case MINE_TILE_TYPES.rock:
-                            return MINE_RESOURCE_OPENING_LEVELS[tile.subType] > 1 ? MINE_RESOURCE_OPENING_LEVELS[tile.subType] - tile.stage : null
+                            return MINE_RESOURCE_OPENING_LEVELS[tile.subType] > 1
+                                ? MINE_RESOURCE_OPENING_LEVELS[tile.subType] - tile.stage
+                                : null
                         case MINE_TILE_TYPES.tunnel:
-                            return MINE_RESOURCE_TUNNELING_LEVELS[tile.subType] > 1 ? MINE_RESOURCE_TUNNELING_LEVELS[tile.subType]- tile.stage : null
+                            return MINE_RESOURCE_TUNNELING_LEVELS[tile.subType] > 1
+                                ? MINE_RESOURCE_TUNNELING_LEVELS[tile.subType] - tile.stage
+                                : null
                         case MINE_TILE_TYPES.resource:
                             return MINE_MAX_RESOURCES_PER_LEVEL[tile.subType] - tile.stage
+                        default:
+                            return null
                     }
                 default:
                     return null
@@ -1299,6 +1308,9 @@ const app = Vue.createApp({
             return upgrade.baseCost * Math.pow(upgrade.costMultiplier, num - upgrade.initialOwned)
         },
         buyUpgrade(upgrade) {
+            if (upgrade.max && this.boughtUpgrades[upgrade.name] >= upgrade.max) {
+                return false
+            }
             let cost = this.getUpgradeCost(upgrade)
             if (!this.incur(cost)) {
                 return
@@ -1315,30 +1327,46 @@ const app = Vue.createApp({
                 case 'Metal Mine Tile':
                     this.land.push(this.createMineTile(MILE_RESOURCE_TYPES.metal))
                     break
+                // Storage
+                case 'Wood Storage':
+                    this.resources.wood.storage += 1
+                    break
+                case 'Seed Storage':
+                    this.resources.seeds.storage += 1
+                    break
+                case 'Diamond Storage':
+                    this.resources.diamonds.storage += 1
+                    break
+                case 'Metal Storage':
+                    this.resources.metal.storage += 1
+                    break
                 // Specials
+                case 'Wooden Finger':
+                    this.resources.wood.sellNum *= 10
+                    break
                 case 'Wood Marketing 1':
-                    this.woodPrice *= 1.5
+                    this.resources.wood.price *= 2
                     break
                 case 'Seed Luck 1':
                     this.luckySeedChance *= EXTRA_SEED_CHANCE_MULTIPLIER
                     break
                 case 'Seed Marketing 1':
-                    this.seedPrice *= 2
+                    this.resources.seeds.price *= 2
                     break
                 case 'Seed Marketing 2':
-                    this.seedPrice *= 3
+                    this.resources.seeds.price *= 3
                     break
                 case 'Wood Marketing 2':
-                    this.woodPrice *= 2
+                    this.resources.wood.price *= 2
                     break
                 case 'Wood Marketing 3':
-                    this.woodPrice *= 2
+                    this.resources.wood.price *= 2
                     break
                 case 'Diamond Marketing 1':
-                    this.diamondPrice *= 1.5
+                    this.resources.diamonds.price *= 1.5
                     break
                 case 'Diamond Marketing 2':
-                    this.diamondPrice *= 2
+                    this.resources.diamonds.price *= 2
                     break
             }
         },
@@ -1372,9 +1400,11 @@ const app = Vue.createApp({
             return this.land.filter(tile => tile.tileType === TILE_TYPES.mine)
         },
         anyDiamondMines() {
+            /** @ts-ignore */
             return this.mineLand.some(tile => tile.subType === MILE_RESOURCE_TYPES.diamond)
         },
         anyMetalMines() {
+            /** @ts-ignore */
             return this.mineLand.some(tile => tile.subType === MILE_RESOURCE_TYPES.metal)
         },
         landSize() {
@@ -1435,42 +1465,6 @@ const app = Vue.createApp({
         resourceMinerPower() {
             return this.boughtUpgrades['Pickaxe'] + 1
         },
-        canSellWood() {
-            return this.wood > 0
-        },
-        canSellSeeds() {
-            return this.seeds > 1
-        },
-        canSellDiamonds() {
-            return this.diamonds > 0
-        },
-        canSellMetal() {
-            return this.metal > 0
-        },
-        sellPriceWood() {
-            return this.wood * this.woodPrice
-        },
-        sellPriceSeeds() {
-            return 1 * this.seedPrice
-        },
-        sellPriceDiamonds() {
-            return 1 * this.diamondPrice
-        },
-        sellPriceMetal() {
-            return 1 * this.metalPrice
-        },
-        woodStorage() {
-            return WOOD_STORAGE_SIZE * this.boughtUpgrades['Wood Storage']
-        },
-        seedsStorage() {
-            return SEEDS_STORAGE_SIZE * this.boughtUpgrades['Seed Storage']
-        },
-        diamondsStorage() {
-            return DIAMONDS_STORAGE_SIZE * this.boughtUpgrades['Diamond Storage']
-        },
-        metalStorage() {
-            return METAL_STORAGE_SIZE * this.boughtUpgrades['Metal Storage']
-        },
 
         perS() {
             // Return obj with name, current, delta
@@ -1478,6 +1472,17 @@ const app = Vue.createApp({
             this.counters.forEach(counter => {
                 result[counter.name] = counter.delta
             })
+            return result
+        },
+
+        resourcesView() {
+            let result = [this.resources.wood, this.resources.seeds]
+            if (this.anyMetalMines) {
+                result.push(this.resources.metal)
+            }
+            if (this.anyDiamondMines) {
+                result.push(this.resources.diamonds)
+            }
             return result
         },
         automatorsView() {
