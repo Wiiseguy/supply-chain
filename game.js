@@ -6,6 +6,7 @@ const TILE_TYPES = {
     none: 'none',
     forest: 'forest',
     mine: 'mine',
+    pond: 'pond',
     farm: 'farm',
     desert: 'desert',
     kiln: 'kiln'
@@ -19,6 +20,7 @@ const RESOURCE_TYPES = {
     diamond: 'diamond',
     metal: 'metal',
     clay: 'clay',
+    fish: 'fish',
     wheat: 'wheat',
     bread: 'bread',
     brick: 'brick',
@@ -34,7 +36,8 @@ const RESOURCE_TIERS = {
         RESOURCE_TYPES.metal,
         RESOURCE_TYPES.clay,
         RESOURCE_TYPES.wheat,
-        RESOURCE_TYPES.sand
+        RESOURCE_TYPES.sand,
+        RESOURCE_TYPES.fish
     ],
     // Tier 2: Processed resources. Are refined from tier 1 resources
     tier2: [RESOURCE_TYPES.bread, RESOURCE_TYPES.brick, RESOURCE_TYPES.glass]
@@ -64,6 +67,7 @@ const GROUP_ICONS = {
     land: '🔲',
     forest: '🌲',
     mine: '⛏️',
+    pond: '🎣',
     farm: '🌾',
     desert: '🏜️',
     kiln: '🏭',
@@ -101,7 +105,7 @@ const WOOD_PRICE_BASE = 5
 const SEED_PRICE_BASE = 50
 const DIAMOND_PRICE_BASE = 5_000
 const METAL_PRICE_BASE = 500
-const CLAY_PRICE_BASE = 100
+const CLAY_PRICE_BASE = 200
 
 // Define the size of the storage
 const WOOD_STORAGE_SIZE = 100
@@ -146,12 +150,38 @@ const MINE_RESOURCE_CLICKS = {
     clay: 50
 }
 
+// Pond stuff
+// Ponds are a source of fish, or some rarer things like frogs, shells, etc.
+// Ponds work different from forests and mines. The fishing pole is cast and then you wait for a semiramdom amount of time
+// After that time the pole will wiggle and you have a certain amount of time to click it to catch the fish.
+// If you miss it, the fish will escape and you have to cast the pole with a new bait.
+// Lure can be seeds? Or worms? Or bread? Bread may work, but then the pre-requisite for ponds is a farm.
+const POND_FISHING_TIME_BASE = 50 // 50 seconds
+const POND_FISHING_TIME_VARIANCE = 10 // 10 seconds
+const POND_FISHING_WIGGLE_TIME = 15 // 5 seconds
+const POND_FISHING_WIGGLE_VARIANCE = 5 // 5 seconds
+const POND_RESOURCES = ['🐟', '🐠', '🦐', '🦞', '🦀', '🐡', '🐬', '🐳', '🐋', '🦈']
+const POND_RESOURCE_CHANCES = [0.5, 0.25, 0.1, 0.05, 0.05, 0.025, 0.025, 0.01, 0.01, 0.005]
+const POND_FISH_BASE_PRICE = 100
+// To calculate the price of a fish, we take the base price and multiply it by the index of the fish in the array
+// For example, the first fish is 100, the second is 200, the third is 300, etc.
+function randomPondResource() {
+    const r = Math.random()
+    let sum = 0
+    for (let i = 0; i < POND_RESOURCE_CHANCES.length; i++) {
+        sum += POND_RESOURCE_CHANCES[i]
+        if (r < sum) {
+            return POND_RESOURCES[i]
+        }
+    }
+    return POND_RESOURCES[POND_RESOURCES.length - 1]
+}
+
 const DEFAULT_UPGRADE_VISIBILITY_THRESHOLD = 0.25
 const DEFAULT_UPGRADE_BLUR_THRESHOLD = 0.5
 
 // Define costs for tiles, columns and rows
 const DEFAULT_COST_MULTIPLIER = 1.21
-
 
 // Let's define the upgrades in a config, so we don't need a computed method for each
 const UPGRADES = [
@@ -652,7 +682,11 @@ function setBoolPropTimeout(obj, prop, timeOutProp, time) {
 }
 
 class Tile {
-    constructor() {
+    app = null
+    constructor(app) {
+        this.app = app
+        Object.defineProperty(this, 'app', { enumerable: false })
+
         this.tileType = TILE_TYPES.none
         this.type = FOREST_TILE_TYPES.empty
         this.subType = '' // Used e.g. by mines to determine what resource is in the tile
@@ -677,7 +711,294 @@ class Tile {
     animateGrow() {
         setBoolPropTimeout(this, 'grow', 'growTimeout', 250)
     }
+    get tooltip() {
+        return 'Empty tile'
+    }
+    get level() {
+        return null
+    }
 }
+
+class ForestTile extends Tile {
+    static luckySeedChance = EXTRA_SEED_CHANCE_BASE
+    constructor(app) {
+        super(app)
+        this.tileType = TILE_TYPES.forest
+        this.type = FOREST_TILE_TYPES.empty
+    }
+    update(elapsed) {
+        if (this.type === FOREST_TILE_TYPES.tree) {
+            this.age += elapsed * (this.app.boughtUpgrades['Fertilizer'] + 1)
+            let healthRegain = elapsed / (TREE_BASE_MATURE_TIME * 2)
+            if (this.age > TREE_DEATH_AGE) {
+                healthRegain *= -1
+            }
+            this.progress -= healthRegain
+            if (this.progress < 0) {
+                this.progress = 0
+            }
+            let prevStage = this.stage
+            this.stage = Math.min(
+                TREE_GROWTH_STAGES.length - 1,
+                Math.floor(this.age / TREE_GROWTH_STAGES_BASE_INTERVAL)
+            )
+            // If stage has changed, wiggly wiggle
+            if (prevStage !== this.stage) {
+                this.animateGrow()
+            }
+            // stageP is the percentage of the age until it has reached the final stage
+            this.stageP = Math.min(1, this.age / (TREE_BASE_MATURE_TIME - TREE_GROWTH_STAGES_BASE_INTERVAL))
+            if (this.progress > 1) {
+                this.chop()
+            }
+        }
+    }
+    dig() {
+        this.progress += this.digPower
+        if (this.progress >= 1) {
+            this.progress = 0
+            this.type = FOREST_TILE_TYPES.hole
+        }
+    }
+    plant() {
+        this.progress += this.plantPower
+        if (this.progress >= 1) {
+            if (this.app.resources.seed.incur(1)) {
+                this.progress = 0
+                this.type = FOREST_TILE_TYPES.tree
+            } else {
+                this.app.showMessage('No seeds left!')
+            }
+        }
+    }
+    chop() {
+        this.progress += this.chopPower
+        this.animateWiggle()
+        if (this.progress >= 1) {
+            this.progress = 0
+            let woodGainM = TREE_WOOD_GAINS[this.stage]
+            let woodGains = TREE_WOOD_GAINS_BASE * woodGainM
+            this.app.resources.wood.gain(woodGains)
+            this.app.resources.seed.gain(1)
+            this.app.treesChopped += 1
+            let msg = ''
+            // If lucky, get an extra seed
+            if (isLucky(ForestTile.luckySeedChance)) {
+                msg += 'Lucky! Got an extra seed! '
+                this.app.resources.seed.gain(1)
+                this.app.luckySeeds += 1
+            }
+            // If super lucky, automatically plant a seed
+            if (isLucky(TREE_SELF_SEED_CHANCE)) {
+                msg += 'Super lucky! Another tree is already growing here!'
+                this.age = 0
+                this.app.luckyTrees += 1
+            } else {
+                this.reset()
+            }
+            if (msg) {
+                this.app.showMessage(msg)
+            }
+        }
+    }
+    click() {
+        switch (this.type) {
+            case FOREST_TILE_TYPES.empty:
+                this.dig()
+                break
+            case FOREST_TILE_TYPES.hole:
+                this.plant()
+                break
+            case FOREST_TILE_TYPES.tree:
+                this.chop()
+                break
+            default:
+                console.error('Unknown Forest tile type:', this.type)
+                break
+        }
+    }
+    reset() {
+        this.type = FOREST_TILE_TYPES.empty
+        this.progress = 0
+        this.age = 0
+        this.stage = 0
+        this.stageP = 0
+    }
+    get icon() {
+        switch (this.type) {
+            case FOREST_TILE_TYPES.empty:
+                return ''
+            case FOREST_TILE_TYPES.hole:
+                return '🕳️'
+            case FOREST_TILE_TYPES.tree:
+                return TREE_GROWTH_STAGES[this.stage]
+            default:
+                return '❓'
+        }
+    }
+    get tooltip() {
+        switch (this.type) {
+            case FOREST_TILE_TYPES.empty:
+                return 'Empty land - click to dig a hole'
+            case FOREST_TILE_TYPES.hole:
+                return 'Dug hole - click to plant a seed'
+            case FOREST_TILE_TYPES.tree:
+                return `Tree - click to chop it down - the older the tree, the more wood you get`
+            default:
+                return 'Unknown forest tile'
+        }
+    }
+    get digPower() {
+        return 0.2
+    }
+    get plantPower() {
+        return 0.5
+    }
+    get chopPower() {
+        return CHOP_POWER_BASE * (1 + this.app.boughtUpgrades['Axe'])
+    }
+}
+
+class MineTile extends Tile {
+    constructor(app, subType) {
+        super(app)
+        this.tileType = TILE_TYPES.mine
+        this.type = MINE_TILE_TYPES.rock
+        this.subType = subType
+    }
+    update(_elapsed) {
+        this.stageP = this.progress
+    }
+    dig() {
+        this.progress += this.excavatorPower
+        if (this.progress >= 1) {
+            this.stage += 1
+            this.progress = 0
+            if (this.stage >= MINE_RESOURCE_OPENING_LEVELS[this.subType]) {
+                this.stage = 0
+                this.type = MINE_TILE_TYPES.tunnel
+                this.app.showMessage('Mine entrance opened!')
+                this.app.minesOwned += 1
+            }
+        }
+    }
+    tunnel() {
+        this.progress += this.tunnelerPower
+        this.animateWiggle()
+        if (this.progress >= 1) {
+            if (this.app.resources.wood.incur(MINE_SUPPORT_BEAM_COST)) {
+                this.stage += 1
+                this.progress = 0
+                this.app.tunnelsDug += 1
+                if (this.stage >= MINE_RESOURCE_TUNNELING_LEVELS[this.subType]) {
+                    this.stage = 0
+                    this.type = MINE_TILE_TYPES.resource
+                    this.app.showMessage(`Cave full of ${this.subType} found!`)
+                } else {
+                    this.app.showMessage(`Support beams built with ${this.app.num(MINE_SUPPORT_BEAM_COST)} wood!`)
+                }
+            } else {
+                this.animateFail()
+                this.app.showMessage(
+                    `Not enough wood to build support beams! You need ${this.app.num(
+                        MINE_SUPPORT_BEAM_COST
+                    )} wood to continue tunneling.`
+                )
+            }
+        }
+    }
+    mine() {
+        this.progress += this.resourceMinerPower / MINE_RESOURCE_CLICKS[this.subType]
+        this.animateWiggle()
+        if (this.progress >= 1) {
+            this.progress = 0
+            this.stage += 1
+            this.app.resourcesMined += 1
+            let resource = this.app.resources[this.subType]
+            if (!resource) {
+                console.error('mine: Unknown resource type:', this.subType)
+                return
+            }
+            resource.gain(1)
+            // If max amount of resources per cave is reached, go back to tunneling
+            if (this.stage >= MINE_MAX_RESOURCES_PER_LEVEL[this.subType]) {
+                this.stage = 0
+                this.type = MINE_TILE_TYPES.tunnel
+                this.app.showMessage('Resource cave depleted! Time to dig deeper.')
+            }
+        }
+    }
+    click() {
+        switch (this.type) {
+            case MINE_TILE_TYPES.rock:
+                this.dig()
+                break
+            case MINE_TILE_TYPES.tunnel:
+                this.tunnel()
+                break
+            case MINE_TILE_TYPES.resource:
+                this.mine()
+                break
+            default:
+                console.error('Unknown Mine tile type:', this.type)
+                break
+        }
+    }
+    get level() {
+        switch (this.type) {
+            case MINE_TILE_TYPES.rock:
+                return MINE_RESOURCE_OPENING_LEVELS[this.subType] > 1
+                    ? MINE_RESOURCE_OPENING_LEVELS[this.subType] - this.stage
+                    : null
+            case MINE_TILE_TYPES.tunnel:
+                return MINE_RESOURCE_TUNNELING_LEVELS[this.subType] > 1
+                    ? MINE_RESOURCE_TUNNELING_LEVELS[this.subType] - this.stage
+                    : null
+            case MINE_TILE_TYPES.resource:
+                return MINE_MAX_RESOURCES_PER_LEVEL[this.subType] - this.stage
+            default:
+                return null
+        }
+    }
+    get icon() {
+        switch (this.type) {
+            case MINE_TILE_TYPES.rock:
+                return '⛰️'
+            case MINE_TILE_TYPES.tunnel:
+                return '⛏️'
+            case MINE_TILE_TYPES.resource:
+                return MINE_RESOURCE_ICONS[this.subType]
+            default:
+                return '❓'
+        }
+    }
+    get tooltip() {
+        switch (this.type) {
+            case MINE_TILE_TYPES.rock:
+                return `Rock - click to dig an entrance for a mine (${this.subType})`
+            case MINE_TILE_TYPES.tunnel:
+                return `Mine Tunnel (${this.subType}) - at level ${this.stage} of ${
+                    MINE_RESOURCE_TUNNELING_LEVELS[this.subType]
+                } - click to dig deeper`
+            case MINE_TILE_TYPES.resource:
+                return `Mine (${this.subType}) - click to mine resources - found resources: ${this.stage} of ${
+                    MINE_MAX_RESOURCES_PER_LEVEL[this.subType]
+                }`
+            default:
+                return 'Unknown mine tile'
+        }
+    }
+    get excavatorPower() {
+        return MINE_EXCAVATOR_POWER * (this.app.boughtUpgrades['Shovel'] + 1)
+    }
+    get tunnelerPower() {
+        return MINE_TUNNELER_POWER * (this.app.boughtUpgrades['Tunneling'] + 1)
+    }
+    get resourceMinerPower() {
+        return this.app.boughtUpgrades['Pickaxe'] + 1
+    }
+}
+
 
 class Automator {
     constructor(upgradeName, logic) {
@@ -809,9 +1130,6 @@ const app = Vue.createApp({
 
             // Vars
             money: INITIAL_MONEY,
-            digPower: 0.2,
-            plantPower: 0.5,
-            luckySeedChance: EXTRA_SEED_CHANCE_BASE,
 
             // Stats
             moneySpent: 0,
@@ -862,25 +1180,29 @@ const app = Vue.createApp({
         // Initialize automators
         this.automators = [
             new Automator('Auto Digger', () => {
-                const tile = this.forestLand.find(tile => tile.type === FOREST_TILE_TYPES.empty)
+                const tile = /** @type {ForestTile[]} */ (this.forestLand).find(
+                    tile => tile.type === FOREST_TILE_TYPES.empty
+                )
                 if (tile) {
-                    this.digTile(tile)
+                    tile.dig()
                 }
             }),
             new Automator('Auto Seeder', () => {
-                const tile = this.forestLand.find(tile => tile.type === FOREST_TILE_TYPES.hole)
+                const tile = /** @type {ForestTile[]} */ (this.forestLand).find(
+                    tile => tile.type === FOREST_TILE_TYPES.hole
+                )
                 if (tile) {
-                    this.plantSeed(tile)
+                    tile.plant()
                 }
             }),
             new Automator('Auto Chopper', () => {
-                const fullyGrownTrees = this.forestLand.filter(
+                const fullyGrownTrees = /** @type {ForestTile[]} */ (this.forestLand).filter(
                     tile => tile.type === FOREST_TILE_TYPES.tree && tile.stage === TREE_GROWTH_STAGES.length - 1
                 )
                 const maxChopped = Math.max(...fullyGrownTrees.map(tile => tile.progress))
                 const tile = fullyGrownTrees.find(tile => tile.progress === maxChopped)
                 if (tile) {
-                    this.chopTree(tile)
+                    tile.chop()
                 }
             }),
             new Automator('Wood Seller', () => {
@@ -904,13 +1226,13 @@ const app = Vue.createApp({
             new Automator('Auto Shoveler', () => {
                 const tile = pick(this.mineLand.filter(tile => tile.type === MINE_TILE_TYPES.rock))
                 if (tile) {
-                    this.digMineTile(tile)
+                    tile.dig()
                 }
             }),
             new Automator('Tunneler', () => {
                 const tile = pick(this.mineLand.filter(tile => tile.type === MINE_TILE_TYPES.tunnel))
                 if (tile) {
-                    this.tunnelMineTile(tile)
+                    tile.tunnel()
                 }
             }),
             new Automator('Resource Miner', () => {
@@ -919,12 +1241,12 @@ const app = Vue.createApp({
                 if (!tile) {
                     return
                 }
-                this.mineResource(tile)
+                tile.mine()
 
                 // The more resource miners, the higher the chance of mining the same tile again
                 resourceTiles.forEach(tile => {
                     if (isLucky(LUCKY_RESOURCE_MINE_CHANCE)) {
-                        this.mineResource(tile)
+                        tile.mine()
                     }
                 })
             }),
@@ -1006,42 +1328,7 @@ const app = Vue.createApp({
 
             this.land.forEach(tile => {
                 tile.stageP = 0
-                switch (tile.tileType) {
-                    case TILE_TYPES.forest:
-                        // Increase age of all trees
-                        if (tile.type === FOREST_TILE_TYPES.tree) {
-                            tile.age += elapsed * (this.boughtUpgrades['Fertilizer'] + 1)
-                            let healthRegain = elapsed / (TREE_BASE_MATURE_TIME * 2)
-                            if (tile.age > TREE_DEATH_AGE) {
-                                healthRegain *= -1
-                            }
-                            tile.progress -= healthRegain
-                            if (tile.progress < 0) {
-                                tile.progress = 0
-                            }
-                            let prevStage = tile.stage
-                            tile.stage = Math.min(
-                                TREE_GROWTH_STAGES.length - 1,
-                                Math.floor(tile.age / TREE_GROWTH_STAGES_BASE_INTERVAL)
-                            )
-                            // If stage has changed, wiggly wiggle
-                            if (prevStage !== tile.stage) {
-                                tile.animateGrow()
-                            }
-                            // stageP is the percentage of the age until it has reached the final stage
-                            tile.stageP = Math.min(
-                                1,
-                                tile.age / (TREE_BASE_MATURE_TIME - TREE_GROWTH_STAGES_BASE_INTERVAL)
-                            )
-                            if (tile.progress > 1) {
-                                this.chopTree(tile)
-                            }
-                        }
-                        break
-                    case TILE_TYPES.mine:
-                        tile.stageP = tile.progress
-                        break
-                }
+                tile.update(elapsed)
                 tile.stageP = Math.min(1, tile.stageP)
             })
 
@@ -1075,142 +1362,6 @@ const app = Vue.createApp({
                     }
                 }
             })
-        },
-        digTile(tile) {
-            if (tile.type !== FOREST_TILE_TYPES.empty) {
-                return
-            }
-            tile.progress += this.digPower
-            if (tile.progress >= 1) {
-                tile.progress = 0
-                tile.type = FOREST_TILE_TYPES.hole
-            }
-        },
-        plantSeed(tile) {
-            if (tile.type !== FOREST_TILE_TYPES.hole) {
-                return
-            }
-            tile.progress += this.plantPower
-            if (tile.progress >= 1) {
-                if (this.resources.seed.incur(1)) {
-                    tile.progress = 0
-                    tile.type = FOREST_TILE_TYPES.tree
-                } else {
-                    this.showMessage('No seeds left!')
-                }
-            }
-        },
-        chopTree(tile) {
-            if (tile.type !== FOREST_TILE_TYPES.tree) {
-                return
-            }
-            tile.progress += this.chopPower
-            tile.animateWiggle()
-            if (tile.progress >= 1) {
-                tile.progress = 0
-                let woodGainM = TREE_WOOD_GAINS[tile.stage]
-                let woodGains = TREE_WOOD_GAINS_BASE * woodGainM
-                this.resources.wood.gain(woodGains)
-                this.resources.seed.gain(1)
-                this.treesChopped += 1
-                let msg = ''
-                // If lucky, get an extra seed
-                if (isLucky(this.luckySeedChance)) {
-                    msg += 'Lucky! Got an extra seed! '
-                    this.resources.seed.gain(1)
-                    this.luckySeeds += 1
-                }
-                // If super lucky, automatically plant a seed
-                if (isLucky(TREE_SELF_SEED_CHANCE)) {
-                    msg += 'Super lucky! Another tree is already growing here!'
-                    tile.age = 0
-                    this.luckyTrees += 1
-                } else {
-                    this.resetTile(tile)
-                }
-                if (msg) {
-                    this.showMessage(msg)
-                }
-            }
-        },
-        digMineTile(tile) {
-            if (tile.type !== MINE_TILE_TYPES.rock) {
-                return
-            }
-            tile.progress += this.excavatorPower
-            if (tile.progress >= 1) {
-                tile.stage += 1
-                tile.progress = 0
-                if (tile.stage >= MINE_RESOURCE_OPENING_LEVELS[tile.subType]) {
-                    tile.stage = 0
-                    tile.type = MINE_TILE_TYPES.tunnel
-                    this.showMessage('Mine entrance opened!')
-                    this.minesOwned += 1
-                }
-            }
-        },
-        tunnelMineTile(tile) {
-            if (tile.type !== MINE_TILE_TYPES.tunnel) {
-                return
-            }
-            tile.progress += this.tunnelerPower
-            tile.animateWiggle()
-            if (tile.progress >= 1) {
-                if (this.resources.wood.incur(MINE_SUPPORT_BEAM_COST)) {
-                    tile.stage += 1
-                    tile.progress = 0
-                    this.tunnelsDug += 1
-                    if (tile.stage >= MINE_RESOURCE_TUNNELING_LEVELS[tile.subType]) {
-                        tile.stage = 0
-                        tile.type = MINE_TILE_TYPES.resource
-                        this.showMessage(`Cave full of ${tile.subType} found!`)
-                    } else {
-                        this.showMessage(`Support beams built with ${this.num(MINE_SUPPORT_BEAM_COST)} wood!`)
-                    }
-                } else {
-                    tile.animateFail()
-                    this.showMessage(
-                        `Not enough wood to build support beams! You need ${this.num(
-                            MINE_SUPPORT_BEAM_COST
-                        )} wood to continue tunneling.`
-                    )
-                }
-            }
-        },
-        mineResource(tile) {
-            if (tile.type !== MINE_TILE_TYPES.resource) {
-                return
-            }
-            tile.progress += this.resourceMinerPower / MINE_RESOURCE_CLICKS[tile.subType]
-            tile.animateWiggle()
-            if (tile.progress >= 1) {
-                tile.progress = 0
-                tile.stage += 1
-                this.resourcesMined += 1
-                let resource = this.resources[tile.subType]
-                if (!resource) {
-                    console.error('mineResource: Unknown resource type:', tile.subType)
-                    return
-                }
-                resource.gain(1)
-                // If max amount of resources per cave is reached, go back to tunneling
-                if (tile.stage >= MINE_MAX_RESOURCES_PER_LEVEL[tile.subType]) {
-                    tile.stage = 0
-                    tile.type = MINE_TILE_TYPES.tunnel
-                    this.showMessage('Resource cave depleted! Time to dig deeper.')
-                }
-            }
-        },
-        /**
-         *
-         * @param {Tile} tile
-         */
-        resetTile(tile) {
-            tile.type = FOREST_TILE_TYPES.empty
-            tile.progress = 0
-            tile.age = 0
-            tile.stage = 0
-            tile.stageP = 0
         },
         /**
          *
@@ -1247,91 +1398,14 @@ const app = Vue.createApp({
                 this.showMessage('Buy a tile to claim this land!')
                 return
             }
-            switch (tile.tileType) {
-                case TILE_TYPES.forest:
-                    this.clickForestTile(tile)
-                    break
-                case TILE_TYPES.mine:
-                    this.clickMineTile(tile)
-                    break
-                default:
-                    console.error('Unknown tile type:', tile.tileType)
-                    break
-            }
-        },
-        clickForestTile(tile) {
-            switch (tile.type) {
-                case FOREST_TILE_TYPES.empty:
-                    this.digTile(tile)
-                    break
-                case FOREST_TILE_TYPES.hole:
-                    this.plantSeed(tile)
-                    break
-                case FOREST_TILE_TYPES.tree:
-                    this.chopTree(tile)
-                    break
-                default:
-                    console.error('Unknown tile type:', tile.type)
-                    break
-            }
-        },
-        clickMineTile(tile) {
-            switch (tile.type) {
-                case MINE_TILE_TYPES.rock:
-                    this.digMineTile(tile)
-                    break
-                case MINE_TILE_TYPES.tunnel:
-                    this.tunnelMineTile(tile)
-                    break
-                case MINE_TILE_TYPES.resource:
-                    this.mineResource(tile)
-                    break
-                default:
-                    console.error('Unknown tile type:', tile.type)
-                    break
-            }
+            tile.click()
         },
 
         createForestTile() {
-            const tile = new Tile()
-            tile.tileType = TILE_TYPES.forest
-            tile.type = FOREST_TILE_TYPES.empty
-            return tile
+            return new ForestTile(this)
         },
         createMineTile(subType) {
-            const tile = new Tile()
-            tile.tileType = TILE_TYPES.mine
-            tile.type = MINE_TILE_TYPES.rock
-            tile.subType = subType
-            return tile
-        },
-        getTileIcon(tile) {
-            switch (tile.tileType) {
-                case TILE_TYPES.forest:
-                    switch (tile.type) {
-                        case FOREST_TILE_TYPES.empty:
-                            return ''
-                        case FOREST_TILE_TYPES.hole:
-                            return '🕳️'
-                        case FOREST_TILE_TYPES.tree:
-                            return TREE_GROWTH_STAGES[tile.stage]
-                        default:
-                            return '❓'
-                    }
-                case TILE_TYPES.mine:
-                    switch (tile.type) {
-                        case MINE_TILE_TYPES.rock:
-                            return '⛰️'
-                        case MINE_TILE_TYPES.tunnel:
-                            return '⛏️'
-                        case MINE_TILE_TYPES.resource:
-                            return MINE_RESOURCE_ICONS[tile.subType]
-                        default:
-                            return '❓'
-                    }
-                default:
-                    return ''
-            }
+            return new MineTile(this, subType)
         },
         getLandTileClass(tile) {
             return {
@@ -1361,60 +1435,6 @@ const app = Vue.createApp({
                 height: `${TILE_SIZE}px`,
                 fontSize: `${TILE_SIZE * 0.75 * fontSizeM}px`,
                 lineHeight: lineHeight ? `${lineHeight}em` : null
-            }
-        },
-        getTileLevel(tile) {
-            // Some tiles have levels, like mines
-            switch (tile.tileType) {
-                case TILE_TYPES.mine:
-                    switch (tile.type) {
-                        case MINE_TILE_TYPES.rock:
-                            return MINE_RESOURCE_OPENING_LEVELS[tile.subType] > 1
-                                ? MINE_RESOURCE_OPENING_LEVELS[tile.subType] - tile.stage
-                                : null
-                        case MINE_TILE_TYPES.tunnel:
-                            return MINE_RESOURCE_TUNNELING_LEVELS[tile.subType] > 1
-                                ? MINE_RESOURCE_TUNNELING_LEVELS[tile.subType] - tile.stage
-                                : null
-                        case MINE_TILE_TYPES.resource:
-                            return MINE_MAX_RESOURCES_PER_LEVEL[tile.subType] - tile.stage
-                        default:
-                            return null
-                    }
-                default:
-                    return null
-            }
-        },
-        getTileTooltip(tile) {
-            switch (tile.tileType) {
-                case TILE_TYPES.forest:
-                    switch (tile.type) {
-                        case FOREST_TILE_TYPES.empty:
-                            return 'Empty land - click to dig a hole'
-                        case FOREST_TILE_TYPES.hole:
-                            return 'Dug hole - click to plant a seed'
-                        case FOREST_TILE_TYPES.tree:
-                            return `Tree - click to chop it down - the older the tree, the more wood you get`
-                        default:
-                            return 'Unknown forest tile'
-                    }
-                case TILE_TYPES.mine:
-                    switch (tile.type) {
-                        case MINE_TILE_TYPES.rock:
-                            return `Rock - click to dig an entrance for a mine (${tile.subType})`
-                        case MINE_TILE_TYPES.tunnel:
-                            return `Mine Tunnel (${tile.subType}) - at level ${tile.stage} of ${
-                                MINE_RESOURCE_TUNNELING_LEVELS[tile.subType]
-                            } - click to dig deeper`
-                        case MINE_TILE_TYPES.resource:
-                            return `Mine (${tile.subType}) - click to mine resources - found resources: ${
-                                tile.stage
-                            } of ${MINE_MAX_RESOURCES_PER_LEVEL[tile.subType]}`
-                        default:
-                            return 'Unknown mine tile'
-                    }
-                default:
-                    return 'Unknown tile'
             }
         },
         getTileProgressAltStyle(tile) {
@@ -1485,7 +1505,7 @@ const app = Vue.createApp({
                     this.resources.wood.price *= 2
                     break
                 case 'Seed Luck 1':
-                    this.luckySeedChance *= EXTRA_SEED_CHANCE_MULTIPLIER
+                    ForestTile.luckySeedChance *= EXTRA_SEED_CHANCE_MULTIPLIER
                     break
                 case 'Seed Marketing 1':
                     this.resources.seed.price *= 2
@@ -1539,10 +1559,10 @@ const app = Vue.createApp({
             return humanTime(diff)
         },
         forestLand() {
-            return this.land.filter(tile => tile.tileType === TILE_TYPES.forest)
+            return this.land.filter(tile => tile instanceof ForestTile)
         },
         mineLand() {
-            return this.land.filter(tile => tile.tileType === TILE_TYPES.mine)
+            return this.land.filter(tile => tile instanceof MineTile)
         },
         landSize() {
             return [this.boughtUpgrades['Extra Column'], this.boughtUpgrades['Extra Row']]
@@ -1562,15 +1582,15 @@ const app = Vue.createApp({
                 view.push({
                     type: tile.type,
                     tile,
-                    icon: this.getTileIcon(tile),
+                    icon: tile.icon,
                     style: this.getTileStyle(tile),
                     progressStyle: {
                         width: `${tile.stageP * 100}%`
                     },
                     progressAltStyle: this.getTileProgressAltStyle(tile),
-                    level: this.getTileLevel(tile),
+                    level: tile.level,
                     classes: this.getLandTileClass(tile),
-                    tooltip: this.getTileTooltip(tile)
+                    tooltip: tile.tooltip
                 })
             })
             // Add black squares for empty tiles (type: 'unclaimed')
@@ -1589,18 +1609,6 @@ const app = Vue.createApp({
                 })
             }
             return view
-        },
-        chopPower() {
-            return CHOP_POWER_BASE * (this.boughtUpgrades['Axe'] + 1)
-        },
-        excavatorPower() {
-            return MINE_EXCAVATOR_POWER * (this.boughtUpgrades['Shovel'] + 1)
-        },
-        tunnelerPower() {
-            return MINE_TUNNELER_POWER * (this.boughtUpgrades['Tunneling'] + 1)
-        },
-        resourceMinerPower() {
-            return this.boughtUpgrades['Pickaxe'] + 1
         },
         totalResourceEarnings() {
             /** @ts-ignore */
