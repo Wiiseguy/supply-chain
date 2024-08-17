@@ -1,0 +1,127 @@
+export const TILE_TYPES = {
+    none: 'none',
+    forest: 'forest',
+    mine: 'mine',
+    pond: 'pond',
+    farm: 'farm',
+    desert: 'desert',
+    kiln: 'kiln'
+    // What other types could there be?
+    // Oil rig: drill for oil
+    // Factory: process raw materials into goods
+}
+
+export const GROUPS = {
+    land: 'land',
+    forest: 'forest',
+    mine: 'mine',
+    ui: 'ui'
+}
+
+export const RESOURCE_TYPES = {
+    wood: 'wood',
+    seed: 'seed',
+    diamond: 'diamond',
+    metal: 'metal',
+    clay: 'clay',
+    fish: 'fish',
+    wheat: 'wheat',
+    bread: 'bread',
+    brick: 'brick',
+    sand: 'sand',
+    glass: 'glass'
+}
+const RESOURCE_TIERS = {
+    // Tier 1: Base resources. Are provided by nature or can be grown
+    tier1: [
+        RESOURCE_TYPES.wood,
+        RESOURCE_TYPES.seed,
+        RESOURCE_TYPES.diamond,
+        RESOURCE_TYPES.metal,
+        RESOURCE_TYPES.clay,
+        RESOURCE_TYPES.wheat,
+        RESOURCE_TYPES.sand,
+        RESOURCE_TYPES.fish
+    ],
+    // Tier 2: Processed resources. Are refined from tier 1 resources
+    tier2: [RESOURCE_TYPES.bread, RESOURCE_TYPES.brick, RESOURCE_TYPES.glass]
+}
+export const FOREST_TILE_TYPES = {
+    empty: 'empty',
+    hole: 'hole',
+    tree: 'tree'
+}
+export const MINE_TILE_TYPES = {
+    rock: 'rock',
+    tunnel: 'tunnel',
+    resource: 'resource'
+}
+const FARM_TILE_TYPES = {
+    empty: 'empty',
+    crop: 'crop'
+}
+export const MINE_RESOURCE_TYPES = [RESOURCE_TYPES.diamond, RESOURCE_TYPES.metal, RESOURCE_TYPES.clay]
+
+export const GROUP_ICONS = {
+    land: '🔲',
+    forest: '🌲',
+    mine: '⛏️',
+    pond: '🎣',
+    farm: '🌾',
+    desert: '🏜️',
+    kiln: '🏭',
+    ui: '🖥️'
+}
+export const GROUP_TITLES = {
+    tools: 'Tools',
+    land: 'Land',
+    storage: 'Storage',
+    automation: 'Automation',
+    special: 'Special'
+}
+
+export const EXTRA_SEED_CHANCE_MULTIPLIER = 2
+export const LUCKY_RESOURCE_MINE_CHANCE = 1 / 10
+
+// Price base
+export const WOOD_PRICE_BASE = 5
+export const SEED_PRICE_BASE = 50
+export const DIAMOND_PRICE_BASE = 5_000
+export const METAL_PRICE_BASE = 500
+export const CLAY_PRICE_BASE = 200
+
+// Define the size of the storage
+export const WOOD_STORAGE_SIZE = 100
+export const SEEDS_STORAGE_SIZE = 10
+export const DIAMONDS_STORAGE_SIZE = 1
+export const METAL_STORAGE_SIZE = 10
+export const CLAY_STORAGE_SIZE = 25
+
+
+
+// Pond stuff
+// Ponds are a source of fish, or some rarer things like frogs, shells, etc.
+// Ponds work different from forests and mines. The fishing pole is cast and then you wait for a semiramdom amount of time
+// After that time the pole will wiggle and you have a certain amount of time to click it to catch the fish.
+// If you miss it, the fish will escape and you have to cast the pole with a new bait.
+// Lure can be seeds? Or worms? Or bread? Bread may work, but then the pre-requisite for ponds is a farm.
+const POND_FISHING_TIME_BASE = 50 // 50 seconds
+const POND_FISHING_TIME_VARIANCE = 10 // 10 seconds
+const POND_FISHING_WIGGLE_TIME = 15 // 5 seconds
+const POND_FISHING_WIGGLE_VARIANCE = 5 // 5 seconds
+const POND_RESOURCES = ['🐟', '🐠', '🦐', '🦞', '🦀', '🐡', '🐬', '🐳', '🐋', '🦈']
+const POND_RESOURCE_CHANCES = [0.5, 0.25, 0.1, 0.05, 0.05, 0.025, 0.025, 0.01, 0.01, 0.005]
+const POND_FISH_BASE_PRICE = 100
+// To calculate the price of a fish, we take the base price and multiply it by the index of the fish in the array
+// For example, the first fish is 100, the second is 200, the third is 300, etc.
+function randomPondResource() {
+    const r = Math.random()
+    let sum = 0
+    for (let i = 0; i < POND_RESOURCE_CHANCES.length; i++) {
+        sum += POND_RESOURCE_CHANCES[i]
+        if (r < sum) {
+            return POND_RESOURCES[i]
+        }
+    }
+    return POND_RESOURCES[POND_RESOURCES.length - 1]
+}

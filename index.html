@@ -11,7 +11,7 @@
 </head>
 
 <body class="dark">
-    <div id="app" class="m-3">
+    <div id="app" class="m-3" v-cloak>
         <h1 @dblclick="DEBUG = !DEBUG">Supply Chain Prototype</h1>
         <div class="row">
             <div class="message" v-if="message" :style="messageStyle">{{ message }}</div>
@@ -161,7 +161,7 @@
 
     </div>
 
-    <script src="game.js"></script>
+    <script src="game.js" type="module"></script>
 
 </body>
 

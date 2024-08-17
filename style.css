@@ -1,3 +1,7 @@
+[v-cloak] {
+    display: none;
+}
+
 /* Theme Name: Forest */
 /* var for nice green color*/
 :root {
@@ -47,7 +51,8 @@ button:disabled {
 
 .table {
     color: inherit;
-    td, th {
+    td,
+    th {
         border-top: none;
     }
 }
@@ -100,7 +105,7 @@ button:disabled {
         text-shadow: 0 0 1px rgba(0, 0, 0, 0.5);
     }
 }
-.progress {    
+.progress {
     position: absolute;
     top: 0;
     left: 0;
@@ -235,10 +240,10 @@ button:disabled {
 /* Vue transitions */
 .fade-enter-active,
 .fade-leave-active {
-  transition: opacity 0.5s ease;
+    transition: opacity 0.5s ease;
 }
 
 .fade-enter-from,
 .fade-leave-to {
-  opacity: 0;
+    opacity: 0;
 }
