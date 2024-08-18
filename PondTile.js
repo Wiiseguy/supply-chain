@@ -1,3 +1,4 @@
+import { Automator } from './Automator.js'
 import { GROUP_ICONS, GROUPS, RESOURCE_TYPES, TILE_TYPES } from './consts.js'
 import Tile from './Tile.js'
 import { isLucky } from './utils.js'
@@ -10,7 +11,7 @@ import { isLucky } from './utils.js'
 // Lure can be seeds? Or worms? Or bread? Bread may work, but then the pre-requisite for ponds is a farm.
 const FISHING_TIME_BASE = 90 // seconds
 const FISHING_TIME_VARIANCE = 60 // seconds - bite time is between (BASE - VARIANCE) and BASE + VARIANCE)
-const FISHING_WIGGLE_TIME = 10 // seconds
+const FISHING_WIGGLE_TIME = 30 // seconds
 const FISHING_WIGGLE_VARIANCE = 5 // seconds
 const FISH = ['🐟', '🐠', '🦐', '🦞', '🦀', '🐡', '🐬', '🦈', '🐳', '🐋']
 const FISH_CHANCES = [0.5, 0.25, 0.1, 0.05, 0.05, 0.025, 0.025, 0.01, 0.01, 0.005]
@@ -53,6 +54,7 @@ export class PondTile extends Tile {
             this.catchTime -= elapsed
             if (this.catchTime <= 0) {
                 this.animateWiggle()
+                this.progress = 1
                 this.wiggleTime = FISHING_WIGGLE_TIME + (Math.random() - 0.5) * FISHING_WIGGLE_VARIANCE * 2
             }
         }
@@ -75,6 +77,7 @@ export class PondTile extends Tile {
         this.catchTime = FISHING_TIME_BASE + (Math.random() - 0.5) * FISHING_TIME_VARIANCE * 2
         console.log('Catch time:', this.catchTime, this)
         this.wiggleTime = 0
+        this.progress = 0
     }
 
     click() {
@@ -123,8 +126,25 @@ export class PondTile extends Tile {
     get tooltip() {
         return 'Pond tile - click when the fishing pole wiggles to catch a fish!'
     }
-    static getAutomators(_app) {
-        return []
+    static getAutomators(app) {
+        return [
+            new Automator('Auto Fisher', () => {
+                // Give priority to wiggling tiles
+                const wiggling = app.land.find(t => t instanceof PondTile && t.wiggleTime > 0)
+                if (wiggling) {
+                    wiggling.click()
+                    return
+                }
+                // Check if there is a fish to catch and click that instead
+                const caught = app.land.find(t => t instanceof PondTile && t.caughtFish)
+                if (caught) {
+                    caught.click()
+                }
+            }),
+            new Automator('Fish Reclaimer', () => {
+                app.resources.fish.reclaim(1)
+            })
+        ]
     }
     static upgrades = [
         {
@@ -149,10 +169,31 @@ export class PondTile extends Tile {
             baseCost: 2000,
             costMultiplier: 1.2,
             category: 'storage',
-            group: GROUPS.forest,
+            group: GROUPS.pond,
             onBuy(app) {
                 app.resources.fish.storage += 1
             }
+        },
+        {
+            name: 'Fish Reclaimer',
+            description: 'Collect lost fish swimming about thinking they were lucky',
+            initialOwned: 0,
+            baseCost: 7500,
+            costMultiplier: 1.5,
+            speed: 1 / 8,
+            // TODO: why aren't categories constants?
+            category: 'automation',
+            group: GROUPS.forest
+        },
+        {
+            name: 'Auto Fisher',
+            description: 'Automatically fish for you',
+            initialOwned: 0,
+            baseCost: 8000,
+            costMultiplier: 2,
+            speed: 1 / FISHING_WIGGLE_TIME,
+            category: 'automation',
+            group: GROUPS.pond
         }
     ]
 }
