@@ -27,6 +27,10 @@ export function pick(arr) {
     return arr[Math.floor(Math.random() * arr.length)]
 }
 
+export function pickIndex(arr) {
+    return Math.floor(Math.random() * arr.length)
+}
+
 export function isLucky(chance) {
     // Returns true or false based on the chance 0 = never, 1 = always
     return Math.random() < chance

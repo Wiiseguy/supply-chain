@@ -1,5 +1,4 @@
 import { GROUPS } from './consts.js'
-import { makeIndex } from './utils.js'
 
 const DEFAULT_COST_MULTIPLIER = 1.21
 
@@ -59,44 +58,49 @@ export const UPGRADES = [
         category: 'tools',
         group: GROUPS.mine
     },
+    // Land
     {
         name: 'Forest Tile',
+        tile: true,
         description: 'Claim a tile of land to grow trees on',
         initialOwned: 1,
         baseCost: 100,
         costMultiplier: 1.2,
         speed: undefined,
-        category: 'land',
+        category: 'tiles',
         group: GROUPS.forest
     },
     {
         name: 'Clay Mine Tile',
+        tile: true,
         description: 'Claim a tile of land to dig for clay',
         initialOwned: 0,
         baseCost: 1500,
         costMultiplier: 1.25,
         speed: undefined,
-        category: 'land',
+        category: 'tiles',
         group: GROUPS.mine
     },
     {
         name: 'Metal Mine Tile',
+        tile: true,
         description: 'Claim a tile of land to dig for metal',
         initialOwned: 0,
         baseCost: 2000,
         costMultiplier: 1.25,
         speed: undefined,
-        category: 'land',
+        category: 'tiles',
         group: GROUPS.mine
     },
     {
         name: 'Diamond Mine Tile',
+        tile: true,
         description: 'Claim a tile of land to dig for diamonds',
         initialOwned: 0,
         baseCost: 5000,
         costMultiplier: 1.25,
         speed: undefined,
-        category: 'land',
+        category: 'tiles',
         group: GROUPS.mine
     },
     {
@@ -119,6 +123,7 @@ export const UPGRADES = [
         category: 'land',
         group: GROUPS.land
     },
+    // Storage
     {
         name: 'Wood Storage',
         description: 'Increase the amount of wood you can store',
@@ -242,7 +247,8 @@ export const UPGRADES = [
         baseCost: 3500,
         costMultiplier: DEFAULT_COST_MULTIPLIER,
         speed: 1 / 30,
-        category: 'automation'
+        category: 'automation',
+        group: GROUPS.forest
     },
     {
         name: 'Resource Miner',
@@ -420,4 +426,3 @@ export const UPGRADES = [
         group: GROUPS.mine
     }
 ]
-export const UPGRADES_INDEX = makeIndex(UPGRADES, 'name')

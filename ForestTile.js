@@ -1,3 +1,4 @@
+import { Automator } from './Automator.js'
 import { FOREST_TILE_TYPES, TILE_TYPES } from './consts.js'
 import Tile from './Tile.js'
 import { isLucky } from './utils.js'
@@ -23,6 +24,8 @@ export class ForestTile extends Tile {
         this.type = FOREST_TILE_TYPES.empty
     }
     update(elapsed) {
+        super.update(elapsed)
+
         if (this.type === FOREST_TILE_TYPES.tree) {
             this.age += elapsed * (this.app.boughtUpgrades['Fertilizer'] + 1)
             let healthRegain = elapsed / (TREE_BASE_MATURE_TIME * 2)
@@ -155,5 +158,53 @@ export class ForestTile extends Tile {
     }
     get isFullyGrownTree() {
         return this.type === FOREST_TILE_TYPES.tree && this.stage === TREE_GROWTH_STAGES.length - 1
+    }
+    static getAutomators(app) {
+        return [
+            new Automator('Auto Digger', () => {
+                const tile = /** @type {ForestTile[]} */ (app.forestLand).find(
+                    tile => tile.type === FOREST_TILE_TYPES.empty
+                )
+                if (tile) {
+                    tile.dig()
+                }
+            }),
+            new Automator('Auto Seeder', () => {
+                const tile = /** @type {ForestTile[]} */ (app.forestLand).find(
+                    tile => tile.type === FOREST_TILE_TYPES.hole
+                )
+                if (tile) {
+                    tile.plant()
+                }
+            }),
+            new Automator('Auto Chopper', () => {
+                const fullyGrownTrees = /** @type {ForestTile[]} */ (app.forestLand).filter(
+                    tile => tile.isFullyGrownTree
+                )
+                const maxChopped = Math.max(...fullyGrownTrees.map(tile => tile.progress))
+                const tile = fullyGrownTrees.find(tile => tile.progress === maxChopped)
+                if (tile) {
+                    tile.chop()
+                }
+            }),
+            new Automator('Wood Seller', () => {
+                app.sellResource(app.resources.wood, 1)
+            }),
+            new Automator('Wood Reclaimer', () => {
+                app.resources.wood.reclaim(1)
+            }),
+            new Automator('Seed Seller', () => {
+                // Determine excess seeds: each tree counts as 1 seed
+                // So if forestLand has 4 tiles and 2 have trees and we have 3 seeds, we have 1 excess seed
+                const treeTiles = app.forestLand.filter(tile => tile.type === FOREST_TILE_TYPES.tree)
+                const excessSeeds = app.resources.seed.owned + treeTiles.length - app.forestLand.length
+                if (excessSeeds > 0) {
+                    app.sellResource(app.resources.seed, 1)
+                }
+            }),
+            new Automator('Seed Reclaimer', () => {
+                app.resources.seed.reclaim(1)
+            })
+        ]
     }
 }

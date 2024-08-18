@@ -13,8 +13,10 @@ export const TILE_TYPES = {
 
 export const GROUPS = {
     land: 'land',
+    tiles: 'tiles',
     forest: 'forest',
     mine: 'mine',
+    pond: 'pond',
     ui: 'ui'
 }
 
@@ -74,6 +76,7 @@ export const GROUP_ICONS = {
 }
 export const GROUP_TITLES = {
     tools: 'Tools',
+    tiles: 'Tiles',
     land: 'Land',
     storage: 'Storage',
     automation: 'Automation',
@@ -81,7 +84,6 @@ export const GROUP_TITLES = {
 }
 
 export const EXTRA_SEED_CHANCE_MULTIPLIER = 2
-export const LUCKY_RESOURCE_MINE_CHANCE = 1 / 10
 
 // Price base
 export const WOOD_PRICE_BASE = 5
@@ -96,32 +98,3 @@ export const SEEDS_STORAGE_SIZE = 10
 export const DIAMONDS_STORAGE_SIZE = 1
 export const METAL_STORAGE_SIZE = 10
 export const CLAY_STORAGE_SIZE = 25
-
-
-
-// Pond stuff
-// Ponds are a source of fish, or some rarer things like frogs, shells, etc.
-// Ponds work different from forests and mines. The fishing pole is cast and then you wait for a semiramdom amount of time
-// After that time the pole will wiggle and you have a certain amount of time to click it to catch the fish.
-// If you miss it, the fish will escape and you have to cast the pole with a new bait.
-// Lure can be seeds? Or worms? Or bread? Bread may work, but then the pre-requisite for ponds is a farm.
-const POND_FISHING_TIME_BASE = 50 // 50 seconds
-const POND_FISHING_TIME_VARIANCE = 10 // 10 seconds
-const POND_FISHING_WIGGLE_TIME = 15 // 5 seconds
-const POND_FISHING_WIGGLE_VARIANCE = 5 // 5 seconds
-const POND_RESOURCES = ['🐟', '🐠', '🦐', '🦞', '🦀', '🐡', '🐬', '🐳', '🐋', '🦈']
-const POND_RESOURCE_CHANCES = [0.5, 0.25, 0.1, 0.05, 0.05, 0.025, 0.025, 0.01, 0.01, 0.005]
-const POND_FISH_BASE_PRICE = 100
-// To calculate the price of a fish, we take the base price and multiply it by the index of the fish in the array
-// For example, the first fish is 100, the second is 200, the third is 300, etc.
-function randomPondResource() {
-    const r = Math.random()
-    let sum = 0
-    for (let i = 0; i < POND_RESOURCE_CHANCES.length; i++) {
-        sum += POND_RESOURCE_CHANCES[i]
-        if (r < sum) {
-            return POND_RESOURCES[i]
-        }
-    }
-    return POND_RESOURCES[POND_RESOURCES.length - 1]
-}

@@ -31,6 +31,7 @@ class Tile {
     animateGrow() {
         setBoolPropTimeout(this, 'grow', 'growTimeout', 250)
     }
+    update(_elapsed) {}
     get tooltip() {
         return 'Empty tile'
     }

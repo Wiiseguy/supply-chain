@@ -1,5 +1,7 @@
+import { Automator } from './Automator.js'
 import { MINE_TILE_TYPES, TILE_TYPES } from './consts.js'
 import Tile from './Tile.js'
+import { isLucky, pick } from './utils.js'
 
 // Mine stuff
 // Mines work different from forests, each stage has levels. The first stage has one level, the second has 3, the third has Infinite
@@ -35,6 +37,8 @@ const MINE_RESOURCE_CLICKS = {
     metal: 75,
     clay: 50
 }
+
+const LUCKY_RESOURCE_MINE_CHANCE = 1 / 10
 
 export class MineTile extends Tile {
     constructor(app, subType) {
@@ -173,5 +177,48 @@ export class MineTile extends Tile {
     }
     get resourceMinerPower() {
         return this.app.boughtUpgrades['Pickaxe'] + 1
+    }
+    static getAutomators(app) {
+        return [
+            new Automator('Auto Shoveler', () => {
+                const tile = pick(app.mineLand.filter(tile => tile.type === MINE_TILE_TYPES.rock))
+                if (tile) {
+                    tile.dig()
+                }
+            }),
+            new Automator('Tunneler', () => {
+                const tile = pick(app.mineLand.filter(tile => tile.type === MINE_TILE_TYPES.tunnel))
+                if (tile) {
+                    tile.tunnel()
+                }
+            }),
+            new Automator('Resource Miner', () => {
+                const resourceTiles = app.mineLand.filter(tile => tile.type === MINE_TILE_TYPES.resource)
+                const tile = pick(resourceTiles)
+                if (!tile) {
+                    return
+                }
+                tile.mine()
+
+                // The more resource miners, the higher the chance of mining the same tile again
+                resourceTiles.forEach(tile => {
+                    if (isLucky(LUCKY_RESOURCE_MINE_CHANCE)) {
+                        tile.mine()
+                    }
+                })
+            }),
+            new Automator('Metal Seller', () => {
+                app.sellResource(app.resources.metal, 1)
+            }),
+            new Automator('Metal Reclaimer', () => {
+                app.resources.metal.reclaim(1)
+            }),
+            new Automator('Diamond Seller', () => {
+                app.sellResource(app.resources.diamond, 1)
+            }),
+            new Automator('Diamond Reclaimer', () => {
+                app.resources.diamond.reclaim(1)
+            })
+        ]
     }
 }

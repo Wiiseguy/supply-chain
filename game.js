@@ -1,7 +1,7 @@
-import { Automator } from './Automator.js'
 import { Counter } from './Counter.js'
 import { ForestTile } from './ForestTile.js'
 import { MineTile } from './MineTile.js'
+import { FISH_PRICE_BASE, FISH_STORAGE_SIZE, PondTile } from './PondTile.js'
 import { Resource } from './Resource.js'
 import {
     CLAY_PRICE_BASE,
@@ -12,11 +12,9 @@ import {
     FOREST_TILE_TYPES,
     GROUP_ICONS,
     GROUP_TITLES,
-    LUCKY_RESOURCE_MINE_CHANCE,
     METAL_PRICE_BASE,
     METAL_STORAGE_SIZE,
     MINE_RESOURCE_TYPES,
-    MINE_TILE_TYPES,
     RESOURCE_TYPES,
     SEED_PRICE_BASE,
     SEEDS_STORAGE_SIZE,
@@ -24,8 +22,8 @@ import {
     WOOD_PRICE_BASE,
     WOOD_STORAGE_SIZE
 } from './consts.js'
-import { UPGRADES, UPGRADES_INDEX } from './upgrades.js'
-import { bigNum, humanTime, isLucky, pick } from './utils.js'
+import { UPGRADES } from './upgrades.js'
+import { bigNum, humanTime, makeIndex } from './utils.js'
 
 globalThis.haltAnimation = false
 
@@ -45,7 +43,8 @@ const app = Vue.createApp({
     data() {
         return {
             DEBUG,
-            UPGRADES,
+            UPGRADES: null,
+            UPGRADES_INDEX: null,
 
             now: Date.now(),
             startTime: Date.now(),
@@ -76,15 +75,7 @@ const app = Vue.createApp({
         }
     },
     created() {
-        // Initialize bought upgrades obj
-        this.UPGRADES.forEach(upgrade => {
-            this.boughtUpgrades[upgrade.name] = upgrade.initialOwned ?? 0
-        })
-
-        // Initialize land
-        for (let i = 0; i < this.boughtUpgrades['Forest Tile']; i++) {
-            this.land.push(this.createForestTile())
-        }
+        this.UPGRADES = UPGRADES
 
         // Initialize resources
         this.resources = {
@@ -108,95 +99,26 @@ const app = Vue.createApp({
                 '💎',
                 DIAMOND_PRICE_BASE,
                 DIAMONDS_STORAGE_SIZE
-            )
+            ),
+            fish: new Resource(RESOURCE_TYPES.fish, 'Fish', 'Fish', '🐟', FISH_PRICE_BASE, FISH_STORAGE_SIZE)
         }
 
-        // Initialize automators
-        this.automators = [
-            new Automator('Auto Digger', () => {
-                const tile = /** @type {ForestTile[]} */ (this.forestLand).find(
-                    tile => tile.type === FOREST_TILE_TYPES.empty
-                )
-                if (tile) {
-                    tile.dig()
-                }
-            }),
-            new Automator('Auto Seeder', () => {
-                const tile = /** @type {ForestTile[]} */ (this.forestLand).find(
-                    tile => tile.type === FOREST_TILE_TYPES.hole
-                )
-                if (tile) {
-                    tile.plant()
-                }
-            }),
-            new Automator('Auto Chopper', () => {
-                const fullyGrownTrees = /** @type {ForestTile[]} */ (this.forestLand).filter(
-                    tile => tile.isFullyGrownTree
-                )
-                const maxChopped = Math.max(...fullyGrownTrees.map(tile => tile.progress))
-                const tile = fullyGrownTrees.find(tile => tile.progress === maxChopped)
-                if (tile) {
-                    tile.chop()
-                }
-            }),
-            new Automator('Wood Seller', () => {
-                this.sellResource(this.resources.wood, 1)
-            }),
-            new Automator('Wood Reclaimer', () => {
-                this.resources.wood.reclaim(1)
-            }),
-            new Automator('Seed Seller', () => {
-                // Determine excess seeds: each tree counts as 1 seed
-                // So if forestLand has 4 tiles and 2 have trees and we have 3 seeds, we have 1 excess seed
-                const treeTiles = this.forestLand.filter(tile => tile.type === FOREST_TILE_TYPES.tree)
-                const excessSeeds = this.resources.seed.owned + treeTiles.length - this.forestLand.length
-                if (excessSeeds > 0) {
-                    this.sellResource(this.resources.seed, 1)
-                }
-            }),
-            new Automator('Seed Reclaimer', () => {
-                this.resources.seed.reclaim(1)
-            }),
-            new Automator('Auto Shoveler', () => {
-                const tile = pick(this.mineLand.filter(tile => tile.type === MINE_TILE_TYPES.rock))
-                if (tile) {
-                    tile.dig()
-                }
-            }),
-            new Automator('Tunneler', () => {
-                const tile = pick(this.mineLand.filter(tile => tile.type === MINE_TILE_TYPES.tunnel))
-                if (tile) {
-                    tile.tunnel()
-                }
-            }),
-            new Automator('Resource Miner', () => {
-                const resourceTiles = this.mineLand.filter(tile => tile.type === MINE_TILE_TYPES.resource)
-                const tile = pick(resourceTiles)
-                if (!tile) {
-                    return
-                }
-                tile.mine()
+        // Initialize Tile types
+        this.registerTile(ForestTile)
+        this.registerTile(MineTile)
+        this.registerTile(PondTile)
 
-                // The more resource miners, the higher the chance of mining the same tile again
-                resourceTiles.forEach(tile => {
-                    if (isLucky(LUCKY_RESOURCE_MINE_CHANCE)) {
-                        tile.mine()
-                    }
-                })
-            }),
-            new Automator('Metal Seller', () => {
-                this.sellResource(this.resources.metal, 1)
-            }),
-            new Automator('Metal Reclaimer', () => {
-                this.resources.metal.reclaim(1)
-            }),
-            new Automator('Diamond Seller', () => {
-                this.sellResource(this.resources.diamond, 1)
-            }),
-            new Automator('Diamond Reclaimer', () => {
-                this.resources.diamond.reclaim(1)
-            })
-        ]
+        // Initialize bought upgrades obj
+        this.UPGRADES.forEach(upgrade => {
+            this.boughtUpgrades[upgrade.name] = upgrade.initialOwned ?? 0
+        })
+        this.UPGRADES_INDEX = makeIndex(UPGRADES, 'name')
+
+        // Initialize land
+        for (let i = 0; i < this.boughtUpgrades['Forest Tile']; i++) {
+            this.land.push(new ForestTile(this))
+        }
+
         this.counters = [new Counter('money', () => this.money)]
 
         // Check if all UPGRADES of type automation have a corresponding automator programmed in
@@ -287,15 +209,25 @@ const app = Vue.createApp({
             this.automators.forEach(automator => {
                 const num = this.boughtUpgrades[automator.upgradeName]
                 if (automator.enabled && num > 0) {
-                    const speed = UPGRADES_INDEX[automator.upgradeName].speed * num
+                    const speed = this.UPGRADES_INDEX[automator.upgradeName].speed * num
                     automator.saturation += speed * elapsed
                     automator.speed = speed
                     while (automator.saturation >= 1) {
                         automator.saturation -= 1
-                        automator.logic(elapsed)
+                        automator.logic()
                     }
                 }
             })
+        },
+        registerTile(tileClass) {
+            let getAutomatorsFn = tileClass.getAutomators
+            if (getAutomatorsFn) {
+                this.automators.push(...getAutomatorsFn(this))
+            }
+            let upgrades = tileClass.upgrades
+            if (upgrades) {
+                this.UPGRADES.push(...upgrades)
+            }
         },
         /**
          *
@@ -308,7 +240,7 @@ const app = Vue.createApp({
         },
         sellAutomator(automator) {
             // Get the cost of the current automator
-            let upgrade = UPGRADES_INDEX[automator.upgradeName]
+            let upgrade = this.UPGRADES_INDEX[automator.upgradeName]
             let owned = this.boughtUpgrades[automator.upgradeName]
             const price = this.getUpgradeCostNum(upgrade, owned - 1)
             this.money += price
@@ -335,12 +267,6 @@ const app = Vue.createApp({
             tile.click()
         },
 
-        createForestTile() {
-            return new ForestTile(this)
-        },
-        createMineTile(subType) {
-            return new MineTile(this, subType)
-        },
         getLandTileClass(tile) {
             return {
                 wiggle: tile.wiggle,
@@ -348,6 +274,7 @@ const app = Vue.createApp({
             }
         },
         getTileStyle(tile) {
+            // TODO: Move to respective tile classes
             let opacity = tile.progress
             let lineHeight = null
             let fontSizeM = 1
@@ -372,6 +299,7 @@ const app = Vue.createApp({
             }
         },
         getTileProgressAltStyle(tile) {
+            // TODO: Move to respective tile classes
             // Some tiles have a different progress bar style
             switch (tile.tileType) {
                 case TILE_TYPES.forest:
@@ -389,7 +317,7 @@ const app = Vue.createApp({
         getUpgradeCost(upgrade) {
             return this.getUpgradeCostNum(upgrade, this.boughtUpgrades[upgrade.name])
         },
-        getUpgradeCostNum(upgrade, num) {
+        getUpgradeCostNum(upgrade, num = 1) {
             return upgrade.baseCost * Math.pow(upgrade.costMultiplier, num - upgrade.initialOwned)
         },
         buyUpgrade(upgrade) {
@@ -403,17 +331,18 @@ const app = Vue.createApp({
             this.boughtUpgrades[upgrade.name] += 1
 
             switch (upgrade.name) {
+                // TODO: Move to respective tile classes
                 case 'Forest Tile':
-                    this.land.push(this.createForestTile())
+                    this.land.push(new ForestTile(this))
                     break
                 case 'Diamond Mine Tile':
-                    this.land.push(this.createMineTile(RESOURCE_TYPES.diamond))
+                    this.land.push(new MineTile(this, RESOURCE_TYPES.diamond))
                     break
                 case 'Metal Mine Tile':
-                    this.land.push(this.createMineTile(RESOURCE_TYPES.metal))
+                    this.land.push(new MineTile(this, RESOURCE_TYPES.metal))
                     break
                 case 'Clay Mine Tile':
-                    this.land.push(this.createMineTile(RESOURCE_TYPES.clay))
+                    this.land.push(new MineTile(this, RESOURCE_TYPES.clay))
                     break
                 // Storage
                 case 'Wood Storage':
@@ -460,23 +389,23 @@ const app = Vue.createApp({
                     this.resources.diamond.price *= 2
                     break
             }
+            // If the upgrade has an onBuy function, call it
+            if (upgrade.onBuy) {
+                upgrade.onBuy(this)
+            }
         },
         hasUpgrade(upgradeName) {
             return this.boughtUpgrades[upgradeName] > 0
         },
         hasRoomForTile() {
-            return this.land.length >= this.boughtUpgrades['Extra Column'] * this.boughtUpgrades['Extra Row']
+            return this.land.length < this.boughtUpgrades['Extra Column'] * this.boughtUpgrades['Extra Row']
         },
         canBuyUpgrade(upgrade) {
-            switch (upgrade.name) {
-                case 'Forest Tile':
-                case 'Diamond Mine Tile':
-                case 'Metal Mine Tile':
-                case 'Clay Mine Tile':
-                    if (this.hasRoomForTile()) {
-                        return false
-                    }
-                    break
+            if (upgrade.tile && !this.hasRoomForTile()) {
+                return false
+            }
+            if (upgrade.canBuy) {
+                return upgrade.canBuy(this)
             }
             return this.money >= this.getUpgradeCost(upgrade)
         },
@@ -582,11 +511,22 @@ const app = Vue.createApp({
                     result.push(this.resources[resourceType])
                 }
             })
+            // For anything else, add it if it has more than 0 owned
+            Object.values(this.resources).forEach(resource => {
+                if (!result.includes(resource) && resource.totalOwned > 0) {
+                    result.push(resource)
+                }
+            })
             return result
         },
         automatorsView() {
             // Filter out automators that are not yet bought
-            return this.automators.filter(automator => this.boughtUpgrades[automator.upgradeName] > 0)
+            return this.automators
+                .filter(automator => this.boughtUpgrades[automator.upgradeName] > 0)
+                .map(automator => ({
+                    ...automator,
+                    displayName: this.UPGRADES_INDEX[automator.upgradeName].displayName ?? automator.upgradeName
+                }))
         },
         upgradesView() {
             return this.UPGRADES.filter(upgrade => {
@@ -594,16 +534,18 @@ const app = Vue.createApp({
                     return false
                 }
                 return this.visibleUpgrades.includes(upgrade.name)
-            }).map(upgrade => {
-                return {
-                    ...upgrade,
-                    cost: Math.ceil(this.getUpgradeCost(upgrade)),
-                    blurred: !this.unblurredUpgrades.includes(upgrade.name),
-                    canBuy: this.canBuyUpgrade(upgrade),
-                    owned: this.boughtUpgrades[upgrade.name] || 0,
-                    groupIcon: GROUP_ICONS[upgrade.group]
-                }
             })
+                .map(upgrade => {
+                    return {
+                        ...upgrade,
+                        cost: Math.ceil(this.getUpgradeCost(upgrade)),
+                        blurred: !this.unblurredUpgrades.includes(upgrade.name),
+                        canBuy: this.canBuyUpgrade(upgrade),
+                        owned: this.boughtUpgrades[upgrade.name] || 0,
+                        groupIcon: GROUP_ICONS[upgrade.group]
+                    }
+                })
+                .sort((a, b) => a.baseCost - b.baseCost)
         },
         upgradesByCategoryView() {
             const upgradesByCategory = {}
