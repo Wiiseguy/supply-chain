@@ -67,6 +67,7 @@ export class PondTile extends Tile {
             this.wiggleTime -= elapsed
             if (this.wiggleTime <= 0) {
                 this.app.showMessage('Fish got away!')
+                this.app.stats.fishMissed += 1
                 this.animateFail()
                 this.reset()
             }
@@ -75,26 +76,30 @@ export class PondTile extends Tile {
     reset() {
         this.caughtFish = null
         this.catchTime = FISHING_TIME_BASE + (Math.random() - 0.5) * FISHING_TIME_VARIANCE * 2
-        console.log('Catch time:', this.catchTime, this)
+        if (this.app.DEBUG) {
+            console.log('Catch time:', this.catchTime, this)
+        }
         this.wiggleTime = 0
         this.progress = 0
     }
 
     click() {
-        // Punish if player clicks when the pole is not wiggling
         if (this.wiggleTime <= 0 && this.catchTime > 0) {
+            // Punish if player clicks when the pole is not wiggling
             this.app.showMessage('You need to wait for the fishing pole to wiggle!')
             this.animateFail()
-            this.reset()
+            this.catchTime += 10
             return
         }
         if (this.wiggleTime > 0) {
             if (isLucky(RARITY_CHANCE)) {
                 this.caughtFish = randomResource(RARITIES, RARITY_CHANCES)
                 this.isRare = true
+                this.app.stats.fishRarities += 1
             } else {
                 this.caughtFish = randomResource(FISH, FISH_CHANCES)
                 this.isRare = false
+                this.app.stats.fishCaught += 1
             }
             this.app.showMessage('Caught something!')
             this.animateGrow()
@@ -114,7 +119,6 @@ export class PondTile extends Tile {
                 this.app.showMessage(`Caught a ${this.caughtFish}, worth ${fishGain} fish!`)
             }
             this.reset()
-            return
         }
     }
     get icon() {
@@ -126,37 +130,43 @@ export class PondTile extends Tile {
     get tooltip() {
         return 'Pond tile - click when the fishing pole wiggles to catch a fish!'
     }
-    static getAutomators(app) {
-        return [
-            new Automator('Auto Fisher', () => {
-                // Give priority to wiggling tiles
-                const wiggling = app.land.find(t => t instanceof PondTile && t.wiggleTime > 0)
-                if (wiggling) {
-                    wiggling.click()
-                    return
-                }
-                // Check if there is a fish to catch and click that instead
-                const caught = app.land.find(t => t instanceof PondTile && t.caughtFish)
-                if (caught) {
-                    caught.click()
-                }
-            }),
-            new Automator('Fish Reclaimer', () => {
-                app.resources.fish.reclaim(1)
-            })
-        ]
-    }
+
+    static automators = [
+        new Automator('Auto Fisher', app => {
+            // Give priority to wiggling tiles
+            const wiggling = app.land.find(t => t instanceof PondTile && t.wiggleTime > 0)
+            if (wiggling) {
+                wiggling.click()
+                return
+            }
+            // Check if there is a fish to catch and click that instead
+            const caught = app.land.find(t => t instanceof PondTile && t.caughtFish)
+            if (caught) {
+                caught.click()
+            }
+        }),
+        new Automator('Fish Reclaimer', app => {
+            app.resources.fish.reclaim(1)
+        }),
+        new Automator('Fish Seller', app => {
+            app.sellResource(app.resources.fish, 1)
+        })
+    ]
+
     static upgrades = [
         {
             name: 'Pond Tile',
             tile: true,
             description: 'Claim a tile of land to fish in',
             initialOwned: 0,
-            baseCost: 200,
-            costMultiplier: 1.2,
+            baseCost: 250,
+            costMultiplier: 1.5,
             speed: undefined,
             category: 'tiles',
             group: GROUPS.pond,
+            resourceCosts: {
+                [RESOURCE_TYPES.wood]: 1
+            },
             onBuy(app) {
                 app.land.push(new PondTile(app))
             }
@@ -178,7 +188,7 @@ export class PondTile extends Tile {
             name: 'Fish Reclaimer',
             description: 'Collect lost fish swimming about thinking they were lucky',
             initialOwned: 0,
-            baseCost: 7500,
+            baseCost: 7000,
             costMultiplier: 1.5,
             speed: 1 / 8,
             // TODO: why aren't categories constants?
@@ -194,6 +204,16 @@ export class PondTile extends Tile {
             speed: 1 / FISHING_WIGGLE_TIME,
             category: 'automation',
             group: GROUPS.pond
+        },
+        {
+            name: 'Fish Seller',
+            description: 'Automatically sell fish. Selfish. Shellfish?',
+            initialOwned: 0,
+            baseCost: 7500,
+            costMultiplier: 1.5,
+            speed: 1 / 8,
+            category: 'automation',
+            group: GROUPS.forest
         }
     ]
 }

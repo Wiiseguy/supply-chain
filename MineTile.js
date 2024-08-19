@@ -1,5 +1,5 @@
 import { Automator } from './Automator.js'
-import { MINE_TILE_TYPES, TILE_TYPES } from './consts.js'
+import { GROUPS, MINE_TILE_TYPES, RESOURCE_TYPES, TILE_TYPES } from './consts.js'
 import Tile from './Tile.js'
 import { isLucky, pick } from './utils.js'
 
@@ -59,7 +59,7 @@ export class MineTile extends Tile {
                 this.stage = 0
                 this.type = MINE_TILE_TYPES.tunnel
                 this.app.showMessage('Mine entrance opened!')
-                this.app.minesOwned += 1
+                this.app.stats.minesOwned += 1
             }
         }
     }
@@ -70,7 +70,7 @@ export class MineTile extends Tile {
             if (this.app.resources.wood.incur(MINE_SUPPORT_BEAM_COST)) {
                 this.stage += 1
                 this.progress = 0
-                this.app.tunnelsDug += 1
+                this.app.stats.tunnelsDug += 1
                 if (this.stage >= MINE_RESOURCE_TUNNELING_LEVELS[this.subType]) {
                     this.stage = 0
                     this.type = MINE_TILE_TYPES.resource
@@ -94,7 +94,7 @@ export class MineTile extends Tile {
         if (this.progress >= 1) {
             this.progress = 0
             this.stage += 1
-            this.app.resourcesMined += 1
+            this.app.stats.resourcesMined += 1
             let resource = this.app.resources[this.subType]
             if (!resource) {
                 console.error('mine: Unknown resource type:', this.subType)
@@ -178,47 +178,279 @@ export class MineTile extends Tile {
     get resourceMinerPower() {
         return this.app.boughtUpgrades['Pickaxe'] + 1
     }
-    static getAutomators(app) {
-        return [
-            new Automator('Auto Shoveler', () => {
-                const tile = pick(app.mineLand.filter(tile => tile.type === MINE_TILE_TYPES.rock))
-                if (tile) {
-                    tile.dig()
-                }
-            }),
-            new Automator('Tunneler', () => {
-                const tile = pick(app.mineLand.filter(tile => tile.type === MINE_TILE_TYPES.tunnel))
-                if (tile) {
-                    tile.tunnel()
-                }
-            }),
-            new Automator('Resource Miner', () => {
-                const resourceTiles = app.mineLand.filter(tile => tile.type === MINE_TILE_TYPES.resource)
-                const tile = pick(resourceTiles)
-                if (!tile) {
-                    return
-                }
-                tile.mine()
+    static automators = [
+        new Automator('Auto Shoveler', app => {
+            const tile = pick(app.mineLand.filter(tile => tile.type === MINE_TILE_TYPES.rock))
+            if (tile) {
+                tile.dig()
+            }
+        }),
+        new Automator('Tunneler', app => {
+            const tile = pick(app.mineLand.filter(tile => tile.type === MINE_TILE_TYPES.tunnel))
+            if (tile) {
+                tile.tunnel()
+            }
+        }),
+        new Automator('Resource Miner', app => {
+            const resourceTiles = app.mineLand.filter(tile => tile.type === MINE_TILE_TYPES.resource)
+            const tile = pick(resourceTiles)
+            if (!tile) {
+                return
+            }
+            tile.mine()
 
-                // The more resource miners, the higher the chance of mining the same tile again
-                resourceTiles.forEach(tile => {
-                    if (isLucky(LUCKY_RESOURCE_MINE_CHANCE)) {
-                        tile.mine()
-                    }
-                })
-            }),
-            new Automator('Metal Seller', () => {
-                app.sellResource(app.resources.metal, 1)
-            }),
-            new Automator('Metal Reclaimer', () => {
-                app.resources.metal.reclaim(1)
-            }),
-            new Automator('Diamond Seller', () => {
-                app.sellResource(app.resources.diamond, 1)
-            }),
-            new Automator('Diamond Reclaimer', () => {
-                app.resources.diamond.reclaim(1)
+            // The more resource miners, the higher the chance of mining the same tile again
+            resourceTiles.forEach(tile => {
+                if (isLucky(LUCKY_RESOURCE_MINE_CHANCE)) {
+                    tile.mine()
+                }
             })
-        ]
-    }
+        }),
+        new Automator('Metal Seller', app => {
+            app.sellResource(app.resources.metal, 1)
+        }),
+        new Automator('Metal Reclaimer', app => {
+            app.resources.metal.reclaim(1)
+        }),
+        new Automator('Diamond Seller', app => {
+            app.sellResource(app.resources.diamond, 1)
+        }),
+        new Automator('Diamond Reclaimer', app => {
+            app.resources.diamond.reclaim(1)
+        })
+    ]
+
+    static upgrades = [
+        {
+            name: 'Shovel',
+            displayName: 'Bigger Excavator',
+            description: 'Trade your excavator for a bigger one to dig an entrance for a mine',
+            initialOwned: 0,
+            baseCost: 10000,
+            costMultiplier: 1.5,
+            speed: undefined,
+            category: 'tools',
+            group: GROUPS.mine
+        },
+        {
+            name: 'Tunneling',
+            displayName: 'Improved Tunneling',
+            description: 'Research improved tunneling techniques',
+            initialOwned: 0,
+            baseCost: 10000,
+            costMultiplier: 1.75,
+            speed: undefined,
+            category: 'tools',
+            group: GROUPS.mine
+        },
+        {
+            name: 'Pickaxe',
+            displayName: 'Harden Pickaxe',
+            description: 'Mine resources faster with a hardened pickaxe',
+            initialOwned: 0,
+            baseCost: 10000,
+            costMultiplier: 2,
+            speed: undefined,
+            category: 'tools',
+            group: GROUPS.mine
+        },
+        // Land
+        {
+            name: 'Clay Mine Tile',
+            tile: true,
+            description: 'Claim a tile of land to dig for clay',
+            initialOwned: 0,
+            baseCost: 1500,
+            costMultiplier: 1.25,
+            speed: undefined,
+            category: 'tiles',
+            group: GROUPS.mine,
+            resourceCosts: {
+                [RESOURCE_TYPES.wood]: 25
+            },
+            onBuy(app) {
+                app.land.push(new MineTile(app, RESOURCE_TYPES.clay))
+            }
+        },
+        {
+            name: 'Metal Mine Tile',
+            tile: true,
+            description: 'Claim a tile of land to dig for metal',
+            initialOwned: 0,
+            baseCost: 2000,
+            costMultiplier: 1.25,
+            speed: undefined,
+            category: 'tiles',
+            group: GROUPS.mine,
+            resourceCosts: {
+                [RESOURCE_TYPES.wood]: 50
+            },
+            onBuy(app) {
+                app.land.push(new MineTile(app, RESOURCE_TYPES.metal))
+            }
+        },
+        {
+            name: 'Diamond Mine Tile',
+            tile: true,
+            description: 'Claim a tile of land to dig for diamonds',
+            initialOwned: 0,
+            baseCost: 5000,
+            costMultiplier: 1.25,
+            speed: undefined,
+            category: 'tiles',
+            group: GROUPS.mine,
+            resourceCosts: {
+                [RESOURCE_TYPES.wood]: 100
+            },
+            onBuy(app) {
+                app.land.push(new MineTile(app, RESOURCE_TYPES.diamond))
+            }
+        },
+        // Storage
+        {
+            name: 'Clay Storage',
+            displayName: 'Clay Pot',
+            description: 'Increase the amount of clay you can store',
+            initialOwned: 1,
+            baseCost: 5000,
+            costMultiplier: 1.5,
+            speed: undefined,
+            category: 'storage',
+            group: GROUPS.mine,
+            onBuy(app) {
+                app.resources.clay.storage += 1
+            }
+        },
+        {
+            name: 'Metal Storage',
+            displayName: 'Metal Crate',
+            description: 'Increase the amount of metal you can store',
+            initialOwned: 1,
+            baseCost: 5000,
+            costMultiplier: 2,
+            speed: undefined,
+            category: 'storage',
+            group: GROUPS.mine,
+            onBuy(app) {
+                app.resources.metal.storage += 1
+            }
+        },
+        {
+            name: 'Diamond Storage',
+            displayName: 'Diamond Box',
+            description: 'Increase the amount of diamonds you can store',
+            initialOwned: 1,
+            baseCost: 12_500,
+            costMultiplier: 2,
+            speed: undefined,
+            category: 'storage',
+            group: GROUPS.mine,
+            onBuy(app) {
+                app.resources.diamond.storage += 1
+            }
+        },
+        // Automation
+        {
+            name: 'Resource Miner',
+            description: 'Automatically mine resources',
+            initialOwned: 0,
+            baseCost: 5_000,
+            costMultiplier: 1.2,
+            speed: 1,
+            category: 'automation',
+            group: GROUPS.mine
+        },
+        {
+            name: 'Tunneler',
+            description: 'Automatically dig tunnels through rocks while building support beams',
+            initialOwned: 0,
+            baseCost: 12000,
+            costMultiplier: 1.2,
+            speed: 1,
+            category: 'automation',
+            group: GROUPS.mine
+        },
+        {
+            name: 'Auto Shoveler',
+            displayName: 'Auto Mine Maker',
+            description:
+                'Automatically dig rocks to make an opening for a mine shaft. Probably not the wisest investment',
+            initialOwned: 0,
+            baseCost: 14000,
+            costMultiplier: 1.2,
+            speed: 1,
+            category: 'automation',
+            group: GROUPS.mine
+        },
+        {
+            name: 'Metal Seller',
+            description: 'Automatically sell metal',
+            initialOwned: 0,
+            baseCost: 15_000,
+            costMultiplier: 1.2,
+            speed: 1 / 60,
+            category: 'automation',
+            group: GROUPS.mine
+        },
+        {
+            name: 'Metal Reclaimer',
+            displayName: 'Metal Detector',
+            description: 'Send out a metal detector to find lost metal in your mine',
+            initialOwned: 0,
+            baseCost: 20_000,
+            costMultiplier: 1.2,
+            speed: 1 / 120,
+            category: 'automation',
+            group: GROUPS.mine
+        },
+        {
+            name: 'Diamond Seller',
+            description: 'Automatically sell diamonds',
+            initialOwned: 0,
+            baseCost: 20_000,
+            costMultiplier: 1.2,
+            speed: 1 / 180,
+            category: 'automation',
+            group: GROUPS.mine
+        },
+        {
+            name: 'Diamond Reclaimer',
+            displayName: 'Mine Magpie',
+            description:
+                'Send a magpie into your caves to find the diamonds you haphazardly dropped all over the place',
+            initialOwned: 0,
+            baseCost: 50_000,
+            costMultiplier: 1.2,
+            speed: 1 / 240,
+            category: 'automation',
+            group: GROUPS.mine
+        },
+        // Special upgrades
+        {
+            name: 'Diamond Marketing 1',
+            displayName: 'Diamond Polishing',
+            description: 'Give diamonds a shiny polish and increase their price by 1.5x',
+            initialOwned: 0,
+            baseCost: 50_000,
+            category: 'special',
+            max: 1,
+            group: GROUPS.mine,
+            onBuy(app) {
+                app.resources.diamond.price *= 1.5
+            }
+        },
+        {
+            name: 'Diamond Marketing 2',
+            displayName: 'Diamond Shine',
+            description: 'Give diamonds an even shinier polish and increase their price by 2x',
+            initialOwned: 0,
+            baseCost: 150_000,
+            category: 'special',
+            max: 1,
+            group: GROUPS.mine,
+            onBuy(app) {
+                app.resources.diamond.price *= 2
+            }
+        }
+    ]
 }

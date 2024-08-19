@@ -1,5 +1,5 @@
 import { Automator } from './Automator.js'
-import { FOREST_TILE_TYPES, TILE_TYPES } from './consts.js'
+import { EXTRA_SEED_CHANCE_MULTIPLIER, FOREST_TILE_TYPES, GROUPS, TILE_TYPES } from './consts.js'
 import Tile from './Tile.js'
 import { isLucky } from './utils.js'
 
@@ -79,19 +79,19 @@ export class ForestTile extends Tile {
             let woodGains = TREE_WOOD_GAINS_BASE * woodGainM
             this.app.resources.wood.gain(woodGains)
             this.app.resources.seed.gain(1)
-            this.app.treesChopped += 1
+            this.app.stats.treesChopped += 1
             let msg = ''
             // If lucky, get an extra seed
             if (isLucky(ForestTile.luckySeedChance)) {
                 msg += 'Lucky! Got an extra seed! '
                 this.app.resources.seed.gain(1)
-                this.app.luckySeeds += 1
+                this.app.stats.luckySeeds += 1
             }
             // If super lucky, automatically plant a seed
             if (isLucky(TREE_SELF_SEED_CHANCE)) {
                 msg += 'Super lucky! Another tree is already growing here!'
                 this.age = 0
-                this.app.luckyTrees += 1
+                this.app.stats.luckyTrees += 1
             } else {
                 this.reset()
             }
@@ -159,52 +159,277 @@ export class ForestTile extends Tile {
     get isFullyGrownTree() {
         return this.type === FOREST_TILE_TYPES.tree && this.stage === TREE_GROWTH_STAGES.length - 1
     }
-    static getAutomators(app) {
-        return [
-            new Automator('Auto Digger', () => {
-                const tile = /** @type {ForestTile[]} */ (app.forestLand).find(
-                    tile => tile.type === FOREST_TILE_TYPES.empty
-                )
-                if (tile) {
-                    tile.dig()
-                }
-            }),
-            new Automator('Auto Seeder', () => {
-                const tile = /** @type {ForestTile[]} */ (app.forestLand).find(
-                    tile => tile.type === FOREST_TILE_TYPES.hole
-                )
-                if (tile) {
-                    tile.plant()
-                }
-            }),
-            new Automator('Auto Chopper', () => {
-                const fullyGrownTrees = /** @type {ForestTile[]} */ (app.forestLand).filter(
-                    tile => tile.isFullyGrownTree
-                )
-                const maxChopped = Math.max(...fullyGrownTrees.map(tile => tile.progress))
-                const tile = fullyGrownTrees.find(tile => tile.progress === maxChopped)
-                if (tile) {
-                    tile.chop()
-                }
-            }),
-            new Automator('Wood Seller', () => {
-                app.sellResource(app.resources.wood, 1)
-            }),
-            new Automator('Wood Reclaimer', () => {
-                app.resources.wood.reclaim(1)
-            }),
-            new Automator('Seed Seller', () => {
-                // Determine excess seeds: each tree counts as 1 seed
-                // So if forestLand has 4 tiles and 2 have trees and we have 3 seeds, we have 1 excess seed
-                const treeTiles = app.forestLand.filter(tile => tile.type === FOREST_TILE_TYPES.tree)
-                const excessSeeds = app.resources.seed.owned + treeTiles.length - app.forestLand.length
-                if (excessSeeds > 0) {
-                    app.sellResource(app.resources.seed, 1)
-                }
-            }),
-            new Automator('Seed Reclaimer', () => {
-                app.resources.seed.reclaim(1)
-            })
-        ]
-    }
+    static automators = [
+        new Automator('Auto Digger', app => {
+            const tile = /** @type {ForestTile[]} */ (app.forestLand).find(
+                tile => tile.type === FOREST_TILE_TYPES.empty
+            )
+            if (tile) {
+                tile.dig()
+            }
+        }),
+        new Automator('Auto Seeder', app => {
+            const tile = /** @type {ForestTile[]} */ (app.forestLand).find(tile => tile.type === FOREST_TILE_TYPES.hole)
+            if (tile) {
+                tile.plant()
+            }
+        }),
+        new Automator('Auto Chopper', app => {
+            const fullyGrownTrees = /** @type {ForestTile[]} */ (app.forestLand).filter(tile => tile.isFullyGrownTree)
+            const maxChopped = Math.max(...fullyGrownTrees.map(tile => tile.progress))
+            const tile = fullyGrownTrees.find(tile => tile.progress === maxChopped)
+            if (tile) {
+                tile.chop()
+            }
+        }),
+        new Automator('Wood Seller', app => {
+            app.sellResource(app.resources.wood, 1)
+        }),
+        new Automator('Wood Reclaimer', app => {
+            app.resources.wood.reclaim(1)
+        }),
+        new Automator('Seed Seller', app => {
+            // Determine excess seeds: each tree counts as 1 seed
+            // So if forestLand has 4 tiles and 2 have trees and we have 3 seeds, we have 1 excess seed
+            const treeTiles = app.forestLand.filter(tile => tile.type === FOREST_TILE_TYPES.tree)
+            const excessSeeds = app.resources.seed.owned + treeTiles.length - app.forestLand.length
+            if (excessSeeds > 0) {
+                app.sellResource(app.resources.seed, 1)
+            }
+        }),
+        new Automator('Seed Reclaimer', app => {
+            app.resources.seed.reclaim(1)
+        })
+    ]
+
+    static upgrades = [
+        {
+            name: 'Forest Tile',
+            tile: true,
+            description: 'Claim a tile of land to grow trees on',
+            initialOwned: 1,
+            baseCost: 100,
+            costMultiplier: 1.2,
+            speed: undefined,
+            category: 'tiles',
+            group: GROUPS.forest,
+            onBuy(app) {
+                app.land.push(new ForestTile(app))
+            }
+        },
+        {
+            name: 'Axe',
+            displayName: 'Sharpen Axe',
+            description: 'Sharpen your axe to chop trees faster',
+            initialOwned: 0,
+            baseCost: 100,
+            costMultiplier: 1.5,
+            speed: undefined,
+            category: 'tools',
+            group: GROUPS.forest
+        },
+        {
+            name: 'Fertilizer',
+            displayName: 'Fertilizer',
+            description: 'Fertilizer to speed up tree growth',
+            initialOwned: 0,
+            baseCost: 100,
+            costMultiplier: 2,
+            speed: undefined,
+            category: 'tools',
+            group: GROUPS.forest
+        },
+        {
+            name: 'Wood Storage',
+            description: 'Increase the amount of wood you can store',
+            initialOwned: 1,
+            baseCost: 1000,
+            costMultiplier: 1.2,
+            speed: undefined,
+            category: 'storage',
+            group: GROUPS.forest,
+            onBuy(app) {
+                app.resources.wood.storage += 1
+            }
+        },
+        {
+            name: 'Seed Storage',
+            displayName: 'Seed Bottle',
+            description: 'Increase the amount of seeds you can store',
+            initialOwned: 1,
+            baseCost: 1500,
+            costMultiplier: 1.2,
+            speed: undefined,
+            category: 'storage',
+            group: GROUPS.forest,
+            onBuy(app) {
+                app.resources.seed.storage += 1
+            }
+        },
+        // Automation
+        {
+            name: 'Auto Digger',
+            description: 'Automatically dig holes on empty land',
+            initialOwned: 0,
+            baseCost: 800,
+            costMultiplier: 1.2,
+            speed: 0.75,
+            category: 'automation',
+            group: GROUPS.forest
+        },
+        {
+            name: 'Auto Seeder',
+            description: 'Automatically plant seeds in dug holes',
+            initialOwned: 0,
+            baseCost: 1000,
+            costMultiplier: 1.2,
+            speed: 1 / 3,
+            category: 'automation',
+            group: GROUPS.forest
+        },
+        {
+            name: 'Auto Chopper',
+            description: 'Automatically chop down trees',
+            initialOwned: 0,
+            baseCost: 1250,
+            costMultiplier: 1.5,
+            speed: 2 / 3,
+            category: 'automation',
+            group: GROUPS.forest
+        },
+        {
+            name: 'Wood Seller',
+            description: 'Automatically sell wood',
+            initialOwned: 0,
+            baseCost: 2500,
+            costMultiplier: 1.2,
+            speed: 1 / 2,
+            category: 'automation',
+            group: GROUPS.forest
+        },
+        {
+            name: 'Seed Seller',
+            description: 'Automatically sell excess seeds',
+            initialOwned: 0,
+            baseCost: 3000,
+            costMultiplier: 1.2,
+            speed: 1 / 8,
+            category: 'automation',
+            group: GROUPS.forest
+        },
+        {
+            name: 'Wood Reclaimer',
+            description: 'Collect lost wood',
+            initialOwned: 0,
+            baseCost: 2500,
+            costMultiplier: 1.2,
+            speed: 1 / 4,
+            category: 'automation',
+            group: GROUPS.forest
+        },
+        {
+            name: 'Seed Reclaimer',
+            displayName: 'Seed Scouter',
+            description: 'Send out a scout to find lost seeds all over your forest land',
+            initialOwned: 0,
+            baseCost: 3500,
+            costMultiplier: 1.2,
+            speed: 1 / 30,
+            category: 'automation',
+            group: GROUPS.forest
+        },
+        // Special upgrades
+        {
+            name: 'Wooden Finger',
+            displayName: 'Wooden Finger',
+            description: 'Sell 10 times the amount of wood with one click',
+            initialOwned: 0,
+            baseCost: 200,
+            costMultiplier: 5,
+            category: 'special',
+            max: 2,
+            group: GROUPS.forest,
+            onBuy(app) {
+                app.resources.wood.sellNum *= 10
+            }
+        },
+        {
+            name: 'Wood Marketing 1',
+            displayName: 'Wood Marketing 1',
+            description: 'Increase wood price by 2x',
+            initialOwned: 0,
+            baseCost: 1000,
+            category: 'special',
+            max: 1,
+            group: GROUPS.forest,
+            onBuy(app) {
+                app.resources.wood.price *= 2
+            }
+        },
+        {
+            name: 'Seed Luck 1',
+            displayName: 'Clover Seed',
+            description: 'Increase chance of getting an extra seed by 2x',
+            initialOwned: 0,
+            baseCost: 2000,
+            category: 'special',
+            max: 1,
+            group: GROUPS.forest,
+            onBuy() {
+                ForestTile.luckySeedChance *= EXTRA_SEED_CHANCE_MULTIPLIER
+            }
+        },
+        {
+            name: 'Seed Marketing 1',
+            displayName: 'Seed Marketing 1',
+            description: 'Increase seed price by 2x',
+            initialOwned: 0,
+            baseCost: 2000,
+            category: 'special',
+            max: 1,
+            group: GROUPS.forest,
+            onBuy(app) {
+                app.resources.seed.price *= 2
+            }
+        },
+        {
+            name: 'Seed Marketing 2',
+            displayName: 'Seed Marketing 2',
+            description: 'Increase seed price by 3x',
+            initialOwned: 0,
+            baseCost: 10_000,
+            category: 'special',
+            max: 1,
+            group: GROUPS.forest,
+            onBuy(app) {
+                app.resources.seed.price *= 3
+            }
+        },
+        {
+            name: 'Wood Marketing 2',
+            displayName: 'Wood Marketing 2',
+            description: 'Increase wood price by 2x',
+            initialOwned: 0,
+            baseCost: 30_000,
+            category: 'special',
+            max: 1,
+            group: GROUPS.forest,
+            onBuy(app) {
+                app.resources.wood.price *= 2
+            }
+        },
+        {
+            name: 'Wood Marketing 3',
+            displayName: 'Wood Marketing 3',
+            description: 'Increase wood price by 2x',
+            initialOwned: 0,
+            baseCost: 100_000,
+            category: 'special',
+            max: 1,
+            group: GROUPS.forest,
+            onBuy(app) {
+                app.resources.wood.price *= 2
+            }
+        }
+    ]
 }

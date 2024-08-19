@@ -12,7 +12,7 @@
 
 <body class="dark">
     <div id="app" class="m-3" v-cloak>
-        <h1 @dblclick="DEBUG = !DEBUG">Supply Chain Prototype</h1>
+        <h5 @dblclick="DEBUG = !DEBUG">Supply Chain Prototype</h5>
         <div class="row">
             <div class="message" v-if="message" :style="messageStyle">{{ message }}</div>
             <div class="col-6">
@@ -76,22 +76,31 @@
                         Time played: {{ num(timeSinceStart) }}
                     </div>
                     <div>
-                        Trees chopped: {{ num(treesChopped) }}
+                        Trees chopped: {{ num(stats.treesChopped) }}
                     </div>
-                    <div v-if="luckySeeds > 0">
-                        Lucky seeds: {{ num(luckySeeds) }}
+                    <div v-if="stats.luckySeeds > 0">
+                        Lucky seeds: {{ num(stats.luckySeeds) }}
                     </div>
-                    <div v-if="luckyTrees > 0">
-                        Lucky trees: {{ num(luckyTrees) }}
+                    <div v-if="stats.luckyTrees > 0">
+                        Lucky trees: {{ num(stats.luckyTrees) }}
                     </div>
-                    <div v-if="minesOwned > 0">
-                        Mines opened: {{ num(minesOwned) }}
+                    <div v-if="stats.minesOwned > 0">
+                        Mines opened: {{ num(stats.minesOwned) }}
                     </div>
-                    <div v-if="resourcesMined > 0">
-                        Resources mined: {{ num(resourcesMined) }}
+                    <div v-if="stats.resourcesMined > 0">
+                        Resources mined: {{ num(stats.resourcesMined) }}
                     </div>
-                    <div v-if="tunnelsDug > 0">
-                        Tunnels dug: {{ num(tunnelsDug) }}
+                    <div v-if="stats.tunnelsDug > 0">
+                        Tunnels dug: {{ num(stats.tunnelsDug) }}
+                    </div>
+                    <div v-if="stats.fishCaught > 0">
+                        Fish caught: {{ num(stats.fishCaught) }}
+                    </div>
+                    <div v-if="stats.fishMissed > 0">
+                        Fish missed: {{ num(stats.fishMissed) }}
+                    </div>
+                    <div v-if="stats.fishRarities > 0">
+                        Rare pond finds: {{ num(stats.fishRarities) }}
                     </div>
                 </div>
                 <!-- Earnings report -->
@@ -126,7 +135,7 @@
                         </tr>
                         <tr>
                             <td colspan="5"><strong>Money spent</strong></td>
-                            <td class="text-right num"><strong>{{ numf(moneySpent) }}</strong></td>
+                            <td class="text-right num"><strong>{{ numf(stats.moneySpent) }}</strong></td>
                         </tr>
                         <tr>
                             <td colspan="5"><strong>Total profit</strong></td>
@@ -136,6 +145,9 @@
                             }"><strong>$ {{ num(totalProfit) }}</strong></td>
                         </tr>
                     </table>
+                </div>
+                <div class="hover-opacity" style="margin-top:200px">
+                    <button @click="resetGame" class="btn btn-sm btn-danger">Reset game</button>
                 </div>
             </div>
             <div class="col-6">
@@ -149,7 +161,11 @@
                                 <span class="can-blur" :class="{blur: item.blurred}">{{ item.displayName ?? item.name
                                     }}</span>
                                 <sup v-if="item.max !== 1 && item.owned > 0"></sup><br>
-                                <small>$ {{ num(item.cost) }}</small>
+                                <small>
+                                    $ {{ num(item.cost) }}
+                                    <span v-for="r in item.resourcesNeeded" class="ml-1">{{ r.icon }}{{ num(r.amount)
+                                        }}</span>
+                                </small>
                                 <span class="num" v-if="item.owned > 0">{{ num(item.owned) }}</span>
                                 <span class="group-icon">{{item.blurred ? '❔' : item.groupIcon}}</span>
                             </button>

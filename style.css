@@ -77,6 +77,13 @@ button:disabled {
 .can-blur {
     transition: filter 0.5s;
 }
+.hover-opacity {
+    transition: opacity 0.5s;
+    opacity: 0.25;
+}
+.hover-opacity:hover {
+    opacity: 1;
+}
 
 .land {
     user-select: none;

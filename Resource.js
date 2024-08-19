@@ -66,4 +66,31 @@ export class Resource {
             this.owned += toReclaim
         }
     }
+    getSaveData() {
+        return {
+            price: this.price,
+            storage: this.storage,
+            sellNum: this.sellNum,
+            owned: this.owned,
+            totalOwned: this.totalOwned,
+            lost: this.lost,
+            sold: this.sold,
+            incurred: this.incurred,
+            earnings: this.earnings
+        }
+    }
+    loadSaveData(data) {
+        if (!data) {
+            return
+        }
+        this.price = data.price
+        this.storage = data.storage
+        this.sellNum = data.sellNum
+        this.owned = data.owned
+        this.totalOwned = data.totalOwned
+        this.lost = data.lost
+        this.sold = data.sold
+        this.incurred = data.incurred
+        this.earnings = data.earnings
+    }
 }

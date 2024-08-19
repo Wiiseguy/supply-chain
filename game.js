@@ -8,7 +8,6 @@ import {
     CLAY_STORAGE_SIZE,
     DIAMOND_PRICE_BASE,
     DIAMONDS_STORAGE_SIZE,
-    EXTRA_SEED_CHANCE_MULTIPLIER,
     FOREST_TILE_TYPES,
     GROUP_ICONS,
     GROUP_TITLES,
@@ -29,6 +28,7 @@ globalThis.haltAnimation = false
 
 const DEBUG = false
 const FPS = 30
+const SAVE_INTERVAL = 30 // Save every 60 seconds
 
 const TILE_SIZE = 64
 
@@ -45,6 +45,7 @@ const app = Vue.createApp({
             DEBUG,
             UPGRADES: null,
             UPGRADES_INDEX: null,
+            TILE_REVIVERS: {},
 
             now: Date.now(),
             startTime: Date.now(),
@@ -65,13 +66,19 @@ const app = Vue.createApp({
             money: INITIAL_MONEY,
 
             // Stats
-            moneySpent: 0,
-            treesChopped: 0,
-            luckySeeds: 0,
-            luckyTrees: 0,
-            resourcesMined: 0,
-            tunnelsDug: 0,
-            minesOwned: 0
+            stats: {
+                started: false,
+                moneySpent: 0,
+                treesChopped: 0,
+                luckySeeds: 0,
+                luckyTrees: 0,
+                resourcesMined: 0,
+                tunnelsDug: 0,
+                minesOwned: 0,
+                fishCaught: 0,
+                fishMissed: 0,
+                fishRarities: 0
+            }
         }
     },
     created() {
@@ -104,9 +111,9 @@ const app = Vue.createApp({
         }
 
         // Initialize Tile types
-        this.registerTile(ForestTile)
-        this.registerTile(MineTile)
-        this.registerTile(PondTile)
+        this.registerTile(ForestTile, TILE_TYPES.forest)
+        this.registerTile(MineTile, TILE_TYPES.mine)
+        this.registerTile(PondTile, TILE_TYPES.pond)
 
         // Initialize bought upgrades obj
         this.UPGRADES.forEach(upgrade => {
@@ -130,12 +137,27 @@ const app = Vue.createApp({
                 console.error(`Automator for upgrade ${upgrade.name} is missing!`)
             }
         })
+
+        // Load save data
+        this.loadGame()
     },
     mounted() {
-        this.showMessage(
-            `Welcome to your land! You start out with one tile of forest land and ${INITIAL_SEEDS} seeds. Good luck!`
-        )
+        if (!this.stats.started) {
+            this.showMessage(
+                `Welcome to your land! You start out with one tile of forest land and ${INITIAL_SEEDS} seeds. Good luck!`
+            )
+            this.stats.started = true
+        }
         this.startGameLoop()
+
+        // Bind CTRL+S to saveGame
+        document.addEventListener('keydown', e => {
+            if (e.key === 's' && e.ctrlKey) {
+                e.preventDefault()
+                this.saveGame()
+                this.showMessage('Game saved!')
+            }
+        })
     },
     methods: {
         num(n) {
@@ -153,6 +175,7 @@ const app = Vue.createApp({
         startGameLoop() {
             setInterval(this.gameLoop, 1000 / FPS)
             setInterval(this.perSecond, 1000)
+            setInterval(this.saveGame, SAVE_INTERVAL * 1000)
         },
         gameLoop() {
             const now = Date.now()
@@ -214,15 +237,16 @@ const app = Vue.createApp({
                     automator.speed = speed
                     while (automator.saturation >= 1) {
                         automator.saturation -= 1
-                        automator.logic()
+                        automator.logic(this)
                     }
                 }
             })
         },
-        registerTile(tileClass) {
-            let getAutomatorsFn = tileClass.getAutomators
-            if (getAutomatorsFn) {
-                this.automators.push(...getAutomatorsFn(this))
+        registerTile(tileClass, tileType) {
+            this.TILE_REVIVERS[tileType] = tileClass
+            let tileAutomators = tileClass.automators
+            if (tileAutomators) {
+                this.automators.push(...tileAutomators)
             }
             let upgrades = tileClass.upgrades
             if (upgrades) {
@@ -244,21 +268,22 @@ const app = Vue.createApp({
             let owned = this.boughtUpgrades[automator.upgradeName]
             const price = this.getUpgradeCostNum(upgrade, owned - 1)
             this.money += price
-            this.moneySpent -= price
+            this.stats.moneySpent -= price
             this.boughtUpgrades[automator.upgradeName] -= 1
-            console.log('Sold automator:', automator, 'for', price)
         },
         incur(money) {
             if (this.money < money) {
                 return false
             }
             this.money -= money
-            this.moneySpent += money
+            this.stats.moneySpent += money
             return true
         },
 
         clickTile(tileModel) {
-            console.log('Clicked tile:', JSON.parse(JSON.stringify(tileModel)))
+            if (this.DEBUG) {
+                console.log('Clicked tile:', JSON.parse(JSON.stringify(tileModel)))
+            }
             const tile = tileModel.tile
             if (!tile) {
                 this.showMessage('Buy a tile to claim this land!')
@@ -321,74 +346,24 @@ const app = Vue.createApp({
             return upgrade.baseCost * Math.pow(upgrade.costMultiplier, num - upgrade.initialOwned)
         },
         buyUpgrade(upgrade) {
+            if (!this.canBuyUpgrade(upgrade)) {
+                return false
+            }
             if (upgrade.max && this.boughtUpgrades[upgrade.name] >= upgrade.max) {
                 return false
             }
             let cost = this.getUpgradeCost(upgrade)
-            if (!this.incur(cost)) {
-                return
+            this.incur(cost)
+
+            if (upgrade.resourceCosts) {
+                // Incur for each resource cost
+                for (let [resourceType, amount] of Object.entries(upgrade.resourceCosts)) {
+                    this.resources[resourceType].incur(amount)
+                }
             }
+
             this.boughtUpgrades[upgrade.name] += 1
 
-            switch (upgrade.name) {
-                // TODO: Move to respective tile classes
-                case 'Forest Tile':
-                    this.land.push(new ForestTile(this))
-                    break
-                case 'Diamond Mine Tile':
-                    this.land.push(new MineTile(this, RESOURCE_TYPES.diamond))
-                    break
-                case 'Metal Mine Tile':
-                    this.land.push(new MineTile(this, RESOURCE_TYPES.metal))
-                    break
-                case 'Clay Mine Tile':
-                    this.land.push(new MineTile(this, RESOURCE_TYPES.clay))
-                    break
-                // Storage
-                case 'Wood Storage':
-                    this.resources.wood.storage += 1
-                    break
-                case 'Seed Storage':
-                    this.resources.seed.storage += 1
-                    break
-                case 'Diamond Storage':
-                    this.resources.diamond.storage += 1
-                    break
-                case 'Metal Storage':
-                    this.resources.metal.storage += 1
-                    break
-                case 'Clay Storage':
-                    this.resources.clay.storage += 1
-                    break
-                // Specials
-                case 'Wooden Finger':
-                    this.resources.wood.sellNum *= 10
-                    break
-                case 'Wood Marketing 1':
-                    this.resources.wood.price *= 2
-                    break
-                case 'Seed Luck 1':
-                    ForestTile.luckySeedChance *= EXTRA_SEED_CHANCE_MULTIPLIER
-                    break
-                case 'Seed Marketing 1':
-                    this.resources.seed.price *= 2
-                    break
-                case 'Seed Marketing 2':
-                    this.resources.seed.price *= 3
-                    break
-                case 'Wood Marketing 2':
-                    this.resources.wood.price *= 2
-                    break
-                case 'Wood Marketing 3':
-                    this.resources.wood.price *= 2
-                    break
-                case 'Diamond Marketing 1':
-                    this.resources.diamond.price *= 1.5
-                    break
-                case 'Diamond Marketing 2':
-                    this.resources.diamond.price *= 2
-                    break
-            }
             // If the upgrade has an onBuy function, call it
             if (upgrade.onBuy) {
                 upgrade.onBuy(this)
@@ -404,13 +379,73 @@ const app = Vue.createApp({
             if (upgrade.tile && !this.hasRoomForTile()) {
                 return false
             }
-            if (upgrade.canBuy) {
-                return upgrade.canBuy(this)
+            if (upgrade.resourceCosts) {
+                for (let [resourceType, amount] of Object.entries(upgrade.resourceCosts)) {
+                    if (this.resources[resourceType].owned < amount) {
+                        return false
+                    }
+                }
             }
             return this.money >= this.getUpgradeCost(upgrade)
         },
         toggleAutomator(automator) {
             automator.enabled = !automator.enabled
+        },
+
+        saveGame() {
+            const saveData = {
+                money: this.money,
+                resources: {},
+                boughtUpgrades: this.boughtUpgrades,
+                land: this.land,
+                startTime: this.startTime,
+                stats: this.stats
+            }
+            Object.values(this.resources).forEach(resource => {
+                saveData.resources[resource.name] = resource.getSaveData()
+            })
+            if (this.DEBUG) {
+                console.log('Saving game:', saveData)
+            }
+            localStorage.setItem('saveData', JSON.stringify(saveData))
+        },
+        loadGame() {
+            try {
+                const saveData = JSON.parse(localStorage.getItem('saveData'))
+                if (!saveData) {
+                    return
+                }
+                this.money = saveData.money
+                Object.values(this.resources).forEach(resource => {
+                    resource.loadSaveData(saveData.resources[resource.name])
+                })
+                this.land.length = 0
+                saveData.land.forEach(tileData => {
+                    const tileClass = this.TILE_REVIVERS[tileData.tileType]
+                    if (!tileClass) {
+                        console.error('No reviver found for tile type:', tileData.tileType)
+                        return
+                    }
+                    const tileInstance = new tileClass(this)
+                    // Set properties from tileData into tileInstance
+                    Object.assign(tileInstance, tileData)
+                    this.land.push(tileInstance)
+                })
+                Object.assign(this.boughtUpgrades, saveData.boughtUpgrades)
+                Object.assign(this.stats, saveData.stats)
+                this.startTime = new Date(saveData.startTime)
+            } catch (e) {
+                // Clear corrupted save data
+                localStorage.removeItem('saveData')
+                console.error('Error loading save data:', e)
+                this.showMessage('Error loading save data. Save data cleared.')
+            }
+        },
+        resetGame() {
+            if (confirm('Are you sure you want to reset the game?')) {
+                localStorage.removeItem('saveData')
+                location.reload()
+            }
         }
     },
     computed: {
@@ -491,7 +526,7 @@ const app = Vue.createApp({
         },
         totalProfit() {
             /** @ts-ignore */
-            return this.totalResourceEarnings - this.moneySpent
+            return this.totalResourceEarnings - this.stats.moneySpent
         },
 
         perS() {
@@ -542,6 +577,13 @@ const app = Vue.createApp({
                         blurred: !this.unblurredUpgrades.includes(upgrade.name),
                         canBuy: this.canBuyUpgrade(upgrade),
                         owned: this.boughtUpgrades[upgrade.name] || 0,
+                        resourcesNeeded: Object.entries(upgrade.resourceCosts || {}).map(([key, amount]) => {
+                            return {
+                                type: key,
+                                amount,
+                                icon: this.resources[key].icon
+                            }
+                        }),
                         groupIcon: GROUP_ICONS[upgrade.group]
                     }
                 })
