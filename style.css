@@ -61,6 +61,27 @@ button:disabled {
     font-family: monospace;
 }
 
+.top-left {
+    position: absolute;
+    top: 0;
+    left: 0;
+}
+.top-right {
+    position: absolute;
+    top: 0;
+    right: 0;
+}
+.bottom-left {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+}
+.bottom-right {
+    position: absolute;
+    bottom: 0;
+    right: 0;
+}
+
 .message {
     background-color: rgba(0, 0, 0, 0.5);
     color: white;
@@ -111,6 +132,12 @@ button:disabled {
         right: 4px;
         text-shadow: 0 0 1px rgba(0, 0, 0, 0.5);
     }
+    .mini-icon {
+        font-size: 0.25em;
+        opacity: 0.65;
+        position: absolute;
+        text-shadow: 0 0 1px rgba(0, 0, 0, 0.5);
+    }
 }
 .progress {
     position: absolute;
@@ -154,6 +181,14 @@ button:disabled {
     }
 }
 .grow-bounce-target {
+    display: inline-block;
+}
+.bounce-down {
+    .bounce-down-target {
+        animation: bounceDown 0.2s 2;
+    }
+}
+.bounce-down-target {
     display: inline-block;
 }
 
@@ -228,6 +263,19 @@ button:disabled {
     }
     100% {
         transform: scale(1);
+    }
+}
+
+/* Bounce down animation, to simulate fish pulling the bobber */
+@keyframes bounceDown {
+    0% {
+        transform: translateY(0);
+    }
+    50% {
+        transform: translateY(0.5em);
+    }
+    100% {
+        transform: translateY(0);
     }
 }
 

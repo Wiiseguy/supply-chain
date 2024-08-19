@@ -1,5 +1,5 @@
 import { Automator } from './Automator.js'
-import { GROUP_ICONS, GROUPS, RESOURCE_TYPES, TILE_TYPES } from './consts.js'
+import { CATEGORIES, GROUP_ICONS, GROUPS, RESOURCE_TYPES, TILE_TYPES } from './consts.js'
 import Tile from './Tile.js'
 import { isLucky } from './utils.js'
 
@@ -10,7 +10,7 @@ import { isLucky } from './utils.js'
 // If you miss it, the fish will escape and you have to cast the pole with a new bait.
 // Lure can be seeds? Or worms? Or bread? Bread may work, but then the pre-requisite for ponds is a farm.
 const FISHING_TIME_BASE = 90 // seconds
-const FISHING_TIME_VARIANCE = 60 // seconds - bite time is between (BASE - VARIANCE) and BASE + VARIANCE)
+const FISHING_TIME_VARIANCE = 30 // seconds - bite time is between (BASE - VARIANCE) and BASE + VARIANCE)
 const FISHING_WIGGLE_TIME = 30 // seconds
 const FISHING_WIGGLE_VARIANCE = 5 // seconds
 const FISH = ['🐟', '🐠', '🦐', '🦞', '🦀', '🐡', '🐬', '🦈', '🐳', '🐋']
@@ -60,9 +60,9 @@ export class PondTile extends Tile {
         }
         if (this.wiggleTime > 0) {
             this.wiggleSaturation += elapsed
-            if (this.wiggleSaturation > 1) {
+            if (this.wiggleSaturation > 2) {
                 this.wiggleSaturation = 0
-                this.animateWiggle()
+                this.animateBounceDown()
             }
             this.wiggleTime -= elapsed
             if (this.wiggleTime <= 0) {
@@ -162,7 +162,7 @@ export class PondTile extends Tile {
             baseCost: 250,
             costMultiplier: 1.5,
             speed: undefined,
-            category: 'tiles',
+            category: CATEGORIES.tiles,
             group: GROUPS.pond,
             resourceCosts: {
                 [RESOURCE_TYPES.wood]: 1
@@ -178,7 +178,7 @@ export class PondTile extends Tile {
             initialOwned: 1,
             baseCost: 2000,
             costMultiplier: 1.2,
-            category: 'storage',
+            category: CATEGORIES.storage,
             group: GROUPS.pond,
             onBuy(app) {
                 app.resources.fish.storage += 1
@@ -191,8 +191,7 @@ export class PondTile extends Tile {
             baseCost: 7000,
             costMultiplier: 1.5,
             speed: 1 / 8,
-            // TODO: why aren't categories constants?
-            category: 'automation',
+            category: CATEGORIES.automation,
             group: GROUPS.forest
         },
         {
@@ -202,7 +201,7 @@ export class PondTile extends Tile {
             baseCost: 8000,
             costMultiplier: 2,
             speed: 1 / FISHING_WIGGLE_TIME,
-            category: 'automation',
+            category: CATEGORIES.automation,
             group: GROUPS.pond
         },
         {
@@ -212,7 +211,7 @@ export class PondTile extends Tile {
             baseCost: 7500,
             costMultiplier: 1.5,
             speed: 1 / 8,
-            category: 'automation',
+            category: CATEGORIES.automation,
             group: GROUPS.forest
         }
     ]

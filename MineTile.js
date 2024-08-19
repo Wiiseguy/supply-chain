@@ -1,7 +1,13 @@
 import { Automator } from './Automator.js'
-import { GROUPS, MINE_TILE_TYPES, RESOURCE_TYPES, TILE_TYPES } from './consts.js'
+import { CATEGORIES, GROUPS, RESOURCE_TYPES, TILE_TYPES } from './consts.js'
 import Tile from './Tile.js'
 import { isLucky, pick } from './utils.js'
+
+const MINE_TILE_TYPES = {
+    rock: 'rock',
+    tunnel: 'tunnel',
+    resource: 'resource'
+}
 
 // Mine stuff
 // Mines work different from forests, each stage has levels. The first stage has one level, the second has 3, the third has Infinite
@@ -169,6 +175,12 @@ export class MineTile extends Tile {
                 return 'Unknown mine tile'
         }
     }
+    get iconTopLeft() {
+        // Show the type of resource in the bottom right corner in the rock and tunnel stages
+        if (this.type === MINE_TILE_TYPES.rock || this.type === MINE_TILE_TYPES.tunnel) {
+            return MINE_RESOURCE_ICONS[this.subType]
+        }
+    }
     get excavatorPower() {
         return MINE_EXCAVATOR_POWER * (this.app.boughtUpgrades['Shovel'] + 1)
     }
@@ -229,7 +241,7 @@ export class MineTile extends Tile {
             baseCost: 10000,
             costMultiplier: 1.5,
             speed: undefined,
-            category: 'tools',
+            category: CATEGORIES.tools,
             group: GROUPS.mine
         },
         {
@@ -240,7 +252,7 @@ export class MineTile extends Tile {
             baseCost: 10000,
             costMultiplier: 1.75,
             speed: undefined,
-            category: 'tools',
+            category: CATEGORIES.tools,
             group: GROUPS.mine
         },
         {
@@ -251,7 +263,7 @@ export class MineTile extends Tile {
             baseCost: 10000,
             costMultiplier: 2,
             speed: undefined,
-            category: 'tools',
+            category: CATEGORIES.tools,
             group: GROUPS.mine
         },
         // Land
@@ -263,7 +275,7 @@ export class MineTile extends Tile {
             baseCost: 1500,
             costMultiplier: 1.25,
             speed: undefined,
-            category: 'tiles',
+            category: CATEGORIES.tiles,
             group: GROUPS.mine,
             resourceCosts: {
                 [RESOURCE_TYPES.wood]: 25
@@ -280,7 +292,7 @@ export class MineTile extends Tile {
             baseCost: 2000,
             costMultiplier: 1.25,
             speed: undefined,
-            category: 'tiles',
+            category: CATEGORIES.tiles,
             group: GROUPS.mine,
             resourceCosts: {
                 [RESOURCE_TYPES.wood]: 50
@@ -297,7 +309,7 @@ export class MineTile extends Tile {
             baseCost: 5000,
             costMultiplier: 1.25,
             speed: undefined,
-            category: 'tiles',
+            category: CATEGORIES.tiles,
             group: GROUPS.mine,
             resourceCosts: {
                 [RESOURCE_TYPES.wood]: 100,
@@ -316,7 +328,7 @@ export class MineTile extends Tile {
             baseCost: 5000,
             costMultiplier: 1.5,
             speed: undefined,
-            category: 'storage',
+            category: CATEGORIES.storage,
             group: GROUPS.mine,
             onBuy(app) {
                 app.resources.clay.storage += 1
@@ -330,7 +342,7 @@ export class MineTile extends Tile {
             baseCost: 5000,
             costMultiplier: 2,
             speed: undefined,
-            category: 'storage',
+            category: CATEGORIES.storage,
             group: GROUPS.mine,
             onBuy(app) {
                 app.resources.metal.storage += 1
@@ -344,7 +356,7 @@ export class MineTile extends Tile {
             baseCost: 12_500,
             costMultiplier: 2,
             speed: undefined,
-            category: 'storage',
+            category: CATEGORIES.storage,
             group: GROUPS.mine,
             onBuy(app) {
                 app.resources.diamond.storage += 1
@@ -358,7 +370,7 @@ export class MineTile extends Tile {
             baseCost: 5_000,
             costMultiplier: 1.2,
             speed: 1,
-            category: 'automation',
+            category: CATEGORIES.automation,
             group: GROUPS.mine
         },
         {
@@ -368,7 +380,7 @@ export class MineTile extends Tile {
             baseCost: 12000,
             costMultiplier: 1.2,
             speed: 1,
-            category: 'automation',
+            category: CATEGORIES.automation,
             group: GROUPS.mine
         },
         {
@@ -380,7 +392,7 @@ export class MineTile extends Tile {
             baseCost: 14000,
             costMultiplier: 1.2,
             speed: 1,
-            category: 'automation',
+            category: CATEGORIES.automation,
             group: GROUPS.mine
         },
         {
@@ -390,7 +402,7 @@ export class MineTile extends Tile {
             baseCost: 15_000,
             costMultiplier: 1.2,
             speed: 1 / 60,
-            category: 'automation',
+            category: CATEGORIES.automation,
             group: GROUPS.mine
         },
         {
@@ -401,7 +413,7 @@ export class MineTile extends Tile {
             baseCost: 20_000,
             costMultiplier: 1.2,
             speed: 1 / 120,
-            category: 'automation',
+            category: CATEGORIES.automation,
             group: GROUPS.mine
         },
         {
@@ -411,7 +423,7 @@ export class MineTile extends Tile {
             baseCost: 20_000,
             costMultiplier: 1.2,
             speed: 1 / 180,
-            category: 'automation',
+            category: CATEGORIES.automation,
             group: GROUPS.mine
         },
         {
@@ -423,7 +435,7 @@ export class MineTile extends Tile {
             baseCost: 50_000,
             costMultiplier: 1.2,
             speed: 1 / 240,
-            category: 'automation',
+            category: CATEGORIES.automation,
             group: GROUPS.mine
         },
         // Special upgrades
@@ -433,7 +445,7 @@ export class MineTile extends Tile {
             description: 'Give diamonds a shiny polish and increase their price by 1.5x',
             initialOwned: 0,
             baseCost: 50_000,
-            category: 'special',
+            category: CATEGORIES.special,
             max: 1,
             group: GROUPS.mine,
             onBuy(app) {
@@ -446,7 +458,7 @@ export class MineTile extends Tile {
             description: 'Give diamonds an even shinier polish and increase their price by 2x',
             initialOwned: 0,
             baseCost: 150_000,
-            category: 'special',
+            category: CATEGORIES.special,
             max: 1,
             group: GROUPS.mine,
             onBuy(app) {

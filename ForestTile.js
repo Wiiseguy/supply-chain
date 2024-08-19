@@ -1,7 +1,13 @@
 import { Automator } from './Automator.js'
-import { EXTRA_SEED_CHANCE_MULTIPLIER, FOREST_TILE_TYPES, GROUPS, TILE_TYPES } from './consts.js'
+import { CATEGORIES, EXTRA_SEED_CHANCE_MULTIPLIER, GROUPS, TILE_TYPES } from './consts.js'
 import Tile from './Tile.js'
 import { isLucky } from './utils.js'
+
+const FOREST_TILE_TYPES = {
+    empty: 'empty',
+    hole: 'hole',
+    tree: 'tree'
+}
 
 const TREE_SELF_SEED_CHANCE = 1 / 100
 const EXTRA_SEED_CHANCE_BASE = 1 / 10
@@ -123,6 +129,25 @@ export class ForestTile extends Tile {
         this.stage = 0
         this.stageP = 0
     }
+    getStyle(obj) {
+        obj = super.getStyle(obj)
+        switch (this.type) {
+            case FOREST_TILE_TYPES.hole:
+                obj.lineHeight = 1.5
+                break
+            case FOREST_TILE_TYPES.tree:
+                if (this.stage === 0) {
+                    // Extra small seedling
+                    obj.fontSizeM = 0.55
+                    obj.lineHeight = 3
+                } else if (!this.isFullyGrownTree) {
+                    obj.fontSizeM = 0.75
+                    obj.lineHeight = 1.8
+                }
+                break
+        }
+        return obj
+    }
     get icon() {
         switch (this.type) {
             case FOREST_TILE_TYPES.empty:
@@ -145,6 +170,14 @@ export class ForestTile extends Tile {
                 return `Tree - click to chop it down - the older the tree, the more wood you get`
             default:
                 return 'Unknown forest tile'
+        }
+    }
+    get health() {
+        switch (this.type) {
+            case FOREST_TILE_TYPES.tree:
+                return 1 - this.progress
+            default:
+                return null
         }
     }
     get digPower() {
@@ -211,7 +244,7 @@ export class ForestTile extends Tile {
             baseCost: 100,
             costMultiplier: 1.2,
             speed: undefined,
-            category: 'tiles',
+            category: CATEGORIES.tiles,
             group: GROUPS.forest,
             onBuy(app) {
                 app.land.push(new ForestTile(app))
@@ -225,7 +258,7 @@ export class ForestTile extends Tile {
             baseCost: 100,
             costMultiplier: 1.5,
             speed: undefined,
-            category: 'tools',
+            category: CATEGORIES.tools,
             group: GROUPS.forest
         },
         {
@@ -236,7 +269,7 @@ export class ForestTile extends Tile {
             baseCost: 100,
             costMultiplier: 2,
             speed: undefined,
-            category: 'tools',
+            category: CATEGORIES.tools,
             group: GROUPS.forest
         },
         {
@@ -246,7 +279,7 @@ export class ForestTile extends Tile {
             baseCost: 1000,
             costMultiplier: 1.2,
             speed: undefined,
-            category: 'storage',
+            category: CATEGORIES.storage,
             group: GROUPS.forest,
             onBuy(app) {
                 app.resources.wood.storage += 1
@@ -260,7 +293,7 @@ export class ForestTile extends Tile {
             baseCost: 1500,
             costMultiplier: 1.2,
             speed: undefined,
-            category: 'storage',
+            category: CATEGORIES.storage,
             group: GROUPS.forest,
             onBuy(app) {
                 app.resources.seed.storage += 1
@@ -274,7 +307,7 @@ export class ForestTile extends Tile {
             baseCost: 800,
             costMultiplier: 1.2,
             speed: 0.75,
-            category: 'automation',
+            category: CATEGORIES.automation,
             group: GROUPS.forest
         },
         {
@@ -284,7 +317,7 @@ export class ForestTile extends Tile {
             baseCost: 1000,
             costMultiplier: 1.2,
             speed: 1 / 3,
-            category: 'automation',
+            category: CATEGORIES.automation,
             group: GROUPS.forest
         },
         {
@@ -294,7 +327,7 @@ export class ForestTile extends Tile {
             baseCost: 1250,
             costMultiplier: 1.5,
             speed: 2 / 3,
-            category: 'automation',
+            category: CATEGORIES.automation,
             group: GROUPS.forest
         },
         {
@@ -304,7 +337,7 @@ export class ForestTile extends Tile {
             baseCost: 2500,
             costMultiplier: 1.2,
             speed: 1 / 2,
-            category: 'automation',
+            category: CATEGORIES.automation,
             group: GROUPS.forest
         },
         {
@@ -314,7 +347,7 @@ export class ForestTile extends Tile {
             baseCost: 3000,
             costMultiplier: 1.2,
             speed: 1 / 8,
-            category: 'automation',
+            category: CATEGORIES.automation,
             group: GROUPS.forest
         },
         {
@@ -324,7 +357,7 @@ export class ForestTile extends Tile {
             baseCost: 2500,
             costMultiplier: 1.2,
             speed: 1 / 4,
-            category: 'automation',
+            category: CATEGORIES.automation,
             group: GROUPS.forest
         },
         {
@@ -335,7 +368,7 @@ export class ForestTile extends Tile {
             baseCost: 3500,
             costMultiplier: 1.2,
             speed: 1 / 30,
-            category: 'automation',
+            category: CATEGORIES.automation,
             group: GROUPS.forest
         },
         // Special upgrades
@@ -346,7 +379,7 @@ export class ForestTile extends Tile {
             initialOwned: 0,
             baseCost: 200,
             costMultiplier: 5,
-            category: 'special',
+            category: CATEGORIES.special,
             max: 2,
             group: GROUPS.forest,
             onBuy(app) {
@@ -359,7 +392,7 @@ export class ForestTile extends Tile {
             description: 'Increase wood price by 2x',
             initialOwned: 0,
             baseCost: 1000,
-            category: 'special',
+            category: CATEGORIES.special,
             max: 1,
             group: GROUPS.forest,
             onBuy(app) {
@@ -372,7 +405,7 @@ export class ForestTile extends Tile {
             description: 'Increase chance of getting an extra seed by 2x',
             initialOwned: 0,
             baseCost: 2000,
-            category: 'special',
+            category: CATEGORIES.special,
             max: 1,
             group: GROUPS.forest,
             onBuy() {
@@ -385,7 +418,7 @@ export class ForestTile extends Tile {
             description: 'Increase seed price by 2x',
             initialOwned: 0,
             baseCost: 2000,
-            category: 'special',
+            category: CATEGORIES.special,
             max: 1,
             group: GROUPS.forest,
             onBuy(app) {
@@ -398,7 +431,7 @@ export class ForestTile extends Tile {
             description: 'Increase seed price by 3x',
             initialOwned: 0,
             baseCost: 10_000,
-            category: 'special',
+            category: CATEGORIES.special,
             max: 1,
             group: GROUPS.forest,
             onBuy(app) {
@@ -411,7 +444,7 @@ export class ForestTile extends Tile {
             description: 'Increase wood price by 2x',
             initialOwned: 0,
             baseCost: 30_000,
-            category: 'special',
+            category: CATEGORIES.special,
             max: 1,
             group: GROUPS.forest,
             onBuy(app) {
@@ -424,7 +457,7 @@ export class ForestTile extends Tile {
             description: 'Increase wood price by 2x',
             initialOwned: 0,
             baseCost: 100_000,
-            category: 'special',
+            category: CATEGORIES.special,
             max: 1,
             group: GROUPS.forest,
             onBuy(app) {

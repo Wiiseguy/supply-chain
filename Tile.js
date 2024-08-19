@@ -17,10 +17,12 @@ class Tile {
         this.wiggle = false
         this.fail = false
         this.grow = false
+        this.bounceDown = false
 
         this.wiggleTimeout = -1
         this.failTimeout = -1
         this.growTimeout = -1
+        this.bounceDownTimeout = -1
     }
     animateWiggle() {
         setBoolPropTimeout(this, 'wiggle', 'wiggleTimeout', 250)
@@ -31,11 +33,28 @@ class Tile {
     animateGrow() {
         setBoolPropTimeout(this, 'grow', 'growTimeout', 250)
     }
+    animateBounceDown() {
+        setBoolPropTimeout(this, 'bounceDown', 'bounceDownTimeout', 400)
+    }
     update(_elapsed) {}
     get tooltip() {
         return 'Empty tile'
     }
     get level() {
+        return null
+    }
+    get classes() {
+        return {
+            wiggle: this.wiggle,
+            'grow-bounce': this.grow,
+            'bounce-down': this.bounceDown
+        }
+    }
+    getStyle(obj) {
+        obj.bgOpacity = this.progress
+        return obj
+    }
+    get health() {
         return null
     }
 }

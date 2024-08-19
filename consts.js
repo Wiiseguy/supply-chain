@@ -20,6 +20,24 @@ export const GROUPS = {
     ui: 'ui'
 }
 
+export const CATEGORIES = {
+    tools: 'tools',
+    tiles: 'tiles',
+    land: 'land',
+    storage: 'storage',
+    automation: 'automation',
+    special: 'special'
+}
+
+export const CATEGORY_TITLES = {
+    tools: 'Tools',
+    tiles: 'Tiles',
+    land: 'Land',
+    storage: 'Storage',
+    automation: 'Automation',
+    special: 'Special'
+}
+
 export const RESOURCE_TYPES = {
     wood: 'wood',
     seed: 'seed',
@@ -48,21 +66,11 @@ const RESOURCE_TIERS = {
     // Tier 2: Processed resources. Are refined from tier 1 resources
     tier2: [RESOURCE_TYPES.bread, RESOURCE_TYPES.brick, RESOURCE_TYPES.glass]
 }
-export const FOREST_TILE_TYPES = {
-    empty: 'empty',
-    hole: 'hole',
-    tree: 'tree'
-}
-export const MINE_TILE_TYPES = {
-    rock: 'rock',
-    tunnel: 'tunnel',
-    resource: 'resource'
-}
+
 const FARM_TILE_TYPES = {
     empty: 'empty',
     crop: 'crop'
 }
-export const MINE_RESOURCE_TYPES = [RESOURCE_TYPES.diamond, RESOURCE_TYPES.metal, RESOURCE_TYPES.clay]
 
 export const GROUP_ICONS = {
     land: '🔲',
@@ -73,14 +81,6 @@ export const GROUP_ICONS = {
     desert: '🏜️',
     kiln: '🏭',
     ui: '🖥️'
-}
-export const GROUP_TITLES = {
-    tools: 'Tools',
-    tiles: 'Tiles',
-    land: 'Land',
-    storage: 'Storage',
-    automation: 'Automation',
-    special: 'Special'
 }
 
 export const EXTRA_SEED_CHANCE_MULTIPLIER = 2

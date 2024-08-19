@@ -19,11 +19,18 @@
                 <div :style="landStyle" class="land">
                     <div v-for="tile in landView" :style="tile.style" class="land-tile" :class="tile.classes"
                         :title="tile.tooltip" @click="clickTile(tile)">
-                        <span class="wiggle-target grow-bounce-target">{{tile.icon}}</span>
+                        <span class="wiggle-target grow-bounce-target bounce-down-target">{{tile.icon}}</span>
                         <span v-if="tile.tile?.fail" class="fail fade-out">❌</span>
                         <div class="progress" :style="tile.progressStyle"></div>
                         <div class="progress progress-alt" :style="tile.progressAltStyle"></div>
                         <div class="level" v-if="tile.level != null">{{tile.level}}</div>
+                        <div class="mini-icon top-left" v-if="tile.tile?.iconTopLeft">{{tile.tile?.iconTopLeft}}</div>
+                        <div class="mini-icon top-right" v-if="tile.tile?.iconTopRight">{{tile.tile?.iconTopRight}}
+                        </div>
+                        <div class="mini-icon bottom-left" v-if="tile.tile?.iconBottomLeft">
+                            {{tile.tile?.iconBottomLeft}}</div>
+                        <div class="mini-icon bottom-right" v-if="tile.tile?.iconBottomRight">
+                            {{tile.tile?.iconBottomRight}}</div>
                     </div>
                 </div>
                 <h5 class="pl-1" @click="DEBUG && (money+=1, money*=10)"><strong>$</strong>&nbsp; {{ num(money) }}</h5>

@@ -8,18 +8,17 @@ import {
     CLAY_STORAGE_SIZE,
     DIAMOND_PRICE_BASE,
     DIAMONDS_STORAGE_SIZE,
-    FOREST_TILE_TYPES,
     GROUP_ICONS,
-    GROUP_TITLES,
+    CATEGORY_TITLES,
     METAL_PRICE_BASE,
     METAL_STORAGE_SIZE,
-    MINE_RESOURCE_TYPES,
     RESOURCE_TYPES,
     SEED_PRICE_BASE,
     SEEDS_STORAGE_SIZE,
     TILE_TYPES,
     WOOD_PRICE_BASE,
-    WOOD_STORAGE_SIZE
+    WOOD_STORAGE_SIZE,
+    CATEGORIES
 } from './consts.js'
 import { UPGRADES } from './upgrades.js'
 import { bigNum, humanTime, makeIndex } from './utils.js'
@@ -131,7 +130,7 @@ const app = Vue.createApp({
         // Check if all UPGRADES of type automation have a corresponding automator programmed in
         this.UPGRADES.forEach(upgrade => {
             if (
-                upgrade.category === 'automation' &&
+                upgrade.category === CATEGORIES.automation &&
                 !this.automators.find(automator => automator.upgradeName === upgrade.name)
             ) {
                 console.error(`Automator for upgrade ${upgrade.name} is missing!`)
@@ -292,51 +291,29 @@ const app = Vue.createApp({
             tile.click()
         },
 
-        getLandTileClass(tile) {
-            return {
-                wiggle: tile.wiggle,
-                'grow-bounce': tile.grow
-            }
-        },
         getTileStyle(tile) {
-            // TODO: Move to respective tile classes
-            let opacity = tile.progress
-            let lineHeight = null
-            let fontSizeM = 1
-            switch (tile.type) {
-                case FOREST_TILE_TYPES.hole:
-                    lineHeight = 1.5
-                    break
-                case FOREST_TILE_TYPES.tree:
-                    // If final stage, make it bigger
-                    if (!tile.isFullyGrownTree) {
-                        fontSizeM = 0.75
-                        lineHeight = 1.8
-                    }
-                    break
+            const styleObj = {
+                bgOpacity: 0,
+                lineHeight: null,
+                fontSizeM: 1
             }
+            tile.getStyle(styleObj)
             return {
-                backgroundColor: `rgba(0, 128, 0, ${opacity})`,
+                backgroundColor: `rgba(0, 128, 0, ${styleObj.bgOpacity})`,
                 width: `${TILE_SIZE}px`,
                 height: `${TILE_SIZE}px`,
-                fontSize: `${TILE_SIZE * 0.75 * fontSizeM}px`,
-                lineHeight: lineHeight ? `${lineHeight}em` : null
+                fontSize: `${TILE_SIZE * 0.75 * styleObj.fontSizeM}px`,
+                lineHeight: styleObj.lineHeight ? `${styleObj.lineHeight}em` : null
             }
         },
         getTileProgressAltStyle(tile) {
-            // TODO: Move to respective tile classes
-            // Some tiles have a different progress bar style
-            switch (tile.tileType) {
-                case TILE_TYPES.forest:
-                    switch (tile.type) {
-                        case FOREST_TILE_TYPES.tree:
-                            return {
-                                // width based on progress. if progress = 0, width = 100% (health bar)
-                                width: `${(1 - tile.progress) * 100}%`
-                            }
-                    }
+            const health = tile.health
+            if (health == null) {
+                return {}
             }
-            return {}
+            return {
+                width: `${health * 100}%`
+            }
         },
 
         getUpgradeCost(upgrade) {
@@ -487,7 +464,7 @@ const app = Vue.createApp({
                     },
                     progressAltStyle: this.getTileProgressAltStyle(tile),
                     level: tile.level,
-                    classes: this.getLandTileClass(tile),
+                    classes: tile.classes,
                     tooltip: tile.tooltip
                 })
             })
@@ -540,12 +517,6 @@ const app = Vue.createApp({
 
         resourcesView() {
             let result = [this.resources.wood, this.resources.seed]
-            MINE_RESOURCE_TYPES.forEach(resourceType => {
-                /** @ts-ignore */
-                if (this.mineLand.some(tile => tile.subType === resourceType)) {
-                    result.push(this.resources[resourceType])
-                }
-            })
             // For anything else, add it if it has more than 0 owned
             Object.values(this.resources).forEach(resource => {
                 if (!result.includes(resource) && resource.totalOwned > 0) {
@@ -601,7 +572,7 @@ const app = Vue.createApp({
             return Object.entries(upgradesByCategory).map(([category, items]) => {
                 return {
                     groupName: category,
-                    groupTitle: GROUP_TITLES[category],
+                    groupTitle: CATEGORY_TITLES[category],
                     items
                 }
             })
