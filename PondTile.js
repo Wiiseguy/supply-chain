@@ -13,9 +13,10 @@ const FISHING_TIME_BASE = 90 // seconds
 const FISHING_TIME_VARIANCE = 30 // seconds - bite time is between (BASE - VARIANCE) and BASE + VARIANCE)
 const FISHING_WIGGLE_TIME = 30 // seconds
 const FISHING_WIGGLE_VARIANCE = 5 // seconds
-const FISH = ['🐟', '🐠', '🦐', '🦞', '🦀', '🐡', '🐬', '🦈', '🐳', '🐋']
-const FISH_CHANCES = [0.5, 0.25, 0.1, 0.05, 0.05, 0.025, 0.025, 0.01, 0.01, 0.005]
-const FISH_GAINS = [1, 2, 5, 10, 20, 50, 100, 200, 500, 1000]
+const FISH = ['🐟', '🐠', '🦐', '🦞', '🦀', '🐡', '🐸', '🐬', '🦈', '🐳', '🐋']
+const NON_FISH = ['🦐', '🦞', '🦀', '🐸', '🐬', '🐳', '🐋']
+const FISH_CHANCES = [0.5, 0.25, 0.1, 0.05, 0.04, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01]
+const FISH_GAINS = [1, 2, 5, 10, 20, 50, 75, 100, 200, 500, 1000]
 // To make it more interesting, there should be a small chance of catching a wood, seed, metal, diamond, or clay
 const RARITY_CHANCE = 1 / 100
 const RARITIES = ['🏺', '🔧', '💎']
@@ -108,15 +109,18 @@ export class PondTile extends Tile {
         }
         if (this.caughtFish) {
             if (this.isRare) {
-                let idx = RARITIES.indexOf(this.caughtFish)
-                let resource = RARITY_GAINS[idx]
+                const idx = RARITIES.indexOf(this.caughtFish)
+                const resource = RARITY_GAINS[idx]
                 this.app.resources[resource].gain(1)
                 this.app.showMessage(`Lucky! Found a ${this.caughtFish}!`)
             } else {
-                let idx = FISH.indexOf(this.caughtFish)
-                let fishGain = FISH_GAINS[idx]
+                const idx = FISH.indexOf(this.caughtFish)
+                const fishGain = FISH_GAINS[idx]
                 this.app.resources.fish.gain(fishGain)
-                this.app.showMessage(`Caught a ${this.caughtFish}, worth ${fishGain} fish!`)
+                const isNonFish = NON_FISH.includes(this.caughtFish)
+                this.app.showMessage(
+                    `Caught a ${this.caughtFish}, worth ${fishGain} fish${isNonFish ? ' (somehow)' : ''}!`
+                )
             }
             this.reset()
         }
