@@ -158,7 +158,9 @@
                             <button v-for="item in category.items" class="btn-upgrade" :key="item.name"
                                 @click="buyUpgrade(item)" :disabled="!item.canBuy"
                                 :title="item.blurred ? '?' : item.description">
-                                <span class="can-blur" :class="{blur: item.blurred}">{{ item.displayName ?? item.name
+                                <span class="can-blur font-weight-bold" :class="{blur: item.blurred}">{{
+                                    item.displayName ??
+                                    item.name
                                     }}</span>
                                 <sup v-if="item.max !== 1 && item.owned > 0"></sup><br>
                                 <small>

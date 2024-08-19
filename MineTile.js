@@ -300,7 +300,8 @@ export class MineTile extends Tile {
             category: 'tiles',
             group: GROUPS.mine,
             resourceCosts: {
-                [RESOURCE_TYPES.wood]: 100
+                [RESOURCE_TYPES.wood]: 100,
+                [RESOURCE_TYPES.metal]: 10
             },
             onBuy(app) {
                 app.land.push(new MineTile(app, RESOURCE_TYPES.diamond))
