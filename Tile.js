@@ -36,6 +36,16 @@ class Tile {
     animateBounceDown() {
         setBoolPropTimeout(this, 'bounceDown', 'bounceDownTimeout', 400)
     }
+    stopAnimations() {
+        clearTimeout(this.wiggleTimeout)
+        clearTimeout(this.failTimeout)
+        clearTimeout(this.growTimeout)
+        clearTimeout(this.bounceDownTimeout)
+        this.wiggle = false
+        this.fail = false
+        this.grow = false
+        this.bounceDown = false
+    }
     update(_elapsed) {}
     get tooltip() {
         return 'Empty tile'

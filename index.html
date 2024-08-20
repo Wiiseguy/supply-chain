@@ -61,7 +61,7 @@
                 <!-- Automators -->
                 <div class="mt-4">
                     <div v-for="a in automatorsView">
-                        <button @click="toggleAutomator(a)" type="button" class="btn-sm btn-toggle-automator"
+                        <button @click="toggleAutomator(a.automator)" type="button" class="btn-sm btn-toggle-automator"
                             :title="`Every ${(1/a.speed).toFixed(1)}s`">
                             {{ a.enabled ? 'ON' : 'OFF' }}
                             <span class="progress"
@@ -91,7 +91,7 @@
                     <div v-if="stats.luckyTrees > 0">
                         Lucky trees: {{ num(stats.luckyTrees) }}
                     </div>
-                    <div v-if="stats.minesOwned > 0">
+                    <div v-if="stats.minesOwned > 0" class="mt-3">
                         Mines opened: {{ num(stats.minesOwned) }}
                     </div>
                     <div v-if="stats.resourcesMined > 0">
@@ -100,8 +100,11 @@
                     <div v-if="stats.tunnelsDug > 0">
                         Tunnels dug: {{ num(stats.tunnelsDug) }}
                     </div>
-                    <div v-if="stats.fishCaught > 0">
+                    <div v-if="stats.fishCaught > 0" class="mt-3">
                         Fish caught: {{ num(stats.fishCaught) }}
+                        <div v-if="stats.fishTank.length > 0">
+                            <span v-for="i in stats.fishTank" class="mr-3">{{i[0]}} {{i[1]}}</span>
+                        </div>
                     </div>
                     <div v-if="stats.fishMissed > 0">
                         Fish missed: {{ num(stats.fishMissed) }}
@@ -109,6 +112,7 @@
                     <div v-if="stats.fishRarities > 0">
                         Rare pond finds: {{ num(stats.fishRarities) }}
                     </div>
+
                 </div>
                 <!-- Earnings report -->
                 <div class="mt-5">

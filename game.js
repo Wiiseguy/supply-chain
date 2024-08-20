@@ -76,7 +76,8 @@ const app = Vue.createApp({
                 minesOwned: 0,
                 fishCaught: 0,
                 fishMissed: 0,
-                fishRarities: 0
+                fishRarities: 0,
+                fishTank: []
             }
         }
     },
@@ -376,7 +377,8 @@ const app = Vue.createApp({
                 boughtUpgrades: this.boughtUpgrades,
                 land: this.land,
                 startTime: this.startTime,
-                stats: this.stats
+                stats: this.stats,
+                automators: this.automators
             }
             Object.values(this.resources).forEach(resource => {
                 saveData.resources[resource.name] = resource.getSaveData()
@@ -410,6 +412,15 @@ const app = Vue.createApp({
                 })
                 Object.assign(this.boughtUpgrades, saveData.boughtUpgrades)
                 Object.assign(this.stats, saveData.stats)
+                this.automators.forEach(automator => {
+                    // Find automator in saveData.automators and assign its properties to the automator
+                    const savedAutomator = saveData.automators?.find(
+                        savedAutomator => savedAutomator.upgradeName === automator.upgradeName
+                    )
+                    if (savedAutomator) {
+                        Object.assign(automator, savedAutomator)
+                    }
+                })
                 this.startTime = new Date(saveData.startTime)
             } catch (e) {
                 // Clear corrupted save data
@@ -531,6 +542,7 @@ const app = Vue.createApp({
                 .filter(automator => this.boughtUpgrades[automator.upgradeName] > 0)
                 .map(automator => ({
                     ...automator,
+                    automator,
                     displayName: this.UPGRADES_INDEX[automator.upgradeName].displayName ?? automator.upgradeName
                 }))
         },

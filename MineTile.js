@@ -180,6 +180,7 @@ export class MineTile extends Tile {
         if (this.type === MINE_TILE_TYPES.rock || this.type === MINE_TILE_TYPES.tunnel) {
             return MINE_RESOURCE_ICONS[this.subType]
         }
+        return null
     }
     get excavatorPower() {
         return MINE_EXCAVATOR_POWER * (this.app.boughtUpgrades['Shovel'] + 1)

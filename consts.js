@@ -83,8 +83,6 @@ export const GROUP_ICONS = {
     ui: '🖥️'
 }
 
-export const EXTRA_SEED_CHANCE_MULTIPLIER = 2
-
 // Price base
 export const WOOD_PRICE_BASE = 5
 export const SEED_PRICE_BASE = 50

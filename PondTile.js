@@ -13,29 +13,56 @@ const FISHING_TIME_BASE = 90 // seconds
 const FISHING_TIME_VARIANCE = 30 // seconds - bite time is between (BASE - VARIANCE) and BASE + VARIANCE)
 const FISHING_WIGGLE_TIME = 30 // seconds
 const FISHING_WIGGLE_VARIANCE = 5 // seconds
-const FISH = ['🐟', '🐠', '🦐', '🦞', '🦀', '🐡', '🐸', '🐬', '🦈', '🐳', '🐋']
+const RARE_FISH_LUCK_BASE = 0.5
+const FISH = ['🐟', '🐠', '🦐', '🦞', '🦀', '🐡', '🐸', '🦑', '🐙', '🦈', '🐬', '🐳', '🐋']
 const NON_FISH = ['🦐', '🦞', '🦀', '🐸', '🐬', '🐳', '🐋']
-const FISH_CHANCES = [0.5, 0.25, 0.1, 0.05, 0.04, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01]
-const FISH_GAINS = [1, 2, 5, 10, 20, 50, 75, 100, 200, 500, 1000]
+const FISH_GAINS = [1, 2, 5, 10, 20, 30, 40, 50, 75, 100, 200, 500, 1000]
 // To make it more interesting, there should be a small chance of catching a wood, seed, metal, diamond, or clay
 const RARITY_CHANCE = 1 / 100
 const RARITIES = ['🏺', '🔧', '💎']
-const RARITY_CHANCES = [0.65, 0.2, 0.15]
 const RARITY_GAINS = [RESOURCE_TYPES.clay, RESOURCE_TYPES.metal, RESOURCE_TYPES.diamond]
 
 export const FISH_PRICE_BASE = 50
 export const FISH_STORAGE_SIZE = 50
 
-function randomResource(resourceList, resourceChances) {
-    const r = Math.random()
-    let sum = 0
-    for (let i = 0; i < resourceChances.length; i++) {
-        sum += resourceChances[i]
-        if (r < sum) {
-            return resourceList[i]
+function randomResource(resourceList, luck = 0.5) {
+    luck = 1 - luck // Invert luck - causing the first item to not be the most likely
+    // If Luck is not 0.5, we will need to add/subtrack each step until so the luck curve is correct
+    const delta = (luck - 0.5) / resourceList.length
+    let chance = luck
+    for (const element of resourceList) {
+        if (isLucky(chance)) {
+            return element
+        }
+        chance -= delta
+    }
+    return resourceList[0]
+}
+
+// Check if list and gains lists are same length
+console.assert(FISH.length === FISH_GAINS.length, 'FISH and FISH_GAINS must be the same length')
+console.assert(RARITIES.length === RARITY_GAINS.length, 'RARITIES and RARITY_GAINS must be the same length')
+
+function simulate() {
+    for (let i = 0; i < FISH.length; i++) {
+        console.log(FISH[i], FISH_GAINS[i])
+    }
+    // Simulate many catches
+    const fishCounts = {}
+    for (let i = 0; i < 100; i++) {
+        const fish = randomResource(FISH, 0.5)
+        if (!fishCounts[fish]) {
+            fishCounts[fish] = 0
+        }
+        fishCounts[fish] += 1
+    }
+    console.log(fishCounts)
+    // Log what wasn't caught
+    for (const fish of FISH) {
+        if (!fishCounts[fish]) {
+            console.log(fish, 'was not caught')
         }
     }
-    return resourceList[resourceList.length - 1]
 }
 
 export class PondTile extends Tile {
@@ -93,12 +120,13 @@ export class PondTile extends Tile {
             return
         }
         if (this.wiggleTime > 0) {
+            this.stopAnimations()
             if (isLucky(RARITY_CHANCE)) {
-                this.caughtFish = randomResource(RARITIES, RARITY_CHANCES)
+                this.caughtFish = randomResource(RARITIES, this.rareFishLuck)
                 this.isRare = true
                 this.app.stats.fishRarities += 1
             } else {
-                this.caughtFish = randomResource(FISH, FISH_CHANCES)
+                this.caughtFish = randomResource(FISH, this.rareFishLuck)
                 this.isRare = false
                 this.app.stats.fishCaught += 1
             }
@@ -121,6 +149,14 @@ export class PondTile extends Tile {
                 this.app.showMessage(
                     `Caught a ${this.caughtFish}, worth ${fishGain} fish${isNonFish ? ' (somehow)' : ''}!`
                 )
+
+                // Add to fish tank!
+                let fishTankRow = this.app.stats.fishTank.find(row => row[0] === this.caughtFish)
+                if (!fishTankRow) {
+                    fishTankRow = [this.caughtFish, 0]
+                    this.app.stats.fishTank.push(fishTankRow)
+                }
+                fishTankRow[1] += 1
             }
             this.reset()
         }
@@ -133,6 +169,9 @@ export class PondTile extends Tile {
     }
     get tooltip() {
         return 'Pond tile - click when the fishing pole wiggles to catch a fish!'
+    }
+    get rareFishLuck() {
+        return RARE_FISH_LUCK_BASE + this.app.boughtUpgrades['Lucky Bait'] * 0.1
     }
 
     static automators = [
@@ -180,8 +219,8 @@ export class PondTile extends Tile {
             displayName: 'Fish Tank',
             description: 'Increase the amount of fish you can store',
             initialOwned: 1,
-            baseCost: 2000,
-            costMultiplier: 1.2,
+            baseCost: 1500,
+            costMultiplier: 1.4,
             category: CATEGORIES.storage,
             group: GROUPS.pond,
             onBuy(app) {
@@ -190,21 +229,12 @@ export class PondTile extends Tile {
         },
         {
             name: 'Fish Reclaimer',
+            displayName: 'Fish Re-fisher',
             description: 'Collect lost fish swimming about thinking they were lucky',
             initialOwned: 0,
             baseCost: 7000,
             costMultiplier: 1.5,
             speed: 1 / 8,
-            category: CATEGORIES.automation,
-            group: GROUPS.forest
-        },
-        {
-            name: 'Auto Fisher',
-            description: 'Automatically fish for you',
-            initialOwned: 0,
-            baseCost: 8000,
-            costMultiplier: 2,
-            speed: 1 / FISHING_WIGGLE_TIME,
             category: CATEGORIES.automation,
             group: GROUPS.pond
         },
@@ -216,7 +246,29 @@ export class PondTile extends Tile {
             costMultiplier: 1.5,
             speed: 1 / 8,
             category: CATEGORIES.automation,
-            group: GROUPS.forest
+            group: GROUPS.pond
+        },
+        {
+            name: 'Auto Fisher',
+            description: 'Automatically fish for you',
+            initialOwned: 0,
+            baseCost: 8000,
+            costMultiplier: 2,
+            speed: 1 / FISHING_WIGGLE_TIME,
+            category: CATEGORIES.automation,
+            group: GROUPS.pond
+        },
+
+        // Luck booster upgrade for finding more rare fish
+        {
+            name: 'Lucky Bait',
+            description: 'Increase the chance of catching rare fish',
+            initialOwned: 0,
+            baseCost: 9000,
+            costMultiplier: 1.5,
+            category: CATEGORIES.special,
+            group: GROUPS.pond,
+            max: 5
         }
     ]
 }

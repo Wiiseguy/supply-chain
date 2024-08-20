@@ -1,5 +1,5 @@
 import { Automator } from './Automator.js'
-import { CATEGORIES, EXTRA_SEED_CHANCE_MULTIPLIER, GROUPS, TILE_TYPES } from './consts.js'
+import { CATEGORIES, GROUPS, TILE_TYPES } from './consts.js'
 import Tile from './Tile.js'
 import { isLucky } from './utils.js'
 
@@ -23,7 +23,6 @@ const TREE_WOOD_GAINS = [0.1, 0.25, 0.5, 1]
 const TREE_WOOD_GAINS_BASE = 10
 
 export class ForestTile extends Tile {
-    static luckySeedChance = EXTRA_SEED_CHANCE_BASE
     constructor(app) {
         super(app)
         this.tileType = TILE_TYPES.forest
@@ -88,7 +87,7 @@ export class ForestTile extends Tile {
             this.app.stats.treesChopped += 1
             let msg = ''
             // If lucky, get an extra seed
-            if (isLucky(ForestTile.luckySeedChance)) {
+            if (isLucky(this.luckySeedChance)) {
                 msg += 'Lucky! Got an extra seed! '
                 this.app.resources.seed.gain(1)
                 this.app.stats.luckySeeds += 1
@@ -191,6 +190,9 @@ export class ForestTile extends Tile {
     }
     get isFullyGrownTree() {
         return this.type === FOREST_TILE_TYPES.tree && this.stage === TREE_GROWTH_STAGES.length - 1
+    }
+    get luckySeedChance() {
+        return EXTRA_SEED_CHANCE_BASE * (1 + this.app.boughtUpgrades['Seed Luck 1'])
     }
     static automators = [
         new Automator('Auto Digger', app => {
@@ -407,10 +409,7 @@ export class ForestTile extends Tile {
             baseCost: 2000,
             category: CATEGORIES.special,
             max: 1,
-            group: GROUPS.forest,
-            onBuy() {
-                ForestTile.luckySeedChance *= EXTRA_SEED_CHANCE_MULTIPLIER
-            }
+            group: GROUPS.forest
         },
         {
             name: 'Seed Marketing 1',
