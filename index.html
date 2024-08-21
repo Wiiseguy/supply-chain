@@ -53,7 +53,7 @@
                 <!-- Resource sell buttons -->
                 <div class="mt-4">
                     <button v-for="r in resourcesView" @click="sellResource(r)" :disabled="!r.any">
-                        Sell {{r.sellNum > 1 ? r.sellNum : ''}} {{ r.sellNumDisplayName }}<br>
+                        Sell {{r.sellNum > 1 ? r.sellNum : ''}} {{ r.sellNumDisplayName }} {{r.icon}}<br>
                         <small class="text-success">+ {{ num(r.sellNumPrice) }}</small>
                     </button>
                 </div>
@@ -74,8 +74,9 @@
 
                 </div>
 
-                <div class="mt-5">
+                <div class="mt-5 selectable">
                     <h5>Statistics</h5>
+                    <pre>{{calculated}}</pre>
                     <div>
                         Money p/s: $ {{ num(perS.money) }}
                     </div>

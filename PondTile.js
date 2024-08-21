@@ -1,5 +1,7 @@
 import { Automator } from './Automator.js'
+import { Calculator } from './Calculator.js'
 import { CATEGORIES, GROUP_ICONS, GROUPS, RESOURCE_TYPES, TILE_TYPES } from './consts.js'
+import { Resource } from './Resource.js'
 import Tile from './Tile.js'
 import { isLucky } from './utils.js'
 
@@ -22,8 +24,8 @@ const RARITY_CHANCE = 1 / 100
 const RARITIES = ['🏺', '🔧', '💎']
 const RARITY_GAINS = [RESOURCE_TYPES.clay, RESOURCE_TYPES.metal, RESOURCE_TYPES.diamond]
 
-export const FISH_PRICE_BASE = 50
-export const FISH_STORAGE_SIZE = 50
+const FISH_PRICE_BASE = 50
+const FISH_STORAGE_SIZE = 50
 
 function randomResource(resourceList, luck = 0.5) {
     luck = 1 - luck // Invert luck - causing the first item to not be the most likely
@@ -171,8 +173,22 @@ export class PondTile extends Tile {
         return 'Pond tile - click when the fishing pole wiggles to catch a fish!'
     }
     get rareFishLuck() {
-        return RARE_FISH_LUCK_BASE + this.app.boughtUpgrades['Lucky Bait'] * 0.1
+        return this.app.calculated.rareFishLuck
     }
+
+    static resources = [
+        new Resource(RESOURCE_TYPES.fish, {
+            displayNameSingular: 'Fish',
+            displayNamePlural: 'Fish',
+            icon: '🐟',
+            basePrice: FISH_PRICE_BASE,
+            storageBaseSize: FISH_STORAGE_SIZE
+        })
+    ]
+
+    static calculators = [
+        new Calculator('rareFishLuck', app => RARE_FISH_LUCK_BASE + app.boughtUpgrades['Lucky Bait'] * 0.1)
+    ]
 
     static automators = [
         new Automator('Auto Fisher', app => {

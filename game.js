@@ -1,25 +1,9 @@
 import { Counter } from './Counter.js'
-import { ForestTile } from './ForestTile.js'
+import { ForestTile, INITIAL_SEEDS } from './ForestTile.js'
 import { MineTile } from './MineTile.js'
-import { FISH_PRICE_BASE, FISH_STORAGE_SIZE, PondTile } from './PondTile.js'
+import { PondTile } from './PondTile.js'
 import { Resource } from './Resource.js'
-import {
-    CLAY_PRICE_BASE,
-    CLAY_STORAGE_SIZE,
-    DIAMOND_PRICE_BASE,
-    DIAMONDS_STORAGE_SIZE,
-    GROUP_ICONS,
-    CATEGORY_TITLES,
-    METAL_PRICE_BASE,
-    METAL_STORAGE_SIZE,
-    RESOURCE_TYPES,
-    SEED_PRICE_BASE,
-    SEEDS_STORAGE_SIZE,
-    TILE_TYPES,
-    WOOD_PRICE_BASE,
-    WOOD_STORAGE_SIZE,
-    CATEGORIES
-} from './consts.js'
+import { GROUP_ICONS, CATEGORY_TITLES, TILE_TYPES, CATEGORIES } from './consts.js'
 import { UPGRADES } from './upgrades.js'
 import { bigNum, humanTime, makeIndex } from './utils.js'
 
@@ -35,7 +19,6 @@ const DEFAULT_UPGRADE_VISIBILITY_THRESHOLD = 0.25
 const DEFAULT_UPGRADE_BLUR_THRESHOLD = 0.5
 
 const INITIAL_MONEY = 0
-const INITIAL_SEEDS = 4
 
 /** @ts-ignore */
 const app = Vue.createApp({
@@ -53,6 +36,8 @@ const app = Vue.createApp({
             land: [],
             resources: {},
             automators: [],
+            calculators: [],
+            calculated: {},
             counters: [],
             boughtUpgrades: {},
             visibleUpgrades: [],
@@ -85,30 +70,7 @@ const app = Vue.createApp({
         this.UPGRADES = UPGRADES
 
         // Initialize resources
-        this.resources = {
-            //money: new Resource('money', 'Money', 'Money', '💰', 1, Infinity, INITIAL_MONEY),
-            wood: new Resource(RESOURCE_TYPES.wood, 'Wood', 'Wood', '🪓', WOOD_PRICE_BASE, WOOD_STORAGE_SIZE),
-            seed: new Resource(
-                RESOURCE_TYPES.seed,
-                'Seed',
-                'Seeds',
-                '🌱',
-                SEED_PRICE_BASE,
-                SEEDS_STORAGE_SIZE,
-                INITIAL_SEEDS
-            ),
-            clay: new Resource(RESOURCE_TYPES.clay, 'Clay', 'Clay', '🏺', CLAY_PRICE_BASE, CLAY_STORAGE_SIZE),
-            metal: new Resource(RESOURCE_TYPES.metal, 'Metal', 'Metal', '🔧', METAL_PRICE_BASE, METAL_STORAGE_SIZE),
-            diamond: new Resource(
-                RESOURCE_TYPES.diamond,
-                'Diamond',
-                'Diamonds',
-                '💎',
-                DIAMOND_PRICE_BASE,
-                DIAMONDS_STORAGE_SIZE
-            ),
-            fish: new Resource(RESOURCE_TYPES.fish, 'Fish', 'Fish', '🐟', FISH_PRICE_BASE, FISH_STORAGE_SIZE)
-        }
+        this.resources = {}
 
         // Initialize Tile types
         this.registerTile(ForestTile, TILE_TYPES.forest)
@@ -230,27 +192,29 @@ const app = Vue.createApp({
 
             // Run automators
             this.automators.forEach(automator => {
-                const num = this.boughtUpgrades[automator.upgradeName]
-                if (automator.enabled && num > 0) {
-                    const speed = this.UPGRADES_INDEX[automator.upgradeName].speed * num
-                    automator.saturation += speed * elapsed
-                    automator.speed = speed
-                    while (automator.saturation >= 1) {
-                        automator.saturation -= 1
-                        automator.logic(this)
-                    }
-                }
+                automator.run(this, elapsed)
+            })
+
+            // Run calculators
+            this.calculators.forEach(calculator => {
+                this.calculated[calculator.name] = calculator.calculate(this, elapsed)
             })
         },
         registerTile(tileClass, tileType) {
             this.TILE_REVIVERS[tileType] = tileClass
-            let tileAutomators = tileClass.automators
-            if (tileAutomators) {
-                this.automators.push(...tileAutomators)
+            if (tileClass.automators) {
+                this.automators.push(...tileClass.automators)
             }
-            let upgrades = tileClass.upgrades
-            if (upgrades) {
-                this.UPGRADES.push(...upgrades)
+            if (tileClass.upgrades) {
+                this.UPGRADES.push(...tileClass.upgrades)
+            }
+            if (tileClass.calculators) {
+                this.calculators.push(...tileClass.calculators)
+            }
+            if (tileClass.resources) {
+                tileClass.resources.forEach(r => {
+                    this.resources[r.name] = r
+                })
             }
         },
         /**

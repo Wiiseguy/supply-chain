@@ -1,5 +1,7 @@
 import { Automator } from './Automator.js'
-import { CATEGORIES, GROUPS, TILE_TYPES } from './consts.js'
+import { Calculator } from './Calculator.js'
+import { CATEGORIES, GROUPS, RESOURCE_TYPES, TILE_TYPES } from './consts.js'
+import { Resource } from './Resource.js'
 import Tile from './Tile.js'
 import { isLucky } from './utils.js'
 
@@ -8,6 +10,13 @@ const FOREST_TILE_TYPES = {
     hole: 'hole',
     tree: 'tree'
 }
+
+const WOOD_PRICE_BASE = 5
+const SEED_PRICE_BASE = 50
+const WOOD_STORAGE_SIZE = 100
+const SEEDS_STORAGE_SIZE = 10
+
+export const INITIAL_SEEDS = 4
 
 const TREE_SELF_SEED_CHANCE = 1 / 100
 const EXTRA_SEED_CHANCE_BASE = 1 / 10
@@ -192,8 +201,32 @@ export class ForestTile extends Tile {
         return this.type === FOREST_TILE_TYPES.tree && this.stage === TREE_GROWTH_STAGES.length - 1
     }
     get luckySeedChance() {
-        return EXTRA_SEED_CHANCE_BASE * (1 + this.app.boughtUpgrades['Seed Luck 1'])
+        return this.app.calculated.luckySeedChance
     }
+
+    static resources = [
+        new Resource(RESOURCE_TYPES.wood, {
+            displayNameSingular: 'Wood',
+            displayNamePlural: 'Wood',
+            icon: '🪓',
+            basePrice: WOOD_PRICE_BASE,
+            storageBaseSize: WOOD_STORAGE_SIZE
+        }),
+        new Resource(RESOURCE_TYPES.seed, {
+            displayNameSingular: 'Seed',
+            displayNamePlural: 'Seeds',
+            icon: '🌱',
+            basePrice: SEED_PRICE_BASE,
+            storageBaseSize: SEEDS_STORAGE_SIZE,
+            initialOwned: INITIAL_SEEDS,
+            minimum: 1
+        })
+    ]
+
+    static calculators = [
+        new Calculator('luckySeedChance', app => EXTRA_SEED_CHANCE_BASE * (1 + app.boughtUpgrades['Seed Luck 1']))
+    ]
+
     static automators = [
         new Automator('Auto Digger', app => {
             const tile = /** @type {ForestTile[]} */ (app.forestLand).find(

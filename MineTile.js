@@ -1,13 +1,8 @@
 import { Automator } from './Automator.js'
 import { CATEGORIES, GROUPS, RESOURCE_TYPES, TILE_TYPES } from './consts.js'
+import { Resource } from './Resource.js'
 import Tile from './Tile.js'
 import { isLucky, pick } from './utils.js'
-
-const MINE_TILE_TYPES = {
-    rock: 'rock',
-    tunnel: 'tunnel',
-    resource: 'resource'
-}
 
 // Mine stuff
 // Mines work different from forests, each stage has levels. The first stage has one level, the second has 3, the third has Infinite
@@ -15,6 +10,11 @@ const MINE_TILE_TYPES = {
 // The second stage is when a mine has openened, but to be able to go deeper, wood is required, because you need to build support beams (250 wood per level)
 // The third stage is when you can mine for resources. Once the third stage is reached it is a fully operational mine.
 // Automators for the mine: Auto Excavator, Auto Tunneler, Auto Diamond Miner
+const MINE_TILE_TYPES = {
+    rock: 'rock',
+    tunnel: 'tunnel',
+    resource: 'resource'
+}
 const MINE_EXCAVATOR_POWER = 1 / 50 // 50 clicks to get to the next stage
 const MINE_TUNNELER_POWER = 1 / 100
 const MINE_SUPPORT_BEAM_COST = 200 // wood
@@ -43,6 +43,14 @@ const MINE_RESOURCE_CLICKS = {
     metal: 75,
     clay: 50
 }
+
+const DIAMOND_PRICE_BASE = 5_000
+const METAL_PRICE_BASE = 500
+const CLAY_PRICE_BASE = 200
+
+const DIAMONDS_STORAGE_SIZE = 1
+const METAL_STORAGE_SIZE = 10
+const CLAY_STORAGE_SIZE = 25
 
 const LUCKY_RESOURCE_MINE_CHANCE = 1 / 10
 
@@ -191,6 +199,31 @@ export class MineTile extends Tile {
     get resourceMinerPower() {
         return this.app.boughtUpgrades['Pickaxe'] + 1
     }
+
+    static resources = [
+        new Resource(RESOURCE_TYPES.clay, {
+            displayNameSingular: 'Clay',
+            displayNamePlural: 'Clay',
+            icon: '🏺',
+            basePrice: CLAY_PRICE_BASE,
+            storageBaseSize: CLAY_STORAGE_SIZE
+        }),
+        new Resource(RESOURCE_TYPES.metal, {
+            displayNameSingular: 'Metal',
+            displayNamePlural: 'Metal',
+            icon: '🔧',
+            basePrice: METAL_PRICE_BASE,
+            storageBaseSize: METAL_STORAGE_SIZE
+        }),
+        new Resource(RESOURCE_TYPES.diamond, {
+            displayNameSingular: 'Diamond',
+            displayNamePlural: 'Diamonds',
+            icon: '💎',
+            basePrice: DIAMOND_PRICE_BASE,
+            storageBaseSize: DIAMONDS_STORAGE_SIZE
+        })
+    ]
+
     static automators = [
         new Automator('Auto Shoveler', app => {
             const tile = pick(app.mineLand.filter(tile => tile.type === MINE_TILE_TYPES.rock))

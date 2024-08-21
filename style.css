@@ -30,6 +30,10 @@ body {
     user-select: none;
 }
 
+.selectable {
+    user-select: text;
+}
+
 pre {
     color: inherit;
 }

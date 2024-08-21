@@ -82,17 +82,3 @@ export const GROUP_ICONS = {
     kiln: '🏭',
     ui: '🖥️'
 }
-
-// Price base
-export const WOOD_PRICE_BASE = 5
-export const SEED_PRICE_BASE = 50
-export const DIAMOND_PRICE_BASE = 5_000
-export const METAL_PRICE_BASE = 500
-export const CLAY_PRICE_BASE = 200
-
-// Define the size of the storage
-export const WOOD_STORAGE_SIZE = 100
-export const SEEDS_STORAGE_SIZE = 10
-export const DIAMONDS_STORAGE_SIZE = 1
-export const METAL_STORAGE_SIZE = 10
-export const CLAY_STORAGE_SIZE = 25
