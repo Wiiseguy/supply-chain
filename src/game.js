@@ -91,14 +91,6 @@ const app = Vue.createApp({
         for (let i = 0; i < this.boughtUpgrades['Forest Tile']; i++) {
             this.land.push(new ForestTile(this))
         }
-        // For the rest of the land, add empty tiles
-        for (
-            let i = this.land.length;
-            i < this.boughtUpgrades['Extra Column'] * this.boughtUpgrades['Extra Row'];
-            i++
-        ) {
-            this.land.push(new EmptyTile(this))
-        }
 
         this.counters = [new Counter('money', () => this.money)]
 
@@ -114,6 +106,15 @@ const app = Vue.createApp({
 
         // Load save data
         this.loadGame()
+
+        // For the rest of the land, add empty tiles
+        for (
+            let i = this.land.length;
+            i < this.boughtUpgrades['Extra Column'] * this.boughtUpgrades['Extra Row'];
+            i++
+        ) {
+            this.land.push(new EmptyTile(this))
+        }
     },
     mounted() {
         if (!this.stats.started) {
