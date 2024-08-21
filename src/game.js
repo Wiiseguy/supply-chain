@@ -246,7 +246,7 @@ const app = Vue.createApp({
 
         clickTile(tileModel) {
             if (this.DEBUG) {
-                console.log('Clicked tile:', JSON.parse(JSON.stringify(tileModel)))
+                console.log('Clicked tile:', tileModel.tile)
             }
             const tile = tileModel.tile
             if (!tile) {
