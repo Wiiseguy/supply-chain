@@ -1,9 +1,10 @@
 import { Counter } from './Counter.js'
+import { EmptyTile } from './EmptyTile.js'
 import { ForestTile, INITIAL_SEEDS } from './ForestTile.js'
 import { MineTile } from './MineTile.js'
 import { PondTile } from './PondTile.js'
 import { Resource } from './Resource.js'
-import { GROUP_ICONS, CATEGORY_TITLES, TILE_TYPES, CATEGORIES } from './consts.js'
+import { GROUP_ICONS, CATEGORY_TITLES, CATEGORIES } from './consts.js'
 import { UPGRADES } from './upgrades.js'
 import { bigNum, humanTime, makeIndex } from './utils.js'
 
@@ -73,9 +74,10 @@ const app = Vue.createApp({
         this.resources = {}
 
         // Initialize Tile types
-        this.registerTile(ForestTile, TILE_TYPES.forest)
-        this.registerTile(MineTile, TILE_TYPES.mine)
-        this.registerTile(PondTile, TILE_TYPES.pond)
+        this.registerTile(EmptyTile)
+        this.registerTile(ForestTile)
+        this.registerTile(MineTile)
+        this.registerTile(PondTile)
 
         // Initialize bought upgrades obj
         this.UPGRADES.forEach(upgrade => {
@@ -86,6 +88,14 @@ const app = Vue.createApp({
         // Initialize land
         for (let i = 0; i < this.boughtUpgrades['Forest Tile']; i++) {
             this.land.push(new ForestTile(this))
+        }
+        // For the rest of the land, add empty tiles
+        for (
+            let i = this.land.length;
+            i < this.boughtUpgrades['Extra Column'] * this.boughtUpgrades['Extra Row'];
+            i++
+        ) {
+            this.land.push(new EmptyTile(this))
         }
 
         this.counters = [new Counter('money', () => this.money)]
@@ -201,8 +211,8 @@ const app = Vue.createApp({
                 this.calculated[calculator.name] = calculator.calculate(this, elapsed)
             })
         },
-        registerTile(tileClass, tileType) {
-            this.TILE_REVIVERS[tileType] = tileClass
+        registerTile(tileClass) {
+            this.TILE_REVIVERS[tileClass.type] = tileClass
             if (tileClass.automators) {
                 this.automators.push(...tileClass.automators)
             }
@@ -245,6 +255,16 @@ const app = Vue.createApp({
             return true
         },
 
+        addTile(tile) {
+            // Find first empty tile and replace it with the new tile
+            const emptyTileIndex = this.land.findIndex(tile => tile instanceof EmptyTile)
+            if (emptyTileIndex === -1) {
+                console.error('No empty tile found to replace with new tile')
+                return
+            }
+            this.land.splice(emptyTileIndex, 1, tile)
+        },
+
         clickTile(tileModel) {
             if (this.DEBUG) {
                 console.log('Clicked tile:', tileModel.tile)
@@ -261,11 +281,12 @@ const app = Vue.createApp({
             const styleObj = {
                 bgOpacity: 0,
                 lineHeight: null,
-                fontSizeM: 1
+                fontSizeM: 1,
+                bgRgb: '0, 128, 0'
             }
             tile.getStyle(styleObj)
             return {
-                backgroundColor: `rgba(0, 128, 0, ${styleObj.bgOpacity})`,
+                backgroundColor: `rgba(${styleObj.bgRgb}, ${styleObj.bgOpacity})`,
                 width: `${TILE_SIZE}px`,
                 height: `${TILE_SIZE}px`,
                 fontSize: `${TILE_SIZE * 0.75 * styleObj.fontSizeM}px`,
@@ -305,6 +326,27 @@ const app = Vue.createApp({
                 }
             }
 
+            // Special case for buying land
+            switch (upgrade.name) {
+                case 'Extra Column': {
+                    const width = this.landSize[0]
+                    const height = this.landSize[1]
+                    // Add empty at the end of each row
+                    // For instance if the land is 2x2, the empty tiles must be added at index 2 and 5
+                    // If the land is 3x3, the empty tiles must be added at index 3, 6 and 9
+                    for (let i = height - 1; i >= 0; i--) {
+                        this.land.splice(width * (i + 1), 0, new EmptyTile(this))
+                    }
+
+                    break
+                }
+                case 'Extra Row':
+                    for (let i = 0; i < this.landSize[0]; i++) {
+                        this.land.push(new EmptyTile(this))
+                    }
+                    break
+            }
+
             this.boughtUpgrades[upgrade.name] += 1
 
             // If the upgrade has an onBuy function, call it
@@ -316,7 +358,7 @@ const app = Vue.createApp({
             return this.boughtUpgrades[upgradeName] > 0
         },
         hasRoomForTile() {
-            return this.land.length < this.boughtUpgrades['Extra Column'] * this.boughtUpgrades['Extra Row']
+            return this.land.some(tile => tile instanceof EmptyTile)
         },
         canBuyUpgrade(upgrade) {
             if (upgrade.tile && !this.hasRoomForTile()) {
@@ -447,21 +489,6 @@ const app = Vue.createApp({
                     tooltip: tile.tooltip
                 })
             })
-            // Add black squares for empty tiles (type: 'unclaimed')
-            /** @ts-ignore */
-            for (let i = view.length; i < this.landLength; i++) {
-                view.push({
-                    type: 'unclaimed',
-                    tile: null,
-                    icon: '',
-                    tooltip: 'Unclaimed land',
-                    style: {
-                        width: `${TILE_SIZE}px`,
-                        height: `${TILE_SIZE}px`
-                    },
-                    classes: 'unclaimed'
-                })
-            }
             return view
         },
         totalResourceEarnings() {

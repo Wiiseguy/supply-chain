@@ -55,9 +55,10 @@ const CLAY_STORAGE_SIZE = 25
 const LUCKY_RESOURCE_MINE_CHANCE = 1 / 10
 
 export class MineTile extends Tile {
+    static type = TILE_TYPES.mine
+
     constructor(app, subType) {
-        super(app)
-        this.tileType = TILE_TYPES.mine
+        super(app, MineTile.type)
         this.type = MINE_TILE_TYPES.rock
         this.subType = subType
     }
@@ -201,7 +202,7 @@ export class MineTile extends Tile {
     }
 
     static hasTile(app) {
-        return app.land.some(tile => tile.tileType === TILE_TYPES.mine)
+        return app.land.some(tile => tile.tileType === MineTile.type)
     }
 
     static resources = [
@@ -322,7 +323,7 @@ export class MineTile extends Tile {
                 [RESOURCE_TYPES.wood]: 25
             },
             onBuy(app) {
-                app.land.push(new MineTile(app, RESOURCE_TYPES.clay))
+                app.addTile(new MineTile(app, RESOURCE_TYPES.clay))
             }
         },
         {
@@ -339,7 +340,7 @@ export class MineTile extends Tile {
                 [RESOURCE_TYPES.wood]: 50
             },
             onBuy(app) {
-                app.land.push(new MineTile(app, RESOURCE_TYPES.metal))
+                app.addTile(new MineTile(app, RESOURCE_TYPES.metal))
             }
         },
         {
@@ -357,7 +358,7 @@ export class MineTile extends Tile {
                 [RESOURCE_TYPES.metal]: 10
             },
             onBuy(app) {
-                app.land.push(new MineTile(app, RESOURCE_TYPES.diamond))
+                app.addTile(new MineTile(app, RESOURCE_TYPES.diamond))
             }
         },
         // Storage

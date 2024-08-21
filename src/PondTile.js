@@ -84,14 +84,15 @@ function simulate() {
 }
 
 export class PondTile extends Tile {
+    static type = TILE_TYPES.pond
+
     catchTime = 0
     wiggleTime = 0
     wiggleSaturation = 0
     caughtFish = null
     isRare = false
     constructor(app) {
-        super(app)
-        this.tileType = TILE_TYPES.pond
+        super(app, PondTile.type)
         this.reset()
     }
     update(elapsed) {
@@ -244,7 +245,7 @@ export class PondTile extends Tile {
                 [RESOURCE_TYPES.wood]: 1
             },
             onBuy(app) {
-                app.land.push(new PondTile(app))
+                app.addTile(new PondTile(app))
             }
         },
         {

@@ -1,13 +1,12 @@
-import { TILE_TYPES } from './consts.js'
 import { setBoolPropTimeout } from './utils.js'
 
 class Tile {
     app = null
-    constructor(app) {
+    constructor(app, tileType) {
         this.app = app
         Object.defineProperty(this, 'app', { enumerable: false })
 
-        this.tileType = TILE_TYPES.none
+        this.tileType = tileType
         this.type = ''
         this.subType = '' // Used e.g. by mines to determine what resource is in the tile
         this.progress = 0

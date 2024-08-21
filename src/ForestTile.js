@@ -32,9 +32,10 @@ const TREE_WOOD_GAINS = [0.1, 0.25, 0.5, 1]
 const TREE_WOOD_GAINS_BASE = 10
 
 export class ForestTile extends Tile {
+    static type = TILE_TYPES.forest
+
     constructor(app) {
-        super(app)
-        this.tileType = TILE_TYPES.forest
+        super(app, ForestTile.type)
         this.type = FOREST_TILE_TYPES.empty
     }
     update(elapsed) {
@@ -282,7 +283,7 @@ export class ForestTile extends Tile {
             category: CATEGORIES.tiles,
             group: GROUPS.forest,
             onBuy(app) {
-                app.land.push(new ForestTile(app))
+                app.addTile(new ForestTile(app))
             }
         },
         {
