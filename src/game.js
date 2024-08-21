@@ -1,4 +1,5 @@
 import { Counter } from './Counter.js'
+import { DonutTile } from './DonutTile.js'
 import { EmptyTile } from './EmptyTile.js'
 import { ForestTile, INITIAL_SEEDS } from './ForestTile.js'
 import { MineTile } from './MineTile.js'
@@ -78,6 +79,7 @@ const app = Vue.createApp({
         this.registerTile(ForestTile)
         this.registerTile(MineTile)
         this.registerTile(PondTile)
+        this.registerTile(DonutTile)
 
         // Initialize bought upgrades obj
         this.UPGRADES.forEach(upgrade => {
@@ -344,6 +346,13 @@ const app = Vue.createApp({
                     for (let i = 0; i < this.landSize[0]; i++) {
                         this.land.push(new EmptyTile(this))
                     }
+                    break
+                case 'Win Game':
+                    window.scrollTo(0, 0)
+                    this.showMessage('Congratulations! You have won the prototype of the game!')
+                    setTimeout(() => {
+                        this.showMessage('You can continue playing if you want to. Check back later for updates!')
+                    }, 5000)
                     break
             }
 

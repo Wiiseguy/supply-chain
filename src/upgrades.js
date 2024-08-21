@@ -31,5 +31,15 @@ export const UPGRADES = [
         category: CATEGORIES.special,
         max: 1,
         group: GROUPS.ui
+    },
+    // Final win game upgrade
+    {
+        name: 'Win Game',
+        description: 'Congratulations! You have won the game!',
+        initialOwned: 0,
+        baseCost: 1_000_000,
+        category: CATEGORIES.special,
+        group: GROUPS.ui,
+        max: 1
     }
 ]

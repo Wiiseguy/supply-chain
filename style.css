@@ -188,7 +188,7 @@ button:disabled {
 }
 .grow-bounce {
     .grow-bounce-target {
-        animation: growBounce 0.25s;
+        animation: growBounce 0.25s 10;
     }
 }
 .grow-bounce-target {

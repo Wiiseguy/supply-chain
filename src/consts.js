@@ -3,6 +3,7 @@ export const TILE_TYPES = {
     forest: 'forest',
     mine: 'mine',
     pond: 'pond',
+    donut: 'donut',
     farm: 'farm',
     desert: 'desert',
     kiln: 'kiln'
@@ -17,6 +18,7 @@ export const GROUPS = {
     forest: 'forest',
     mine: 'mine',
     pond: 'pond',
+    donut: 'donut',
     ui: 'ui'
 }
 
@@ -45,6 +47,7 @@ export const RESOURCE_TYPES = {
     metal: 'metal',
     clay: 'clay',
     fish: 'fish',
+    donut: 'donut',
     wheat: 'wheat',
     bread: 'bread',
     brick: 'brick',
@@ -77,6 +80,7 @@ export const GROUP_ICONS = {
     forest: '🌲',
     mine: '⛏️',
     pond: '🎣',
+    donut: '🍩',
     farm: '🌾',
     desert: '🏜️',
     kiln: '🏭',

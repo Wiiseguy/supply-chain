@@ -20,7 +20,7 @@ export class Resource {
         this.sold = 0
         this.incurred = 0
         this.earnings = 0
-        this.totalOwned = 0
+        this.totalOwned = this.owned
     }
     get storageSize() {
         return this.storageBaseSize * this.storage
