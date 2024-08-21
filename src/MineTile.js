@@ -200,6 +200,10 @@ export class MineTile extends Tile {
         return this.app.boughtUpgrades['Pickaxe'] + 1
     }
 
+    static hasTile(app) {
+        return app.land.some(tile => tile.tileType === TILE_TYPES.mine)
+    }
+
     static resources = [
         new Resource(RESOURCE_TYPES.clay, {
             displayNameSingular: 'Clay',
@@ -276,7 +280,8 @@ export class MineTile extends Tile {
             costMultiplier: 1.5,
             speed: undefined,
             category: CATEGORIES.tools,
-            group: GROUPS.mine
+            group: GROUPS.mine,
+            isVisible: MineTile.hasTile
         },
         {
             name: 'Tunneling',
@@ -287,7 +292,8 @@ export class MineTile extends Tile {
             costMultiplier: 1.75,
             speed: undefined,
             category: CATEGORIES.tools,
-            group: GROUPS.mine
+            group: GROUPS.mine,
+            isVisible: MineTile.hasTile
         },
         {
             name: 'Pickaxe',
@@ -298,7 +304,8 @@ export class MineTile extends Tile {
             costMultiplier: 2,
             speed: undefined,
             category: CATEGORIES.tools,
-            group: GROUPS.mine
+            group: GROUPS.mine,
+            isVisible: MineTile.hasTile
         },
         // Land
         {
@@ -366,7 +373,8 @@ export class MineTile extends Tile {
             group: GROUPS.mine,
             onBuy(app) {
                 app.resources.clay.storage += 1
-            }
+            },
+            isVisible: MineTile.hasTile
         },
         {
             name: 'Metal Storage',
@@ -380,7 +388,8 @@ export class MineTile extends Tile {
             group: GROUPS.mine,
             onBuy(app) {
                 app.resources.metal.storage += 1
-            }
+            },
+            isVisible: MineTile.hasTile
         },
         {
             name: 'Diamond Storage',
@@ -394,7 +403,8 @@ export class MineTile extends Tile {
             group: GROUPS.mine,
             onBuy(app) {
                 app.resources.diamond.storage += 1
-            }
+            },
+            isVisible: MineTile.hasTile
         },
         // Automation
         {
@@ -405,7 +415,8 @@ export class MineTile extends Tile {
             costMultiplier: 1.2,
             speed: 1,
             category: CATEGORIES.automation,
-            group: GROUPS.mine
+            group: GROUPS.mine,
+            isVisible: MineTile.hasTile
         },
         {
             name: 'Tunneler',
@@ -415,7 +426,8 @@ export class MineTile extends Tile {
             costMultiplier: 1.2,
             speed: 1,
             category: CATEGORIES.automation,
-            group: GROUPS.mine
+            group: GROUPS.mine,
+            isVisible: MineTile.hasTile
         },
         {
             name: 'Auto Shoveler',
@@ -427,7 +439,8 @@ export class MineTile extends Tile {
             costMultiplier: 1.2,
             speed: 1,
             category: CATEGORIES.automation,
-            group: GROUPS.mine
+            group: GROUPS.mine,
+            isVisible: MineTile.hasTile
         },
         {
             name: 'Metal Seller',
@@ -437,7 +450,8 @@ export class MineTile extends Tile {
             costMultiplier: 1.2,
             speed: 1 / 60,
             category: CATEGORIES.automation,
-            group: GROUPS.mine
+            group: GROUPS.mine,
+            isVisible: MineTile.hasTile
         },
         {
             name: 'Metal Reclaimer',
@@ -448,7 +462,8 @@ export class MineTile extends Tile {
             costMultiplier: 1.2,
             speed: 1 / 120,
             category: CATEGORIES.automation,
-            group: GROUPS.mine
+            group: GROUPS.mine,
+            isVisible: MineTile.hasTile
         },
         {
             name: 'Diamond Seller',
@@ -458,7 +473,8 @@ export class MineTile extends Tile {
             costMultiplier: 1.2,
             speed: 1 / 180,
             category: CATEGORIES.automation,
-            group: GROUPS.mine
+            group: GROUPS.mine,
+            isVisible: MineTile.hasTile
         },
         {
             name: 'Diamond Reclaimer',
@@ -470,7 +486,8 @@ export class MineTile extends Tile {
             costMultiplier: 1.2,
             speed: 1 / 240,
             category: CATEGORIES.automation,
-            group: GROUPS.mine
+            group: GROUPS.mine,
+            isVisible: MineTile.hasTile
         },
         // Special upgrades
         {
@@ -484,7 +501,8 @@ export class MineTile extends Tile {
             group: GROUPS.mine,
             onBuy(app) {
                 app.resources.diamond.price *= 1.5
-            }
+            },
+            isVisible: MineTile.hasTile
         },
         {
             name: 'Diamond Marketing 2',
@@ -497,7 +515,8 @@ export class MineTile extends Tile {
             group: GROUPS.mine,
             onBuy(app) {
                 app.resources.diamond.price *= 2
-            }
+            },
+            isVisible: MineTile.hasTile
         }
     ]
 }

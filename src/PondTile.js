@@ -225,6 +225,10 @@ export class PondTile extends Tile {
         })
     ]
 
+    static hasTile(app) {
+        return app.land.some(t => t instanceof PondTile)
+    }
+
     static upgrades = [
         {
             name: 'Pond Tile',
@@ -254,7 +258,8 @@ export class PondTile extends Tile {
             group: GROUPS.pond,
             onBuy(app) {
                 app.resources.fish.storage += 1
-            }
+            },
+            isVisible: PondTile.hasTile
         },
         {
             name: 'Fish Reclaimer',
@@ -265,7 +270,8 @@ export class PondTile extends Tile {
             costMultiplier: 1.5,
             speed: 1 / 8,
             category: CATEGORIES.automation,
-            group: GROUPS.pond
+            group: GROUPS.pond,
+            isVisible: PondTile.hasTile
         },
         {
             name: 'Fish Seller',
@@ -275,7 +281,8 @@ export class PondTile extends Tile {
             costMultiplier: 1.5,
             speed: 1 / 8,
             category: CATEGORIES.automation,
-            group: GROUPS.pond
+            group: GROUPS.pond,
+            isVisible: PondTile.hasTile
         },
         {
             name: 'Auto Fisher',
@@ -285,22 +292,25 @@ export class PondTile extends Tile {
             costMultiplier: 2,
             speed: 1 / FISHING_WIGGLE_TIME,
             category: CATEGORIES.automation,
-            group: GROUPS.pond
+            group: GROUPS.pond,
+            isVisible: PondTile.hasTile
         },
         // Special
-        {
-            name: 'Fish Finger',
-            description: 'Sell 10 times the amount of fish with one click',
-            initialOwned: 0,
-            baseCost: 2000,
-            costMultiplier: 5,
-            category: CATEGORIES.special,
-            max: 2,
-            group: GROUPS.pond,
-            onBuy(app) {
-                app.resources.fish.sellNum *= 10
-            }
-        },
+
+        // TODO: remove?
+        // {
+        //     name: 'Fish Finger',
+        //     description: 'Sell 10 times the amount of fish with one click',
+        //     initialOwned: 0,
+        //     baseCost: 2000,
+        //     costMultiplier: 5,
+        //     category: CATEGORIES.special,
+        //     max: 2,
+        //     group: GROUPS.pond,
+        //     onBuy(app) {
+        //         app.resources.fish.sellNum *= 10
+        //     }
+        // },
         {
             name: 'Lucky Bait',
             description: 'Increase the chance of catching rare fish',
@@ -309,7 +319,8 @@ export class PondTile extends Tile {
             costMultiplier: 1.5,
             category: CATEGORIES.special,
             group: GROUPS.pond,
-            max: 5
+            max: 5,
+            isVisible: PondTile.hasTile
         }
     ]
 }

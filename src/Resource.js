@@ -26,7 +26,7 @@ export class Resource {
         return this.storageBaseSize * this.storage
     }
     get any() {
-        return this.owned > 0
+        return this.owned - this.minimum > 0
     }
     get sellNumPrice() {
         return Math.min(this.sellNum, this.owned - this.minimum) * this.price

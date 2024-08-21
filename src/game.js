@@ -178,7 +178,8 @@ const app = Vue.createApp({
             UPGRADES.forEach(upgrade => {
                 if (
                     !this.visibleUpgrades.includes(upgrade.name) &&
-                    this.money >= upgrade.baseCost * DEFAULT_UPGRADE_VISIBILITY_THRESHOLD
+                    this.money >= upgrade.baseCost * DEFAULT_UPGRADE_VISIBILITY_THRESHOLD &&
+                    (upgrade.isVisible ? upgrade.isVisible(this) : true)
                 ) {
                     this.visibleUpgrades.push(upgrade.name)
                 }
@@ -407,6 +408,9 @@ const app = Vue.createApp({
                 return '0m'
             }
             return humanTime(diff)
+        },
+        sellLevel() {
+            return this.boughtUpgrades['Wooden Finger']
         },
         forestLand() {
             return this.land.filter(tile => tile instanceof ForestTile)

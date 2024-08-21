@@ -410,14 +410,15 @@ export class ForestTile extends Tile {
         {
             name: 'Wooden Finger',
             displayName: 'Wooden Finger',
-            description: 'Sell 10 times the amount of wood with one click',
+            description: 'Sell 10 times the amount of resources with one click',
             initialOwned: 0,
             baseCost: 200,
             costMultiplier: 5,
             category: CATEGORIES.special,
-            max: 2,
+            max: 3,
             group: GROUPS.forest,
             onBuy(app) {
+                // TODO: remove?
                 app.resources.wood.sellNum *= 10
             }
         },

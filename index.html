@@ -37,9 +37,9 @@
 
                 <!-- Resource stats -->
                 <table>
-                    <tr v-for="r in resourcesView" @click="DEBUG && r.gain(r.storageSize)">
+                    <tr v-for="r in resourcesView">
                         <td class="text-center">{{ r.icon }}</td>
-                        <td>
+                        <td @click="DEBUG && r.gain(r.storageSize)">
                             <span :class="{'text-warning': r.owned == r.storageSize}">
                                 <span>{{ r.displayNamePlural }}: {{ num(r.owned) }} / {{ num(r.storageSize) }}</span>
                                 <span v-if="r.lost" class="ml-3 text-danger"
@@ -47,11 +47,28 @@
                                     {{ num(-r.lost) }}</span>
                             </span>
                         </td>
+                        <td>
+                            <button @click="sellResource(r, 1)" :disabled="!r.any" class="btn-xs btn-sell-resource">
+                                Sell 1 <span class="text-success">+ $ {{ num(r.price) }}</span>
+                            </button>
+                            <button @click="sellResource(r, 10)" :disabled="!r.any" class="btn-xs btn-sell-resource"
+                                v-if="sellLevel>0">
+                                Sell 10 <span class="text-success">+ $ {{ num(r.sellPrice(10)) }}</span>
+                            </button>
+                            <button @click="sellResource(r, 100)" :disabled="!r.any" class="btn-xs btn-sell-resource"
+                                v-if="r.storageSize >= 100 && sellLevel > 1">
+                                Sell 100 <span class="text-success">+ $ {{ num(r.sellPrice(100)) }}</span>
+                            </button>
+                            <button @click="sellResource(r, r.owned)" :disabled="!r.any"
+                                class="btn-xs btn-sell-resource" v-if="sellLevel > 2">
+                                Sell all <span class="text-success">+ $ {{ num(r.sellPrice(r.owned)) }}</span>
+                            </button>
+                        </td>
                     </tr>
                 </table>
 
                 <!-- Resource sell buttons -->
-                <div class="mt-4">
+                <div class="mt-4" v-if="false">
                     <button v-for="r in resourcesView" @click="sellResource(r)" :disabled="!r.any">
                         Sell {{r.sellNum > 1 ? r.sellNum : ''}} {{ r.sellNumDisplayName }} {{r.icon}}<br>
                         <small class="text-success">+ {{ num(r.sellNumPrice) }}</small>
@@ -68,7 +85,7 @@
                                 :style="{width: (a.speed < 5 ? (a.saturation*100) : 100) + '%'}"></span>
                         </button>
                         {{ a.displayName }}: {{ boughtUpgrades[a.upgradeName] }}
-                        <button @click="sellAutomator(a)" type="button" class="btn-sm p-0 px-1 btn-sell-automator">Sell
+                        <button @click="sellAutomator(a)" type="button" class="btn-xs btn-sell-automator">Sell
                             1</button>
                     </div>
 
@@ -76,7 +93,6 @@
 
                 <div class="mt-5 selectable">
                     <h5>Statistics</h5>
-                    <pre>{{calculated}}</pre>
                     <div>
                         Money p/s: $ {{ num(perS.money) }}
                     </div>
@@ -86,7 +102,8 @@
                     <div>
                         Trees chopped: {{ num(stats.treesChopped) }}
                     </div>
-                    <div v-if="stats.luckySeeds > 0">
+                    <div v-if="stats.luckySeeds > 0"
+                        :title="`Lucky seed chance is ${100 * calculated.luckySeedChance}%`">
                         Lucky seeds: {{ num(stats.luckySeeds) }}
                     </div>
                     <div v-if="stats.luckyTrees > 0">
@@ -102,7 +119,8 @@
                         Tunnels dug: {{ num(stats.tunnelsDug) }}
                     </div>
                     <div v-if="stats.fishCaught > 0" class="mt-3">
-                        Fish caught: {{ num(stats.fishCaught) }}
+                        <span :title="`Rare fish chance sequence is ${100 * calculated.rareFishLuck}%`">Fish caught: {{
+                            num(stats.fishCaught) }}</span>
                         <div v-if="stats.fishTank.length > 0">
                             <span v-for="i in stats.fishTank" class="mr-3">{{i[0]}} {{i[1]}}</span>
                         </div>

@@ -53,6 +53,13 @@ button:disabled {
     cursor: not-allowed;
 }
 
+.btn-xs {
+    padding: 0.15em 0.3em;
+    font-size: 0.75em;
+    margin: 0 0.3em 0 0.3em;
+    border-radius: 0.25em;
+}
+
 .table {
     color: inherit;
     td,
