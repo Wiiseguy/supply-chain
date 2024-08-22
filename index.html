@@ -33,7 +33,12 @@
                             {{tile.tile?.iconBottomRight}}</div>
                     </div>
                 </div>
-                <h5 class="pl-1" @click="DEBUG && (money+=1, money*=10)"><strong>$</strong>&nbsp; {{ num(money) }}</h5>
+                <h5 class="pl-1" @click="DEBUG && (money+=1, money*=10)">
+                    <strong>$</strong>&nbsp; {{ num(money) }}
+                    <div v-if="automatorsView.length > 0" class="small text-muted">
+                        Money p/s: $ {{ num(perS.money) }}
+                    </div>
+                </h5>
 
                 <!-- Resource stats -->
                 <table>
@@ -93,9 +98,6 @@
 
                 <div class="mt-5 selectable">
                     <h5>Statistics</h5>
-                    <div>
-                        Money p/s: $ {{ num(perS.money) }}
-                    </div>
                     <div class="mb-3">
                         Time played: {{ num(timeSinceStart) }}
                     </div>
