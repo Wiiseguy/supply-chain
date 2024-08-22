@@ -1,12 +1,10 @@
 export function setBoolPropTimeout(obj, prop, timeOutProp, time) {
     if (globalThis.haltAnimation) return
     clearTimeout(obj[timeOutProp])
-    setTimeout(() => {
-        obj[prop] = false
-    }, 1)
+    obj[prop] = false
     setTimeout(() => {
         obj[prop] = true
-    }, 2)
+    }, 1)
     obj[timeOutProp] = setTimeout(() => {
         obj[prop] = false
     }, time)
