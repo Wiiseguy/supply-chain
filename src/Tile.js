@@ -46,6 +46,9 @@ class Tile {
         this.bounceDown = false
     }
     update(_elapsed) {}
+    sell() {
+        console.error('Sell not implemented for', this)
+    }
     get tooltip() {
         return 'Empty tile'
     }

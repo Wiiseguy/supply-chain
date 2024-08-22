@@ -33,7 +33,18 @@
                         <div class="mini-icon bottom-right" v-if="tile.tile?.iconBottomRight">
                             {{tile.tile?.iconBottomRight}}</div>
                     </div>
+                    <div class="mt-3 text-center toolbar hover-opacity" v-if="hasUpgrade('Bulldozer')">
+                        <div class="btn-group">
+                            <button @click="setClickMode('click')" :class="{'active': clickMode === 'click'}"
+                                class="btn btn-xs btn-tool">Click</button>
+                            <button @click="setClickMode('sell')" :class="{'active': clickMode === 'sell'}"
+                                title="Sell a tile for $ 100" class="btn btn-xs btn-tool">Sell</button>
+                            <button @click="setClickMode('move')" :class="{'active': clickMode === 'move'}"
+                                class="btn btn-xs btn-tool">Move</button>
+                        </div>
+                    </div>
                 </div>
+
                 <h5 class="pl-1" @click="DEBUG && (money+=1, money*=10)">
                     <strong>$</strong>&nbsp; {{ num(money) }}
                     <div v-if="automatorsView.length > 0" class="small text-muted">

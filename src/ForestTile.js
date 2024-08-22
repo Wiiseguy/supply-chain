@@ -67,6 +67,9 @@ export class ForestTile extends Tile {
             }
         }
     }
+    sell() {
+        this.app.boughtUpgrades['Forest Tile'] -= 1
+    }
     dig() {
         this.progress += this.digPower
         if (this.progress >= 1) {

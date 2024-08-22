@@ -120,6 +120,9 @@ export class PondTile extends Tile {
             }
         }
     }
+    sell() {
+        this.app.boughtUpgrades['Pond Tile'] -= 1
+    }
     reset() {
         this.caughtFish = null
         this.catchTime = FISHING_TIME_BASE + (Math.random() - 0.5) * FISHING_TIME_VARIANCE * 2

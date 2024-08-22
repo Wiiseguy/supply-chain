@@ -13,6 +13,9 @@ export class DonutTile extends Tile {
     update(elapsed) {
         super.update(elapsed)
     }
+    sell() {
+        this.app.boughtUpgrades['Donut Tile'] -= 1
+    }
 
     click() {
         this.app.resources.donut.gain(1)
@@ -62,7 +65,7 @@ export class DonutTile extends Tile {
             name: 'Donut Tile',
             tile: true,
             description: 'Claim a tile of land to mess about with cookies... I mean donuts!',
-            initialOwned: 1,
+            initialOwned: 0,
             baseCost: 500,
             costMultiplier: 2,
             speed: undefined,

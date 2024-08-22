@@ -44,6 +44,8 @@ const app = Vue.createApp({
             boughtUpgrades: {},
             visibleUpgrades: [],
             unblurredUpgrades: [],
+            clickMode: 'click',
+            movingTileIdx: -1,
             message: '',
             messageFade: 0,
             showEarnings: false,
@@ -231,6 +233,10 @@ const app = Vue.createApp({
                 })
             }
         },
+        setClickMode(mode) {
+            this.clickMode = mode
+            this.movingTileIdx = -1
+        },
         /**
          *
          * @param {Resource} resource
@@ -273,11 +279,49 @@ const app = Vue.createApp({
                 console.log('Clicked tile:', tileModel.tile)
             }
             const tile = tileModel.tile
-            if (!tile) {
-                this.showMessage('Buy a tile to claim this land!')
-                return
+
+            switch (this.clickMode) {
+                case 'click':
+                    tile.click()
+                    break
+                case 'sell': {
+                    if (tile instanceof EmptyTile) {
+                        this.showMessage('Cannot sell an empty tile!')
+                        return
+                    }
+                    // Replace the tile with an empty tile in this.land
+                    const index = this.land.indexOf(tile)
+                    this.land.splice(index, 1, new EmptyTile(this))
+
+                    // Gain some money as a consolation and to prevent soft-locking or infinite money
+                    //  determine the lowest possible sell price of the cheapest tile (probably 'Forest Tile')
+                    const tileUpgrades = this.UPGRADES.filter(upgrade => upgrade.tile).sort(
+                        (a, b) => a.baseCost - b.baseCost
+                    )
+                    const cheapestTile = tileUpgrades[0]
+                    let minPrice = cheapestTile.baseCost / (cheapestTile.costMultiplier * cheapestTile.initialOwned)
+                    this.money += minPrice
+                    tile.sell()
+                    break
+                }
+                case 'move': {
+                    if (this.movingTileIdx === -1) {
+                        this.movingTileIdx = this.land.indexOf(tile)
+                        this.showMessage('Click another tile to swap with this one or click the same tile to cancel')
+                    } else {
+                        const movingTileTarget = this.land.indexOf(tile)
+                        // Swap the tiles
+                        const temp = this.land[movingTileTarget]
+                        this.land[movingTileTarget] = this.land[this.movingTileIdx]
+                        this.land[this.movingTileIdx] = temp
+                        this.movingTileIdx = -1
+                    }
+                    break
+                }
+                default:
+                    console.error('Invalid click mode:', this.clickMode)
+                    break
             }
-            tile.click()
         },
 
         getTileStyle(tile) {
@@ -495,7 +539,10 @@ const app = Vue.createApp({
                     },
                     progressAltStyle: this.getTileProgressAltStyle(tile),
                     level: tile.level,
-                    classes: tile.classes,
+                    classes: {
+                        ...tile.classes,
+                        moving: this.movingTileIdx === this.land.indexOf(tile)
+                    },
                     tooltip: tile.tooltip
                 })
             })

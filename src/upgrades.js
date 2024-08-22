@@ -32,6 +32,15 @@ export const UPGRADES = [
         max: 1,
         group: GROUPS.ui
     },
+    {
+        name: 'Bulldozer',
+        description: 'Unlock the ability to sell and move tiles',
+        initialOwned: 0,
+        baseCost: 5000,
+        category: CATEGORIES.special,
+        max: 1,
+        group: GROUPS.ui
+    },
     // Final win game upgrade
     {
         name: 'Win Game',

@@ -65,6 +65,25 @@ export class MineTile extends Tile {
     update(_elapsed) {
         this.stageP = this.progress
     }
+    sell() {
+        let upgrade = ''
+        // Determine which upgrade bought this tile
+        switch (this.subType) {
+            case RESOURCE_TYPES.clay:
+                upgrade = 'Clay Mine Tile'
+                break
+            case RESOURCE_TYPES.metal:
+                upgrade = 'Metal Mine Tile'
+                break
+            case RESOURCE_TYPES.diamond:
+                upgrade = 'Diamond Mine Tile'
+                break
+            default:
+                console.error('sell: Unknown resource type:', this.subType)
+                return
+        }
+        this.app.boughtUpgrades[upgrade] -= 1
+    }
     dig() {
         this.progress += this.excavatorPower
         if (this.progress >= 1) {

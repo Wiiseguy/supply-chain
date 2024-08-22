@@ -60,6 +60,23 @@ button:disabled {
     border-radius: 0.25em;
 }
 
+.btn-tool {
+    background-color: var(--button-bg);
+    color: var(--text);
+}
+.btn-tool.active {
+    background-color: var(--land-bg);
+    color: black;
+}
+
+.btn-group {
+    .btn {
+        margin: 0;
+        margin-left: 2px;
+        margin-right: 2px;
+    }
+}
+
 .table {
     color: inherit;
     td,
@@ -176,6 +193,9 @@ button:disabled {
 .land-tile.unclaimed {
     cursor: not-allowed;
     background-color: rgba(0, 0, 0, 0.5);
+}
+.land-tile.moving {
+    box-shadow: 0 0 10px #88ff88;
 }
 
 .wiggle {
