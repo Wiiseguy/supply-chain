@@ -67,6 +67,11 @@ const app = Vue.createApp({
                 fishMissed: 0,
                 fishRarities: 0,
                 fishTank: []
+            },
+
+            // Settings
+            settings: {
+                automation: true
             }
         }
     },
@@ -207,9 +212,11 @@ const app = Vue.createApp({
             })
 
             // Run automators
-            this.automators.forEach(automator => {
-                automator.run(this, elapsed)
-            })
+            if (this.settings.automation) {
+                this.automators.forEach(automator => {
+                    automator.run(this, elapsed)
+                })
+            }
 
             // Run calculators
             this.calculators.forEach(calculator => {
@@ -302,6 +309,7 @@ const app = Vue.createApp({
                     let minPrice = cheapestTile.baseCost / (cheapestTile.costMultiplier * cheapestTile.initialOwned)
                     this.money += minPrice
                     tile.sell()
+                    this.setClickMode('click')
                     break
                 }
                 case 'move': {
@@ -315,6 +323,7 @@ const app = Vue.createApp({
                         this.land[movingTileTarget] = this.land[this.movingTileIdx]
                         this.land[this.movingTileIdx] = temp
                         this.movingTileIdx = -1
+                        this.setClickMode('click')
                     }
                     break
                 }
@@ -322,6 +331,9 @@ const app = Vue.createApp({
                     console.error('Invalid click mode:', this.clickMode)
                     break
             }
+        },
+        toggleAutomation() {
+            this.settings.automation = !this.settings.automation
         },
 
         getTileStyle(tile) {
@@ -439,6 +451,7 @@ const app = Vue.createApp({
                 land: this.land,
                 startTime: this.startTime,
                 stats: this.stats,
+                settings: this.settings,
                 automators: this.automators
             }
             Object.values(this.resources).forEach(resource => {
@@ -473,6 +486,7 @@ const app = Vue.createApp({
                 })
                 Object.assign(this.boughtUpgrades, saveData.boughtUpgrades)
                 Object.assign(this.stats, saveData.stats)
+                Object.assign(this.settings, saveData.settings)
                 this.automators.forEach(automator => {
                     // Find automator in saveData.automators and assign its properties to the automator
                     const savedAutomator = saveData.automators?.find(

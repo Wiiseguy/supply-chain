@@ -9,7 +9,7 @@ export class Resource {
         this.displayNameSingular = settings.displayNameSingular
         this.displayNamePlural = settings.displayNamePlural
         this.icon = settings.icon
-        this.minimum = settings.minimum ?? 0 // The minimum amount of this resource that must be kept, like seeds should not be able to be sold if there are less than 2, because then the game is softlocked
+        this.minimum = settings.minimum ?? 0 // The minimum amount of this resource that must be kept, like seeds should not be able to be sold if there are less than 2, because then the game is soft-locked
         this.basePrice = settings.basePrice
         this.storageBaseSize = settings.storageBaseSize
         this.price = settings.basePrice
@@ -50,7 +50,7 @@ export class Resource {
     }
     // Subtract n from owned if sufficient, return false if not
     incur(n) {
-        if (this.owned + this.minimum < n) {
+        if (this.owned < n) {
             return false
         }
         this.owned -= n

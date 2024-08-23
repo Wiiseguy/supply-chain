@@ -69,6 +69,10 @@ export class ForestTile extends Tile {
     }
     sell() {
         this.app.boughtUpgrades['Forest Tile'] -= 1
+        // If the tile is a tree, give the player back a seed (prevent soft-lock)
+        if (this.type === FOREST_TILE_TYPES.tree) {
+            this.app.resources.seed.gain(1)
+        }
     }
     dig() {
         this.progress += this.digPower

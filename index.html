@@ -94,10 +94,18 @@
 
                 <!-- Automators -->
                 <div class="mt-4">
+                    <!-- All automation toggle -->
+                    <div v-if="automatorsView.length > 1">
+                        <button @click="toggleAutomation" type="button" class="btn-sm btn-toggle-automator"
+                            title="Click to toggle Automation">
+                            {{ settings.automation ? 'ON' : 'OFF' }}
+                        </button>
+                        All Automation
+                    </div>
                     <div v-for="a in automatorsView">
                         <button @click="toggleAutomator(a.automator)" type="button" class="btn-sm btn-toggle-automator"
                             :title="`Every ${(1/a.speed).toFixed(1)}s`">
-                            {{ a.enabled ? 'ON' : 'OFF' }}
+                            {{ a.enabled && settings.automation ? 'ON' : 'OFF' }}
                             <span class="progress"
                                 :style="{width: (a.speed < 5 ? (a.saturation*100) : 100) + '%'}"></span>
                         </button>
@@ -105,7 +113,6 @@
                         <button @click="sellAutomator(a)" type="button" class="btn-xs btn-sell-automator">Sell
                             1</button>
                     </div>
-
                 </div>
 
                 <div class="mt-5 selectable">

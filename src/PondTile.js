@@ -17,6 +17,7 @@ const FISHING_WIGGLE_TIME = 30 // seconds
 const FISHING_WIGGLE_VARIANCE = 5 // seconds
 const RARE_FISH_LUCK_BASE = 0.4 // Base chance of catching a rare fish (0.4 means 0.6 chance of catching a normal fish)
 const SEALIFE = ['🐟', '🐠', '🦐', '🦞', '🦀', '🐡', '🐸', '🦑', '🐙', '🦈', '🐬', '🐧', '🐳', '🐋']
+const SEALIFE_GAINS = [1, 2, 5, 10, 20, 30, 40, 50, 75, 100, 150, 200, 500, 1000]
 const SEALIFE_NAMES = [
     'Fish',
     'Clownfish',
@@ -34,7 +35,6 @@ const SEALIFE_NAMES = [
     'Blue Whale'
 ]
 const NON_FISH = ['🦐', '🦞', '🦀', '🐸', '🐬', '🐧', '🐳', '🐋']
-const FISH_GAINS = [1, 2, 5, 10, 20, 30, 40, 50, 75, 100, 150, 200, 500, 1000]
 // To make it more interesting, there should be a small chance of catching a wood, seed, metal, diamond, or clay
 const RARITY_CHANCE = 1 / 100
 const RARITIES = ['🏺', '🔧', '💎']
@@ -58,12 +58,12 @@ function randomResource(resourceList, luck = 0.5) {
 }
 
 // Check if list and gains lists are same length
-console.assert(SEALIFE.length === FISH_GAINS.length, 'FISH and FISH_GAINS must be the same length')
+console.assert(SEALIFE.length === SEALIFE_GAINS.length, 'FISH and FISH_GAINS must be the same length')
 console.assert(RARITIES.length === RARITY_GAINS.length, 'RARITIES and RARITY_GAINS must be the same length')
 
 function simulate() {
     for (let i = 0; i < SEALIFE.length; i++) {
-        console.log(SEALIFE[i], FISH_GAINS[i])
+        console.log(SEALIFE[i], SEALIFE_GAINS[i])
     }
     // Simulate many catches
     const fishCounts = {}
@@ -162,7 +162,7 @@ export class PondTile extends Tile {
                 this.app.showMessage(`Lucky! Found a ${this.caughtFish}!`)
             } else {
                 const idx = SEALIFE.indexOf(this.caughtFish)
-                const fishGain = FISH_GAINS[idx]
+                const fishGain = SEALIFE_GAINS[idx]
                 this.app.resources.fish.gain(fishGain)
                 const isNonFish = NON_FISH.includes(this.caughtFish)
                 this.app.showMessage(
