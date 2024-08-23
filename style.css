@@ -197,6 +197,13 @@ button:disabled {
 .land-tile.moving {
     box-shadow: 0 0 10px #88ff88;
 }
+.land.clickmode-move .land-tile.unclaimed {
+    cursor: pointer;
+    background-color: var(--land-bg);
+}
+.land.clickmode-move .land-tile:hover {
+    box-shadow: 0 0 1px rgba(0, 0, 0, 0.5);
+}
 
 .wiggle {
     .wiggle-target {
