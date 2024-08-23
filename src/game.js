@@ -71,7 +71,8 @@ const app = Vue.createApp({
 
             // Settings
             settings: {
-                automation: true
+                automation: true,
+                dark: true
             }
         }
     },
@@ -140,6 +141,10 @@ const app = Vue.createApp({
                 this.showMessage('Game saved!')
             }
         })
+
+        if (!this.settings.dark) {
+            document.body.classList.remove('dark')
+        }
     },
     methods: {
         num(n) {
@@ -332,8 +337,15 @@ const app = Vue.createApp({
                     break
             }
         },
+
         toggleAutomation() {
             this.settings.automation = !this.settings.automation
+            this.saveGame()
+        },
+        toggleDarkMode() {
+            this.settings.dark = !this.settings.dark
+            document.body.classList.toggle('dark', this.settings.dark)
+            this.saveGame()
         },
 
         getTileStyle(tile) {

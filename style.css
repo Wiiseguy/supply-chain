@@ -34,8 +34,21 @@ body {
     user-select: text;
 }
 
+.theme-toggle {
+    position: absolute;
+    top: 1em;
+    right: 1em;
+}
+
 pre {
     color: inherit;
+}
+
+a {
+    cursor: pointer;
+}
+a:hover {
+    text-decoration: none !important;
 }
 
 button {
