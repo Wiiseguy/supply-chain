@@ -61,6 +61,7 @@ export class MineTile extends Tile {
         super(app, MineTile.type)
         this.type = MINE_TILE_TYPES.rock
         this.subType = subType
+        this.tunnelProblem = false
     }
     update(_elapsed) {
         this.stageP = this.progress
@@ -84,7 +85,7 @@ export class MineTile extends Tile {
         }
         this.app.boughtUpgrades[upgrade] -= 1
     }
-    dig() {
+    dig(manual) {
         this.progress += this.excavatorPower
         if (this.progress >= 1) {
             this.stage += 1
@@ -92,14 +93,17 @@ export class MineTile extends Tile {
             if (this.stage >= MINE_RESOURCE_OPENING_LEVELS[this.subType]) {
                 this.stage = 0
                 this.type = MINE_TILE_TYPES.tunnel
-                this.app.showMessage('Mine entrance opened!')
+                if (manual) {
+                    this.app.showMessage('Mine entrance opened!')
+                }
                 this.app.stats.minesOwned += 1
             }
         }
     }
-    tunnel() {
+    tunnel(manual) {
         this.progress += this.tunnelerPower
         this.animateWiggle()
+        this.tunnelProblem = false
         if (this.progress >= 1) {
             if (this.app.resources.wood.incur(MINE_SUPPORT_BEAM_COST)) {
                 this.stage += 1
@@ -108,21 +112,28 @@ export class MineTile extends Tile {
                 if (this.stage >= MINE_RESOURCE_TUNNELING_LEVELS[this.subType]) {
                     this.stage = 0
                     this.type = MINE_TILE_TYPES.resource
-                    this.app.showMessage(`Cave full of ${this.subType} found!`)
+                    if (manual) {
+                        this.app.showMessage(`Cave full of ${this.subType} found!`)
+                    }
                 } else {
-                    this.app.showMessage(`Support beams built with ${this.app.num(MINE_SUPPORT_BEAM_COST)} wood!`)
+                    if (manual) {
+                        this.app.showMessage(`Support beams built with ${this.app.num(MINE_SUPPORT_BEAM_COST)} wood!`)
+                    }
                 }
             } else {
                 this.animateFail()
-                this.app.showMessage(
-                    `Not enough wood to build support beams! You need ${this.app.num(
-                        MINE_SUPPORT_BEAM_COST
-                    )} wood to continue tunneling.`
-                )
+                this.tunnelProblem = true
+                if (manual) {
+                    this.app.showMessage(
+                        `Not enough wood to build support beams! You need ${this.app.num(
+                            MINE_SUPPORT_BEAM_COST
+                        )} wood to continue tunneling.`
+                    )
+                }
             }
         }
     }
-    mine() {
+    mine(manual) {
         this.progress += this.resourceMinerPower / MINE_RESOURCE_CLICKS[this.subType]
         this.animateWiggle()
         if (this.progress >= 1) {
@@ -139,20 +150,22 @@ export class MineTile extends Tile {
             if (this.stage >= MINE_MAX_RESOURCES_PER_LEVEL[this.subType]) {
                 this.stage = 0
                 this.type = MINE_TILE_TYPES.tunnel
-                this.app.showMessage('Resource cave depleted! Time to dig deeper.')
+                if (manual) {
+                    this.app.showMessage('Resource cave depleted! Time to dig deeper.')
+                }
             }
         }
     }
-    click() {
+    click(manual = false) {
         switch (this.type) {
             case MINE_TILE_TYPES.rock:
-                this.dig()
+                this.dig(manual)
                 break
             case MINE_TILE_TYPES.tunnel:
-                this.tunnel()
+                this.tunnel(manual)
                 break
             case MINE_TILE_TYPES.resource:
-                this.mine()
+                this.mine(manual)
                 break
             default:
                 console.error('Unknown Mine tile type:', this.type)
@@ -192,6 +205,11 @@ export class MineTile extends Tile {
             case MINE_TILE_TYPES.rock:
                 return `Rock - click to dig an entrance for a mine (${this.subType})`
             case MINE_TILE_TYPES.tunnel:
+                if (this.tunnelProblem) {
+                    return `Not enough wood to build support beams! You need ${this.app.num(
+                        MINE_SUPPORT_BEAM_COST
+                    )} wood to continue tunneling.`
+                }
                 return `Mine Tunnel (${this.subType}) - at level ${this.stage} of ${
                     MINE_RESOURCE_TUNNELING_LEVELS[this.subType]
                 } - click to dig deeper`

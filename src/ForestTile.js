@@ -37,6 +37,7 @@ export class ForestTile extends Tile {
     constructor(app) {
         super(app, ForestTile.type)
         this.type = FOREST_TILE_TYPES.empty
+        this.seedProblem = false
     }
     update(elapsed) {
         super.update(elapsed)
@@ -81,18 +82,23 @@ export class ForestTile extends Tile {
             this.type = FOREST_TILE_TYPES.hole
         }
     }
-    plant() {
+    plant(manual) {
         this.progress += this.plantPower
+        this.seedProblem = false
         if (this.progress >= 1) {
             if (this.app.resources.seed.incur(1)) {
                 this.progress = 0
                 this.type = FOREST_TILE_TYPES.tree
             } else {
-                this.app.showMessage('No seeds left!')
+                this.seedProblem = true
+                this.animateFail()
+                if (manual) {
+                    this.app.showMessage('No seeds left!')
+                }
             }
         }
     }
-    chop() {
+    chop(manual) {
         this.progress += this.chopPower
         this.animateWiggle()
         if (this.progress >= 1) {
@@ -117,21 +123,21 @@ export class ForestTile extends Tile {
             } else {
                 this.reset()
             }
-            if (msg) {
+            if (msg && manual) {
                 this.app.showMessage(msg)
             }
         }
     }
-    click() {
+    click(manual = false) {
         switch (this.type) {
             case FOREST_TILE_TYPES.empty:
                 this.dig()
                 break
             case FOREST_TILE_TYPES.hole:
-                this.plant()
+                this.plant(manual)
                 break
             case FOREST_TILE_TYPES.tree:
-                this.chop()
+                this.chop(manual)
                 break
             default:
                 console.error('Unknown Forest tile type:', this.type)
@@ -181,6 +187,9 @@ export class ForestTile extends Tile {
             case FOREST_TILE_TYPES.empty:
                 return 'Empty land - click to dig a hole'
             case FOREST_TILE_TYPES.hole:
+                if (this.seedProblem) {
+                    return `You don't have any seeds left to plant!`
+                }
                 return 'Dug hole - click to plant a seed'
             case FOREST_TILE_TYPES.tree:
                 return `Tree - click to chop it down - the older the tree, the more wood you get`
@@ -433,14 +442,14 @@ export class ForestTile extends Tile {
         {
             name: 'Wood Marketing 1',
             displayName: 'Wood Marketing 1',
-            description: 'Increase wood price by 2x',
+            description: 'Increase wood price by 1.5x',
             initialOwned: 0,
             baseCost: 1000,
             category: CATEGORIES.special,
             max: 1,
             group: GROUPS.forest,
             onBuy(app) {
-                app.resources.wood.price *= 2
+                app.resources.wood.price *= 1.5
             }
         },
         {
@@ -484,7 +493,7 @@ export class ForestTile extends Tile {
             displayName: 'Wood Marketing 2',
             description: 'Increase wood price by 2x',
             initialOwned: 0,
-            baseCost: 30_000,
+            baseCost: 40_000,
             category: CATEGORIES.special,
             max: 1,
             group: GROUPS.forest,
@@ -497,7 +506,7 @@ export class ForestTile extends Tile {
             displayName: 'Wood Marketing 3',
             description: 'Increase wood price by 2x',
             initialOwned: 0,
-            baseCost: 100_000,
+            baseCost: 150_000,
             category: CATEGORIES.special,
             max: 1,
             group: GROUPS.forest,

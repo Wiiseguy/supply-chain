@@ -3,6 +3,7 @@ export const TILE_TYPES = {
     forest: 'forest',
     mine: 'mine',
     pond: 'pond',
+    monster: 'monster',
     donut: 'donut',
     farm: 'farm',
     desert: 'desert',
@@ -18,6 +19,7 @@ export const GROUPS = {
     forest: 'forest',
     mine: 'mine',
     pond: 'pond',
+    monster: 'monster',
     donut: 'donut',
     ui: 'ui'
 }
@@ -81,6 +83,7 @@ export const GROUP_ICONS = {
     mine: '⛏️',
     pond: '🎣',
     donut: '🍩',
+    monster: '👾',
     farm: '🌾',
     desert: '🏜️',
     kiln: '🏭',

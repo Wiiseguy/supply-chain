@@ -113,7 +113,9 @@ export class PondTile extends Tile {
             }
             this.wiggleTime -= elapsed
             if (this.wiggleTime <= 0) {
-                this.app.showMessage('Fish got away!')
+                if (!this.app.hasUpgrade('Auto Fisher')) {
+                    this.app.showMessage('Fish got away!')
+                }
                 this.app.stats.fishMissed += 1
                 this.animateFail()
                 this.reset()
@@ -129,11 +131,15 @@ export class PondTile extends Tile {
         this.wiggleTime = 0
         this.progress = 0
     }
+    showMessage(message, manual) {
+        if (!manual) return
+        this.app.showMessage(message)
+    }
 
-    click() {
+    click(manual = false) {
         if (this.wiggleTime <= 0 && this.catchTime > 0) {
             // Punish if player clicks when the pole is not wiggling
-            this.app.showMessage('You need to wait for the fishing pole to wiggle!')
+            this.showMessage('You need to wait for the fishing pole to wiggle!', manual)
             this.animateFail()
             this.catchTime += 10
             return
@@ -149,7 +155,7 @@ export class PondTile extends Tile {
                 this.isRare = false
                 this.app.stats.fishCaught += 1
             }
-            this.app.showMessage('Caught something!')
+            this.showMessage('Caught something!', manual)
             this.animateGrow()
             this.wiggleTime = 0
             return
@@ -159,14 +165,15 @@ export class PondTile extends Tile {
                 const idx = RARITIES.indexOf(this.caughtFish)
                 const resource = RARITY_GAINS[idx]
                 this.app.resources[resource].gain(1)
-                this.app.showMessage(`Lucky! Found a ${this.caughtFish}!`)
+                this.showMessage(`Lucky! Found a ${this.caughtFish}!`, manual)
             } else {
                 const idx = SEALIFE.indexOf(this.caughtFish)
                 const fishGain = SEALIFE_GAINS[idx]
                 this.app.resources.fish.gain(fishGain)
                 const isNonFish = NON_FISH.includes(this.caughtFish)
-                this.app.showMessage(
-                    `Caught a ${this.caughtFish}, worth ${fishGain} fish${isNonFish ? ' (somehow)' : ''}!`
+                this.showMessage(
+                    `Caught a ${this.caughtFish}, worth ${fishGain} fish${isNonFish ? ' (somehow)' : ''}!`,
+                    manual
                 )
 
                 // Add to fish tank!
@@ -266,11 +273,10 @@ export class PondTile extends Tile {
             isVisible: PondTile.hasTile
         },
         {
-            name: 'Fish Reclaimer',
-            displayName: 'Fish Re-fisher',
-            description: 'Collect lost fish swimming about thinking they were lucky',
+            name: 'Fish Seller',
+            description: 'Automatically sell fish. Selfish. Shellfish?',
             initialOwned: 0,
-            baseCost: 7000,
+            baseCost: 5000,
             costMultiplier: 1.5,
             speed: 1 / 8,
             category: CATEGORIES.automation,
@@ -278,10 +284,11 @@ export class PondTile extends Tile {
             isVisible: PondTile.hasTile
         },
         {
-            name: 'Fish Seller',
-            description: 'Automatically sell fish. Selfish. Shellfish?',
+            name: 'Fish Reclaimer',
+            displayName: 'Fish Re-fisher',
+            description: 'Collect lost fish swimming about thinking they were lucky',
             initialOwned: 0,
-            baseCost: 7500,
+            baseCost: 5500,
             costMultiplier: 1.5,
             speed: 1 / 8,
             category: CATEGORIES.automation,
@@ -292,7 +299,7 @@ export class PondTile extends Tile {
             name: 'Auto Fisher',
             description: 'Automatically fish for you',
             initialOwned: 0,
-            baseCost: 8000,
+            baseCost: 6000,
             costMultiplier: 2,
             speed: 1 / FISHING_WIGGLE_TIME,
             category: CATEGORIES.automation,
@@ -325,6 +332,154 @@ export class PondTile extends Tile {
             group: GROUPS.pond,
             max: 5,
             isVisible: PondTile.hasTile
+        }
+    ]
+}
+
+// Monster tile
+
+const MONSTERS_IDEAS = [
+    '🦠',
+    '🦗',
+    '🐜',
+    '🦇',
+    '👾',
+    '👹',
+    '👺',
+    '👻',
+    '👽',
+    '💀',
+    '🤖',
+    '🧟',
+    '🦹',
+    '🧛',
+    '🧙',
+    '🧚',
+    '🧜',
+    '🧝',
+    '🧞',
+    '🧟‍♂️',
+    '🧟‍♀️'
+]
+
+const MONSTERS = [
+    {
+        name: 'Microbe',
+        icon: '🦠',
+        health: 10,
+        damage: 1,
+        reward: 100, // money
+        otherRewards: [{ type: RESOURCE_TYPES.seed, amount: 1, chance: 0.5 }]
+    },
+    {
+        name: 'Insect',
+        icon: '🦗',
+        health: 20,
+        damage: 2,
+        reward: 200,
+        otherRewards: [
+            { type: RESOURCE_TYPES.seed, amount: 1, chance: 0.5 },
+            { type: RESOURCE_TYPES.wood, amount: 1, chance: 0.5 }
+        ]
+    },
+    {
+        name: 'Bat',
+        icon: '🦇',
+        health: 30,
+        damage: 3,
+        reward: 300,
+        otherRewards: [
+            { type: RESOURCE_TYPES.seed, amount: 1, chance: 0.5 },
+            { type: RESOURCE_TYPES.wood, amount: 1, chance: 0.5 },
+            { type: RESOURCE_TYPES.metal, amount: 1, chance: 0.5 }
+        ]
+    },
+    {
+        name: 'Alien',
+        icon: '👽',
+        health: 40,
+        damage: 4,
+        reward: 400,
+        otherRewards: [
+            { type: RESOURCE_TYPES.seed, amount: 3, chance: 0.5 },
+            { type: RESOURCE_TYPES.wood, amount: 50, chance: 0.5 },
+            { type: RESOURCE_TYPES.metal, amount: 5, chance: 0.1 },
+            { type: RESOURCE_TYPES.diamond, amount: 1, chance: 0.01 }
+        ]
+    },
+    {
+        name: 'Skeleton',
+        icon: '💀',
+        health: 50,
+        damage: 5,
+        reward: 500,
+        otherRewards: [
+            { type: RESOURCE_TYPES.seed, amount: 10, chance: 0.5 },
+            { type: RESOURCE_TYPES.wood, amount: 100, chance: 0.5 },
+            { type: RESOURCE_TYPES.metal, amount: 10, chance: 0.2 },
+            { type: RESOURCE_TYPES.diamond, amount: 1, chance: 0.02 }
+        ]
+    }
+]
+
+const MONSTER_TILE_STAGES = {
+    castle: 'castle',
+    battle: 'battle',
+    defeat: 'defeat',
+    victory: 'victory'
+}
+
+export class MonsterTile extends Tile {
+    static type = TILE_TYPES.monster
+
+    constructor(app) {
+        super(app, MonsterTile.type)
+        this.type = MONSTER_TILE_STAGES.castle
+        this.monster = null
+    }
+    get icon() {
+        switch (this.type) {
+            case MONSTER_TILE_STAGES.castle:
+                return '🏰'
+            case MONSTER_TILE_STAGES.battle:
+                return '⚔️'
+            case MONSTER_TILE_STAGES.defeat:
+                return '💀'
+            case MONSTER_TILE_STAGES.victory:
+                return '🏆'
+            default:
+                return '👾'
+        }
+    }
+    get tooltip() {
+        return 'Monster tile - click to fight the monster!'
+    }
+    click() {
+        this.app.showMessage('You fought the monster!')
+    }
+    sell() {
+        this.app.boughtUpgrades['Monster Tile'] -= 1
+    }
+
+    static hasTile(app) {
+        return app.land.some(t => t instanceof MonsterTile)
+    }
+
+    static upgrades = [
+        {
+            name: 'Monster Tile',
+            displayName: 'Castle Tile',
+            tile: true,
+            description: 'Claim a tile of land to fight monsters on',
+            initialOwned: 0,
+            baseCost: 500,
+            costMultiplier: 2,
+            speed: undefined,
+            category: CATEGORIES.tiles,
+            group: GROUPS.monster,
+            onBuy(app) {
+                app.addTile(new MonsterTile(app))
+            }
         }
     ]
 }

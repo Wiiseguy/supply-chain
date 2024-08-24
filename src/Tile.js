@@ -7,8 +7,6 @@ class Tile {
         Object.defineProperty(this, 'app', { enumerable: false })
 
         this.tileType = tileType
-        this.type = ''
-        this.subType = '' // Used e.g. by mines to determine what resource is in the tile
         this.progress = 0
         this.age = 0
         this.stage = 0
@@ -48,6 +46,9 @@ class Tile {
     update(_elapsed) {}
     sell() {
         console.error('Sell not implemented for', this)
+    }
+    click(manual = false) {
+        console.error('Click not implemented for', this, 'manual:', manual)
     }
     get tooltip() {
         return 'Empty tile'

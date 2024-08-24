@@ -59,6 +59,12 @@
                     </div>
                 </h5>
 
+                <!-- <dialog ref="testModal">
+                    <button autofocus @click="closeTest">Close</button>
+                    <p>Wowie</p>
+                </dialog>
+                <button @click="showTest">Show the dialog</button> -->
+
                 <!-- Resource stats -->
                 <table>
                     <tr v-for="r in resourcesView">
@@ -116,7 +122,7 @@
                             <span class="progress"
                                 :style="{width: (a.speed < 5 ? (a.saturation*100) : 100) + '%'}"></span>
                         </button>
-                        {{ a.displayName }}: {{ boughtUpgrades[a.upgradeName] }}
+                        {{ a.icon }} {{ a.displayName }}: {{ boughtUpgrades[a.upgradeName] }}
                         <button @click="sellAutomator(a)" type="button" class="btn-xs btn-sell-automator">Sell
                             1</button>
                     </div>

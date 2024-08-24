@@ -3,7 +3,7 @@ import { DonutTile } from './DonutTile.js'
 import { EmptyTile } from './EmptyTile.js'
 import { ForestTile, INITIAL_SEEDS } from './ForestTile.js'
 import { MineTile } from './MineTile.js'
-import { PondTile } from './PondTile.js'
+import { MonsterTile, PondTile } from './PondTile.js'
 import { Resource } from './Resource.js'
 import { GROUP_ICONS, CATEGORY_TITLES, CATEGORIES } from './consts.js'
 import { UPGRADES } from './upgrades.js'
@@ -88,6 +88,7 @@ const app = Vue.createApp({
         this.registerTile(MineTile)
         this.registerTile(PondTile)
         this.registerTile(DonutTile)
+        //this.registerTile(MonsterTile)
 
         // Initialize bought upgrades obj
         this.UPGRADES.forEach(upgrade => {
@@ -147,6 +148,12 @@ const app = Vue.createApp({
         }
     },
     methods: {
+        showTest() {
+            this.$refs.testModal.showModal()
+        },
+        closeTest() {
+            this.$refs.testModal.close()
+        },
         num(n) {
             if (typeof n !== 'number') return n
             return bigNum(n)
@@ -294,7 +301,7 @@ const app = Vue.createApp({
 
             switch (this.clickMode) {
                 case 'click':
-                    tile.click()
+                    tile.click(true)
                     break
                 case 'sell': {
                     if (tile instanceof EmptyTile) {
@@ -621,7 +628,8 @@ const app = Vue.createApp({
                 .map(automator => ({
                     ...automator,
                     automator,
-                    displayName: this.UPGRADES_INDEX[automator.upgradeName].displayName ?? automator.upgradeName
+                    displayName: this.UPGRADES_INDEX[automator.upgradeName].displayName ?? automator.upgradeName,
+                    icon: GROUP_ICONS[this.UPGRADES_INDEX[automator.upgradeName].group]
                 }))
         },
         upgradesView() {
