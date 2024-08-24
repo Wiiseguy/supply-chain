@@ -335,7 +335,6 @@ const app = Vue.createApp({
                         this.land[movingTileTarget] = this.land[this.movingTileIdx]
                         this.land[this.movingTileIdx] = temp
                         this.movingTileIdx = -1
-                        this.setClickMode('click')
                     }
                     break
                 }
