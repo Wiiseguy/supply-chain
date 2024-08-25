@@ -33,6 +33,15 @@ export const CATEGORIES = {
     special: 'special'
 }
 
+export const CATEGORIES_ORDER = [
+    CATEGORIES.land,
+    CATEGORIES.tiles,
+    CATEGORIES.tools,
+    CATEGORIES.automation,
+    CATEGORIES.storage,
+    CATEGORIES.special
+]
+
 export const CATEGORY_TITLES = {
     tools: 'Tools',
     tiles: 'Tiles',

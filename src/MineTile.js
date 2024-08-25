@@ -328,7 +328,7 @@ export class MineTile extends Tile {
             speed: undefined,
             category: CATEGORIES.tools,
             group: GROUPS.mine,
-            isVisible: MineTile.hasTile
+            isVisible: () => false
         },
         {
             name: 'Tunneling',

@@ -5,7 +5,7 @@ import { ForestTile, INITIAL_SEEDS } from './ForestTile.js'
 import { MineTile } from './MineTile.js'
 import { MonsterTile, PondTile } from './PondTile.js'
 import { Resource } from './Resource.js'
-import { GROUP_ICONS, CATEGORY_TITLES, CATEGORIES } from './consts.js'
+import { GROUP_ICONS, CATEGORY_TITLES, CATEGORIES, CATEGORIES_ORDER } from './consts.js'
 import { UPGRADES } from './upgrades.js'
 import { bigNum, humanTime, makeIndex } from './utils.js'
 
@@ -666,13 +666,16 @@ const app = Vue.createApp({
                 }
                 upgradesByCategory[upgrade.category].push(upgrade)
             })
-            return Object.entries(upgradesByCategory).map(([category, items]) => {
-                return {
-                    groupName: category,
-                    groupTitle: CATEGORY_TITLES[category],
-                    items
-                }
-            })
+
+            return Object.entries(upgradesByCategory)
+                .map(([category, items]) => {
+                    return {
+                        groupName: category,
+                        groupTitle: CATEGORY_TITLES[category],
+                        items
+                    }
+                })
+                .sort((a, b) => CATEGORIES_ORDER.indexOf(a.groupName) - CATEGORIES_ORDER.indexOf(b.groupName))
         },
         messageStyle() {
             return {
