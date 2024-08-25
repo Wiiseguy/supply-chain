@@ -21,6 +21,7 @@ export const GROUPS = {
     pond: 'pond',
     monster: 'monster',
     donut: 'donut',
+    kiln: 'kiln',
     ui: 'ui'
 }
 
@@ -97,4 +98,8 @@ export const GROUP_ICONS = {
     desert: '🏜️',
     kiln: '🏭',
     ui: '🖥️'
+}
+
+export const MODALS = {
+    kilnBake: 'kilnBake'
 }

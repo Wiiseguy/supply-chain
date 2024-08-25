@@ -43,7 +43,12 @@ export class ForestTile extends Tile {
         super.update(elapsed)
 
         if (this.type === FOREST_TILE_TYPES.tree) {
-            this.age += elapsed * (this.app.boughtUpgrades['Fertilizer'] + 1)
+            let ageGain = elapsed * (this.app.boughtUpgrades['Fertilizer'] + 1)
+            // If the tree is sick, it should grow slower
+            if (this.isSick) {
+                ageGain /= 10
+            }
+            this.age += ageGain
             let healthRegain = elapsed / (TREE_BASE_MATURE_TIME * 2)
             if (this.age > TREE_DEATH_AGE) {
                 healthRegain *= -1
@@ -127,6 +132,12 @@ export class ForestTile extends Tile {
                 this.app.showMessage(msg)
             }
         }
+    }
+    get adjacentTiles() {
+        return this.app.getAdjacentTiles(this)
+    }
+    get isSick() {
+        return this.adjacentTiles.some(tile => tile.tileType === TILE_TYPES.kiln)
     }
     click(manual = false) {
         switch (this.type) {
@@ -219,6 +230,12 @@ export class ForestTile extends Tile {
     }
     get luckySeedChance() {
         return this.app.calculated.luckySeedChance
+    }
+    get iconBottomRight() {
+        // If any adjacent tile is a kiln, show skull emoji
+        if (this.isSick) {
+            return '💀'
+        }
     }
 
     static resources = [

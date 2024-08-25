@@ -2,10 +2,11 @@ import { Counter } from './Counter.js'
 import { DonutTile } from './DonutTile.js'
 import { EmptyTile } from './EmptyTile.js'
 import { ForestTile, INITIAL_SEEDS } from './ForestTile.js'
+import { KilnTile } from './KilnTile.js'
 import { MineTile } from './MineTile.js'
 import { MonsterTile, PondTile } from './PondTile.js'
 import { Resource } from './Resource.js'
-import { GROUP_ICONS, CATEGORY_TITLES, CATEGORIES, CATEGORIES_ORDER } from './consts.js'
+import { GROUP_ICONS, CATEGORY_TITLES, CATEGORIES, CATEGORIES_ORDER, MODALS } from './consts.js'
 import { UPGRADES } from './upgrades.js'
 import { bigNum, humanTime, makeIndex } from './utils.js'
 
@@ -30,6 +31,7 @@ const app = Vue.createApp({
             UPGRADES: null,
             UPGRADES_INDEX: null,
             TILE_REVIVERS: {},
+            MODALS,
 
             now: Date.now(),
             startTime: Date.now(),
@@ -44,11 +46,13 @@ const app = Vue.createApp({
             boughtUpgrades: {},
             visibleUpgrades: [],
             unblurredUpgrades: [],
+            adjacentTileCache: new WeakMap(),
             clickMode: 'click',
             movingTileIdx: -1,
             message: '',
             messageFade: 0,
             showEarnings: false,
+            modalObj: null,
 
             // Vars
             money: INITIAL_MONEY,
@@ -87,8 +91,9 @@ const app = Vue.createApp({
         this.registerTile(ForestTile)
         this.registerTile(MineTile)
         this.registerTile(PondTile)
-        this.registerTile(DonutTile)
+        //this.registerTile(DonutTile)
         //this.registerTile(MonsterTile)
+        this.registerTile(KilnTile)
 
         // Initialize bought upgrades obj
         this.UPGRADES.forEach(upgrade => {
@@ -148,12 +153,6 @@ const app = Vue.createApp({
         }
     },
     methods: {
-        showTest() {
-            this.$refs.testModal.showModal()
-        },
-        closeTest() {
-            this.$refs.testModal.close()
-        },
         num(n) {
             if (typeof n !== 'number') return n
             return bigNum(n)
@@ -165,6 +164,13 @@ const app = Vue.createApp({
             console.log('Message:', message)
             this.message = message
             this.messageFade = 1
+        },
+        showModal(modal, obj) {
+            this.$refs[modal].showModal()
+            this.modalObj = obj
+        },
+        closeModal(modal) {
+            this.$refs[modal].close()
         },
         startGameLoop() {
             setInterval(this.gameLoop, 1000 / FPS)
@@ -291,6 +297,12 @@ const app = Vue.createApp({
                 return
             }
             this.land.splice(emptyTileIndex, 1, tile)
+            this.onLandChange()
+        },
+
+        onLandChange() {
+            // Clear the adjacent tile cache
+            this.adjacentTileCache = new WeakMap()
         },
 
         clickTile(tileModel) {
@@ -322,6 +334,7 @@ const app = Vue.createApp({
                     this.money += minPrice
                     tile.sell()
                     this.setClickMode('click')
+                    this.onLandChange()
                     break
                 }
                 case 'move': {
@@ -335,6 +348,7 @@ const app = Vue.createApp({
                         this.land[movingTileTarget] = this.land[this.movingTileIdx]
                         this.land[this.movingTileIdx] = temp
                         this.movingTileIdx = -1
+                        this.onLandChange()
                     }
                     break
                 }
@@ -379,6 +393,32 @@ const app = Vue.createApp({
                 width: `${health * 100}%`
             }
         },
+        getAdjacentTiles(tile) {
+            if (this.adjacentTileCache.has(tile)) {
+                return this.adjacentTileCache.get(tile)
+            }
+            // Gets the 4 adjacent tiles to the given tile
+            const idx = this.land.indexOf(tile)
+            const width = this.landSize[0]
+            const height = this.landSize[1]
+            const x = idx % width
+            const y = Math.floor(idx / width)
+            const result = []
+            if (x > 0) {
+                result.push(this.land[idx - 1])
+            }
+            if (x < width - 1) {
+                result.push(this.land[idx + 1])
+            }
+            if (y > 0) {
+                result.push(this.land[idx - width])
+            }
+            if (y < height - 1) {
+                result.push(this.land[idx + width])
+            }
+            this.adjacentTileCache.set(tile, result)
+            return result
+        },
 
         getUpgradeCost(upgrade) {
             return this.getUpgradeCostNum(upgrade, this.boughtUpgrades[upgrade.name])
@@ -414,13 +454,14 @@ const app = Vue.createApp({
                     for (let i = height - 1; i >= 0; i--) {
                         this.land.splice(width * (i + 1), 0, new EmptyTile(this))
                     }
-
+                    this.onLandChange()
                     break
                 }
                 case 'Extra Row':
                     for (let i = 0; i < this.landSize[0]; i++) {
                         this.land.push(new EmptyTile(this))
                     }
+                    this.onLandChange()
                     break
                 case 'Win Game':
                     window.scrollTo(0, 0)
@@ -515,6 +556,7 @@ const app = Vue.createApp({
                     }
                 })
                 this.startTime = new Date(saveData.startTime)
+                this.onLandChange()
             } catch (e) {
                 // Clear corrupted save data
                 localStorage.removeItem('saveData')
@@ -527,6 +569,14 @@ const app = Vue.createApp({
                 localStorage.removeItem('saveData')
                 location.reload()
             }
+        },
+
+        setDebug() {
+            this.DEBUG = !this.DEBUG
+            // Give 1 of each resource
+            Object.values(this.resources).forEach(resource => {
+                resource.gain(1)
+            })
         }
     },
     computed: {

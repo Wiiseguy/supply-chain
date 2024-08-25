@@ -78,6 +78,10 @@ button:disabled {
     cursor: not-allowed;
 }
 
+.btn-full {
+    width: 100%;
+}
+
 .btn-xs {
     padding: 0.15em 0.3em;
     font-size: 0.75em;

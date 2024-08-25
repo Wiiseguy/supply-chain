@@ -13,7 +13,7 @@
 
 <body class="dark">
     <div id="app" class="m-3" v-cloak>
-        <h5 @dblclick="DEBUG = !DEBUG">Supply Chain Prototype</h5>
+        <h5 @dblclick="setDebug">Supply Chain Prototype</h5>
         <div class="theme-toggle hover-opacity">
             <a @click="toggleDarkMode" class="btn-link" title="Switch between light / dark mode">
                 <span v-if="settings.dark">🌙</span>
@@ -26,7 +26,7 @@
                 <div :style="landStyle" class="land" :class="'clickmode-'+clickMode">
                     <div v-for="tile in landView" :style="tile.style" class="land-tile" :class="tile.classes"
                         :title="tile.tooltip" @click="clickTile(tile)">
-                        <span class="wiggle-target grow-bounce-target bounce-down-target">{{tile.icon}}</span>
+                        <span class="icon wiggle-target grow-bounce-target bounce-down-target">{{tile.icon}}</span>
                         <span v-if="tile.tile?.fail" class="fail fade-out">❌</span>
                         <div class="progress" :style="tile.progressStyle"></div>
                         <div class="progress progress-alt" :style="tile.progressAltStyle"></div>
@@ -59,11 +59,28 @@
                     </div>
                 </h5>
 
-                <!-- <dialog ref="testModal">
-                    <button autofocus @click="closeTest">Close</button>
-                    <p>Wowie</p>
+                <!-- Modals -->
+                <dialog :ref="MODALS.kilnBake">
+                    <div v-if="modalObj">
+                        <h5>Select a recipe to bake</h5>
+                        <!--
+                        [ { "resource": "brick", "reqs": { "clay": 10 }, "time": 10, "icon": "🧱" } ]
+                        -->
+                        <button class="btn-full" v-for="recipe in modalObj.recipes"
+                            @click="modalObj.selectedResource = recipe.resource" class="btn-sm btn-bake-resource"
+                            :class="{'btn-primary': modalObj.selectedResource === recipe.resource}">
+                            {{ recipe.icon }} {{ recipe.resource }} from <span v-for="r in Object.keys(recipe.reqs)">{{
+                                recipe.reqs[r] }} {{
+                                r
+                                }}</span> -
+                            <small>{{ num(recipe.time) }}s</small>
+                        </button>
+                        <div class="text-right mt-4">
+                            <button class="btn-sm" @click="closeModal(MODALS.kilnBake)">Cancel</button>
+                            <button class="btn-sm btn-success mr-2"
+                                @click="modalObj.tile.onModalSetRecipe(modalObj.selectedResource)">Bake</button>
+                        </div>
                 </dialog>
-                <button @click="showTest">Show the dialog</button> -->
 
                 <!-- Resource stats -->
                 <table>

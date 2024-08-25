@@ -371,7 +371,7 @@ export class MineTile extends Tile {
             onBuy(app) {
                 app.addTile(new MineTile(app, RESOURCE_TYPES.clay))
             },
-            isVisible: _ => false
+            isVisible: MineTile.hasTile
         },
         {
             name: 'Metal Mine Tile',

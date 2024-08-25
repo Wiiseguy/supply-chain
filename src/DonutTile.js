@@ -73,8 +73,7 @@ export class DonutTile extends Tile {
             group: GROUPS.donut,
             onBuy(app) {
                 app.addTile(new DonutTile(app))
-            },
-            isVisible: _ => false
+            }
         },
         // Automators
         {

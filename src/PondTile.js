@@ -146,12 +146,19 @@ export class PondTile extends Tile {
         }
         if (this.wiggleTime > 0) {
             this.stopAnimations()
-            if (isLucky(RARITY_CHANCE)) {
-                this.caughtFish = randomResource(RARITIES, this.rareFishLuck)
+            let rarityChance = RARITY_CHANCE
+            let rareFishLuck = this.rareFishLuck
+            if (this.isSick) {
+                // Increase the chance of non-fish and decrease the chance of rare fish
+                rarityChance = 0.5
+                rareFishLuck = 0.1
+            }
+            if (isLucky(rarityChance)) {
+                this.caughtFish = randomResource(RARITIES, rareFishLuck)
                 this.isRare = true
                 this.app.stats.fishRarities += 1
             } else {
-                this.caughtFish = randomResource(SEALIFE, this.rareFishLuck)
+                this.caughtFish = randomResource(SEALIFE, rareFishLuck)
                 this.isRare = false
                 this.app.stats.fishCaught += 1
             }
@@ -198,6 +205,18 @@ export class PondTile extends Tile {
     }
     get rareFishLuck() {
         return this.app.calculated.rareFishLuck
+    }
+    get adjacentTiles() {
+        return this.app.getAdjacentTiles(this)
+    }
+    get isSick() {
+        return this.adjacentTiles.some(tile => tile.tileType === TILE_TYPES.kiln)
+    }
+    get iconBottomRight() {
+        // If any adjacent tile is a kiln, show skull emoji
+        if (this.isSick) {
+            return '💀'
+        }
     }
 
     static resources = [
