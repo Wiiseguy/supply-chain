@@ -132,7 +132,7 @@ export class KilnTile extends Tile {
 
     static automators = [
         new Automator('Kiln Baker', app => {
-            const kiln = pick(app.land.filter(t => t instanceof KilnTile))
+            const kiln = pick(app.land.filter(t => t instanceof KilnTile && t.state === KILN_STATES.open))
             if (kiln) {
                 kiln.bake()
             }

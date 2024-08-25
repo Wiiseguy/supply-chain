@@ -46,11 +46,11 @@ const MINE_RESOURCE_CLICKS = {
 
 const DIAMOND_PRICE_BASE = 5_000
 const METAL_PRICE_BASE = 500
-const CLAY_PRICE_BASE = 200
+const CLAY_PRICE_BASE = 90
 
 const DIAMONDS_STORAGE_SIZE = 1
 const METAL_STORAGE_SIZE = 10
-const CLAY_STORAGE_SIZE = 25
+const CLAY_STORAGE_SIZE = 50
 
 const LUCKY_RESOURCE_MINE_CHANCE = 1 / 10
 
@@ -314,6 +314,12 @@ export class MineTile extends Tile {
         }),
         new Automator('Diamond Reclaimer', app => {
             app.resources.diamond.reclaim(1)
+        }),
+        new Automator('Clay Seller', app => {
+            app.sellResource(app.resources.clay, 1)
+        }),
+        new Automator('Clay Reclaimer', app => {
+            app.resources.clay.reclaim(1)
         })
     ]
 
@@ -511,6 +517,29 @@ export class MineTile extends Tile {
             category: CATEGORIES.automation,
             group: GROUPS.mine,
             isVisible: MineTile.hasMetalMineTile
+        },
+        {
+            name: 'Clay Seller',
+            description: 'Automatically sell clay',
+            initialOwned: 0,
+            baseCost: 12_000,
+            costMultiplier: 1.2,
+            speed: 1 / 10,
+            category: CATEGORIES.automation,
+            group: GROUPS.mine,
+            isVisible: MineTile.hasClayMineTile
+        },
+        {
+            name: 'Clay Reclaimer',
+            displayName: 'Clay Collector',
+            description: 'Send out a clay collector to find lost clay in your mine',
+            initialOwned: 0,
+            baseCost: 14_000,
+            costMultiplier: 1.2,
+            speed: 1 / 10,
+            category: CATEGORIES.automation,
+            group: GROUPS.mine,
+            isVisible: MineTile.hasClayMineTile
         },
         {
             name: 'Diamond Seller',
