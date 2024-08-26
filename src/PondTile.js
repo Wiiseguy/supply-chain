@@ -3,7 +3,7 @@ import { Calculator } from './Calculator.js'
 import { CATEGORIES, GROUP_ICONS, GROUPS, RESOURCE_TYPES, TILE_TYPES } from './consts.js'
 import { Resource } from './Resource.js'
 import Tile from './Tile.js'
-import { isLucky } from './utils.js'
+import { createAutomatorUpgrade, isLucky } from './utils.js'
 
 // Pond stuff
 // Ponds are a source of fish, or some rarer things like resources
@@ -291,40 +291,34 @@ export class PondTile extends Tile {
             },
             isVisible: PondTile.hasTile
         },
-        {
+        createAutomatorUpgrade({
             name: 'Fish Seller',
             description: 'Automatically sell fish. Selfish. Shellfish?',
-            initialOwned: 0,
             baseCost: 5000,
             costMultiplier: 1.5,
             speed: 1 / 4,
-            category: CATEGORIES.automation,
             group: GROUPS.pond,
             isVisible: PondTile.hasTile
-        },
-        {
+        }),
+        createAutomatorUpgrade({
             name: 'Fish Reclaimer',
             displayName: 'Fish Re-fisher',
             description: 'Collect lost fish swimming about thinking they were lucky',
-            initialOwned: 0,
             baseCost: 5500,
             costMultiplier: 1.5,
             speed: 1 / 4,
-            category: CATEGORIES.automation,
             group: GROUPS.pond,
             isVisible: PondTile.hasTile
-        },
-        {
+        }),
+        createAutomatorUpgrade({
             name: 'Auto Fisher',
             description: 'Automatically fish for you',
-            initialOwned: 0,
             baseCost: 6000,
             costMultiplier: 2,
             speed: 1 / FISHING_WIGGLE_TIME,
-            category: CATEGORIES.automation,
             group: GROUPS.pond,
             isVisible: PondTile.hasTile
-        },
+        }),
         // Special
         {
             name: 'Lucky Bait',

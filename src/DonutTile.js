@@ -2,7 +2,7 @@ import { Automator } from './Automator.js'
 import { CATEGORIES, GROUP_ICONS, GROUPS, RESOURCE_TYPES, TILE_TYPES } from './consts.js'
 import { Resource } from './Resource.js'
 import Tile from './Tile.js'
-import { pick } from './utils.js'
+import { createAutomatorUpgrade, pick } from './utils.js'
 
 export class DonutTile extends Tile {
     static type = TILE_TYPES.donut
@@ -76,28 +76,23 @@ export class DonutTile extends Tile {
             }
         },
         // Automators
-        {
+        createAutomatorUpgrade({
             name: 'Donut Clicker',
             description: 'Automatically click donuts, just like that other game',
-            initialOwned: 0,
             baseCost: 1000,
             costMultiplier: 2,
             speed: 1,
-            category: CATEGORIES.automation,
             group: GROUPS.donut,
             isVisible: DonutTile.hasTile
-        },
-        // Donut Grandpa
-        {
+        }),
+        createAutomatorUpgrade({
             name: 'Donut Grandpa',
             description: 'Donut Grandpa will click 5 donuts for you',
-            initialOwned: 0,
             baseCost: 5000,
             costMultiplier: 2,
             speed: 1,
-            category: CATEGORIES.automation,
             group: GROUPS.donut,
             isVisible: DonutTile.hasTile
-        }
+        })
     ]
 }

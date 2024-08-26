@@ -3,7 +3,7 @@ import { Calculator } from './Calculator.js'
 import { CATEGORIES, GROUPS, RESOURCE_TYPES, TILE_TYPES } from './consts.js'
 import { Resource } from './Resource.js'
 import Tile from './Tile.js'
-import { isLucky } from './utils.js'
+import { createAutomatorUpgrade, isLucky } from './utils.js'
 
 const FOREST_TILE_TYPES = {
     empty: 'empty',
@@ -369,77 +369,63 @@ export class ForestTile extends Tile {
             }
         },
         // Automation
-        {
+        createAutomatorUpgrade({
             name: 'Auto Digger',
             description: 'Automatically dig holes on empty land',
-            initialOwned: 0,
             baseCost: 800,
             costMultiplier: 1.2,
             speed: 0.75,
-            category: CATEGORIES.automation,
             group: GROUPS.forest
-        },
-        {
+        }),
+        createAutomatorUpgrade({
             name: 'Auto Seeder',
             description: 'Automatically plant seeds in dug holes',
-            initialOwned: 0,
             baseCost: 1000,
             costMultiplier: 1.2,
             speed: 1 / 3,
-            category: CATEGORIES.automation,
             group: GROUPS.forest
-        },
-        {
+        }),
+        createAutomatorUpgrade({
             name: 'Auto Chopper',
             description: 'Automatically chop down trees',
-            initialOwned: 0,
             baseCost: 1250,
             costMultiplier: 1.5,
             speed: 2 / 3,
-            category: CATEGORIES.automation,
             group: GROUPS.forest
-        },
-        {
+        }),
+        createAutomatorUpgrade({
             name: 'Wood Seller',
             description: 'Automatically sell wood',
-            initialOwned: 0,
             baseCost: 2500,
             costMultiplier: 1.2,
             speed: 1 / 2,
-            category: CATEGORIES.automation,
             group: GROUPS.forest
-        },
-        {
+        }),
+        createAutomatorUpgrade({
             name: 'Seed Seller',
             description: 'Automatically sell excess seeds',
-            initialOwned: 0,
             baseCost: 3000,
             costMultiplier: 1.2,
             speed: 1 / 8,
-            category: CATEGORIES.automation,
             group: GROUPS.forest
-        },
-        {
+        }),
+        createAutomatorUpgrade({
             name: 'Wood Reclaimer',
             description: 'Collect lost wood',
-            initialOwned: 0,
             baseCost: 2500,
             costMultiplier: 1.2,
             speed: 1 / 4,
-            category: CATEGORIES.automation,
             group: GROUPS.forest
-        },
-        {
+        }),
+        createAutomatorUpgrade({
             name: 'Seed Reclaimer',
             displayName: 'Seed Scouter',
             description: 'Send out a scout to find lost seeds all over your forest land',
-            initialOwned: 0,
             baseCost: 3500,
             costMultiplier: 1.2,
             speed: 1 / 30,
-            category: CATEGORIES.automation,
             group: GROUPS.forest
-        },
+        }),
         // Special upgrades
         {
             name: 'Wooden Finger',

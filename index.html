@@ -140,7 +140,11 @@
                                 :style="{width: (a.speed < 5 ? (a.saturation*100) : 100) + '%'}"></span>
                         </button>
                         {{ a.icon }} {{ a.displayName }}: {{ boughtUpgrades[a.upgradeName] }}
-                        <button @click="sellAutomator(a)" type="button" class="btn-xs btn-sell-automator">Sell
+                        <button @click="sellAutomator(a)" type="button" :title="`$ ${num(a.sellPrice)}`"
+                            class="btn-xs btn-sell-automator">Sell
+                            1</button>
+                        <button @click="buyAutomator(a)" :disabled="!a.canBuy" :title="`$ ${num(a.buyPrice)}`"
+                            type="button" class="btn-xs btn-buy-automator">Buy
                             1</button>
                     </div>
                 </div>

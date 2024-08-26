@@ -2,7 +2,7 @@ import { Automator } from './Automator.js'
 import { CATEGORIES, GROUPS, RESOURCE_TYPES, TILE_TYPES } from './consts.js'
 import { Resource } from './Resource.js'
 import Tile from './Tile.js'
-import { isLucky, pick } from './utils.js'
+import { createAutomatorUpgrade, isLucky, pick } from './utils.js'
 
 // Mine stuff
 // Mines work different from forests, each stage has levels. The first stage has one level, the second has 3, the third has Infinite
@@ -460,111 +460,93 @@ export class MineTile extends Tile {
             isVisible: MineTile.hasDiamondMineTile
         },
         // Automation
-        {
+        createAutomatorUpgrade({
             name: 'Resource Miner',
             description: 'Automatically mine resources',
-            initialOwned: 0,
             baseCost: 5_000,
             costMultiplier: 1.2,
             speed: 1,
-            category: CATEGORIES.automation,
             group: GROUPS.mine,
             isVisible: MineTile.hasTile
-        },
-        {
+        }),
+        createAutomatorUpgrade({
             name: 'Tunneler',
             description: 'Automatically dig tunnels through rocks while building support beams',
-            initialOwned: 0,
             baseCost: 12000,
             costMultiplier: 1.2,
             speed: 1,
-            category: CATEGORIES.automation,
             group: GROUPS.mine,
             isVisible: MineTile.hasTile
-        },
-        {
+        }),
+        createAutomatorUpgrade({
             name: 'Auto Shoveler',
             displayName: 'Auto Mine Maker',
             description:
                 'Automatically dig rocks to make an opening for a mine shaft. Probably not the wisest investment',
-            initialOwned: 0,
             baseCost: 14000,
             costMultiplier: 1.2,
             speed: 1,
-            category: CATEGORIES.automation,
             group: GROUPS.mine,
             isVisible: MineTile.hasTile
-        },
-        {
+        }),
+        createAutomatorUpgrade({
             name: 'Metal Seller',
             description: 'Automatically sell metal',
-            initialOwned: 0,
             baseCost: 15_000,
             costMultiplier: 1.2,
             speed: 1 / 30,
-            category: CATEGORIES.automation,
             group: GROUPS.mine,
             isVisible: MineTile.hasMetalMineTile
-        },
-        {
+        }),
+        createAutomatorUpgrade({
             name: 'Metal Reclaimer',
             displayName: 'Metal Detector',
             description: 'Send out a metal detector to find lost metal in your mine',
-            initialOwned: 0,
             baseCost: 20_000,
             costMultiplier: 1.2,
             speed: 1 / 60,
-            category: CATEGORIES.automation,
             group: GROUPS.mine,
             isVisible: MineTile.hasMetalMineTile
-        },
-        {
+        }),
+        createAutomatorUpgrade({
             name: 'Clay Seller',
             description: 'Automatically sell clay',
-            initialOwned: 0,
             baseCost: 12_000,
             costMultiplier: 1.2,
             speed: 1 / 10,
-            category: CATEGORIES.automation,
             group: GROUPS.mine,
             isVisible: MineTile.hasClayMineTile
-        },
-        {
+        }),
+        createAutomatorUpgrade({
             name: 'Clay Reclaimer',
             displayName: 'Clay Collector',
             description: 'Send out a clay collector to find lost clay in your mine',
-            initialOwned: 0,
             baseCost: 14_000,
             costMultiplier: 1.2,
             speed: 1 / 10,
-            category: CATEGORIES.automation,
             group: GROUPS.mine,
             isVisible: MineTile.hasClayMineTile
-        },
-        {
+        }),
+        createAutomatorUpgrade({
             name: 'Diamond Seller',
             description: 'Automatically sell diamonds',
-            initialOwned: 0,
             baseCost: 20_000,
             costMultiplier: 1.2,
             speed: 1 / 60,
-            category: CATEGORIES.automation,
             group: GROUPS.mine,
             isVisible: MineTile.hasDiamondMineTile
-        },
-        {
+        }),
+        createAutomatorUpgrade({
             name: 'Diamond Reclaimer',
             displayName: 'Mine Magpie',
             description:
                 'Send a magpie into your caves to find the diamonds you haphazardly dropped all over the place',
-            initialOwned: 0,
             baseCost: 50_000,
             costMultiplier: 1.2,
             speed: 1 / 90,
-            category: CATEGORIES.automation,
             group: GROUPS.mine,
             isVisible: MineTile.hasDiamondMineTile
-        },
+        }),
         // Special upgrades
         {
             name: 'Diamond Marketing 1',

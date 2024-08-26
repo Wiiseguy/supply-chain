@@ -1,3 +1,5 @@
+import { CATEGORIES } from './consts.js'
+
 export function setBoolPropTimeout(obj, prop, timeOutProp, time) {
     if (globalThis.haltAnimation) return
     clearTimeout(obj[timeOutProp])
@@ -82,4 +84,20 @@ export function encode(str) {
 
 export function decode(str) {
     return decodeURIComponent(atob(str))
+}
+
+export function createAutomatorUpgrade(opts) {
+    return {
+        name: '',
+        displayName: undefined,
+        description: '',
+        initialOwned: 0,
+        baseCost: 1000,
+        costMultiplier: 1.5,
+        speed: 1,
+        category: CATEGORIES.automation,
+        ...opts,
+        isVisible: app => (opts.isVisible ? opts.isVisible(app) : true) && app.boughtUpgrades[opts.name] == 0,
+        automator: true
+    }
 }

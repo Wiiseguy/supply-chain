@@ -2,7 +2,7 @@ import { Automator } from './Automator.js'
 import { CATEGORIES, GROUPS, MODALS, RESOURCE_TYPES, TILE_TYPES } from './consts.js'
 import { Resource } from './Resource.js'
 import Tile from './Tile.js'
-import { pick } from './utils.js'
+import { createAutomatorUpgrade, pick } from './utils.js'
 
 // Kiln tile
 // Kilns are used to bake bricks from clay
@@ -154,16 +154,14 @@ export class KilnTile extends Tile {
                 app.addTile(new KilnTile(app))
             }
         },
-        {
+        createAutomatorUpgrade({
             name: 'Kiln Baker',
             description: 'Automatically handle the kiln for you',
-            initialOwned: 0,
             baseCost: 25_000,
             costMultiplier: 2,
             speed: 1 / 30,
-            category: CATEGORIES.automation,
             group: GROUPS.kiln,
             isVisible: _ => true
-        }
+        })
     ]
 }

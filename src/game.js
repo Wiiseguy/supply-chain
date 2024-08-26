@@ -216,8 +216,7 @@ const app = Vue.createApp({
             UPGRADES.forEach(upgrade => {
                 if (
                     !this.visibleUpgrades.includes(upgrade.name) &&
-                    this.money >= upgrade.baseCost * DEFAULT_UPGRADE_VISIBILITY_THRESHOLD &&
-                    (upgrade.isVisible ? upgrade.isVisible(this) : true)
+                    this.money >= upgrade.baseCost * DEFAULT_UPGRADE_VISIBILITY_THRESHOLD
                 ) {
                     this.visibleUpgrades.push(upgrade.name)
                 }
@@ -277,8 +276,16 @@ const app = Vue.createApp({
             let owned = this.boughtUpgrades[automator.upgradeName]
             const price = this.getUpgradeCostNum(upgrade, owned - 1)
             this.money += price
-            this.stats.moneySpent -= price
+            this.stats.moneySpent -= price // You get back all the money you spent on the automator!
             this.boughtUpgrades[automator.upgradeName] -= 1
+        },
+        buyAutomator(automator) {
+            // Get the cost of the next automator
+            let upgrade = this.UPGRADES_INDEX[automator.upgradeName]
+            let owned = this.boughtUpgrades[automator.upgradeName]
+            const price = this.getUpgradeCostNum(upgrade, owned + 1)
+            if (!this.incur(price)) return
+            this.boughtUpgrades[automator.upgradeName] += 1
         },
         incur(money) {
             if (this.money < money) {
@@ -676,19 +683,29 @@ const app = Vue.createApp({
             // Filter out automators that are not yet bought
             return this.automators
                 .filter(automator => this.boughtUpgrades[automator.upgradeName] > 0)
-                .map(automator => ({
-                    ...automator,
-                    automator,
-                    displayName: this.UPGRADES_INDEX[automator.upgradeName].displayName ?? automator.upgradeName,
-                    icon: GROUP_ICONS[this.UPGRADES_INDEX[automator.upgradeName].group]
-                }))
+                .map(automator => {
+                    const upgrade = this.UPGRADES_INDEX[automator.upgradeName]
+                    return {
+                        ...automator,
+                        automator,
+                        upgrade,
+                        canBuy: this.canBuyUpgrade(upgrade),
+                        buyPrice: Math.ceil(this.getUpgradeCost(upgrade)),
+                        sellPrice: Math.ceil(
+                            this.getUpgradeCostNum(upgrade, this.boughtUpgrades[automator.upgradeName] - 1)
+                        ),
+                        displayName: upgrade.displayName ?? automator.upgradeName,
+                        icon: GROUP_ICONS[upgrade.group]
+                    }
+                })
         },
         upgradesView() {
             return this.UPGRADES.filter(upgrade => {
                 if (upgrade.max && this.boughtUpgrades[upgrade.name] >= upgrade.max) {
                     return false
                 }
-                return this.visibleUpgrades.includes(upgrade.name)
+                const isVisibleByLogic = upgrade.isVisible ? upgrade.isVisible(this) : true
+                return isVisibleByLogic && this.visibleUpgrades.includes(upgrade.name)
             })
                 .map(upgrade => {
                     return {
