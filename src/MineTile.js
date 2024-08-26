@@ -48,7 +48,7 @@ const DIAMOND_PRICE_BASE = 5_000
 const METAL_PRICE_BASE = 500
 const CLAY_PRICE_BASE = 90
 
-const DIAMONDS_STORAGE_SIZE = 1
+const DIAMONDS_STORAGE_SIZE = 3
 const METAL_STORAGE_SIZE = 10
 const CLAY_STORAGE_SIZE = 50
 
@@ -501,7 +501,7 @@ export class MineTile extends Tile {
             initialOwned: 0,
             baseCost: 15_000,
             costMultiplier: 1.2,
-            speed: 1 / 60,
+            speed: 1 / 30,
             category: CATEGORIES.automation,
             group: GROUPS.mine,
             isVisible: MineTile.hasMetalMineTile
@@ -513,7 +513,7 @@ export class MineTile extends Tile {
             initialOwned: 0,
             baseCost: 20_000,
             costMultiplier: 1.2,
-            speed: 1 / 120,
+            speed: 1 / 60,
             category: CATEGORIES.automation,
             group: GROUPS.mine,
             isVisible: MineTile.hasMetalMineTile
@@ -547,7 +547,7 @@ export class MineTile extends Tile {
             initialOwned: 0,
             baseCost: 20_000,
             costMultiplier: 1.2,
-            speed: 1 / 180,
+            speed: 1 / 60,
             category: CATEGORIES.automation,
             group: GROUPS.mine,
             isVisible: MineTile.hasDiamondMineTile
@@ -560,7 +560,7 @@ export class MineTile extends Tile {
             initialOwned: 0,
             baseCost: 50_000,
             costMultiplier: 1.2,
-            speed: 1 / 240,
+            speed: 1 / 90,
             category: CATEGORIES.automation,
             group: GROUPS.mine,
             isVisible: MineTile.hasDiamondMineTile
@@ -576,7 +576,7 @@ export class MineTile extends Tile {
             max: 1,
             group: GROUPS.mine,
             onBuy(app) {
-                app.resources.diamond.price *= 1.5
+                app.resources.diamond.priceMultiplier *= 1.5
             },
             isVisible: MineTile.hasDiamondMineTile
         },
@@ -590,7 +590,7 @@ export class MineTile extends Tile {
             max: 1,
             group: GROUPS.mine,
             onBuy(app) {
-                app.resources.diamond.price *= 2
+                app.resources.diamond.priceMultiplier *= 2
             },
             isVisible: MineTile.hasDiamondMineTile
         }

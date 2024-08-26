@@ -297,7 +297,7 @@ export class PondTile extends Tile {
             initialOwned: 0,
             baseCost: 5000,
             costMultiplier: 1.5,
-            speed: 1 / 8,
+            speed: 1 / 4,
             category: CATEGORIES.automation,
             group: GROUPS.pond,
             isVisible: PondTile.hasTile
@@ -309,7 +309,7 @@ export class PondTile extends Tile {
             initialOwned: 0,
             baseCost: 5500,
             costMultiplier: 1.5,
-            speed: 1 / 8,
+            speed: 1 / 4,
             category: CATEGORIES.automation,
             group: GROUPS.pond,
             isVisible: PondTile.hasTile
@@ -326,21 +326,6 @@ export class PondTile extends Tile {
             isVisible: PondTile.hasTile
         },
         // Special
-
-        // TODO: remove?
-        // {
-        //     name: 'Fish Finger',
-        //     description: 'Sell 10 times the amount of fish with one click',
-        //     initialOwned: 0,
-        //     baseCost: 2000,
-        //     costMultiplier: 5,
-        //     category: CATEGORIES.special,
-        //     max: 2,
-        //     group: GROUPS.pond,
-        //     onBuy(app) {
-        //         app.resources.fish.sellNum *= 10
-        //     }
-        // },
         {
             name: 'Lucky Bait',
             description: 'Increase the chance of catching rare fish',

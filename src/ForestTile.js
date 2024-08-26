@@ -466,7 +466,7 @@ export class ForestTile extends Tile {
             max: 1,
             group: GROUPS.forest,
             onBuy(app) {
-                app.resources.wood.price *= 1.5
+                app.resources.wood.priceMultiplier *= 1.5
             }
         },
         {
@@ -489,7 +489,7 @@ export class ForestTile extends Tile {
             max: 1,
             group: GROUPS.forest,
             onBuy(app) {
-                app.resources.seed.price *= 2
+                app.resources.seed.priceMultiplier *= 2
             }
         },
         {
@@ -502,7 +502,7 @@ export class ForestTile extends Tile {
             max: 1,
             group: GROUPS.forest,
             onBuy(app) {
-                app.resources.seed.price *= 3
+                app.resources.seed.priceMultiplier *= 3
             }
         },
         {
@@ -515,7 +515,7 @@ export class ForestTile extends Tile {
             max: 1,
             group: GROUPS.forest,
             onBuy(app) {
-                app.resources.wood.price *= 2
+                app.resources.wood.priceMultiplier *= 2
             }
         },
         {
@@ -528,7 +528,7 @@ export class ForestTile extends Tile {
             max: 1,
             group: GROUPS.forest,
             onBuy(app) {
-                app.resources.wood.price *= 2
+                app.resources.wood.priceMultiplier *= 2
             }
         }
     ]

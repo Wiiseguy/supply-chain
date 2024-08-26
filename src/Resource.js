@@ -11,9 +11,10 @@ export class Resource {
         this.icon = settings.icon
         this.minimum = settings.minimum ?? 0 // The minimum amount of this resource that must be kept, like seeds should not be able to be sold if there are less than 2, because then the game is soft-locked
         this.basePrice = settings.basePrice
+        this.priceMultiplier = 1
         this.storageBaseSize = settings.storageBaseSize
-        this.price = settings.basePrice
         this.storage = 1 // Number of storage units
+        this.storageMultiplier = 1
         this.lost = 0
         this.sellNum = 1 // How many to sell per click
         this.owned = settings.initialOwned ?? 0
@@ -23,7 +24,7 @@ export class Resource {
         this.totalOwned = this.owned
     }
     get storageSize() {
-        return this.storageBaseSize * this.storage
+        return this.storageBaseSize * this.storage * this.storageMultiplier
     }
     get any() {
         return this.owned - this.minimum > 0
@@ -33,6 +34,9 @@ export class Resource {
     }
     get sellNumDisplayName() {
         return this.sellNum === 1 ? this.displayNameSingular : this.displayNamePlural
+    }
+    get price() {
+        return this.basePrice * this.priceMultiplier
     }
     sellPriceTheoretical(n) {
         return n * this.price
@@ -74,7 +78,8 @@ export class Resource {
     }
     getSaveData() {
         return {
-            price: this.price,
+            priceMultiplier: this.priceMultiplier,
+            storageMultiplier: this.storageMultiplier,
             storage: this.storage,
             sellNum: this.sellNum,
             owned: this.owned,
@@ -89,7 +94,9 @@ export class Resource {
         if (!data) {
             return
         }
-        this.price = data.price
+        // TODO: nullish coalescing operator can be removed when all players have updated to a version that includes it
+        this.priceMultiplier = data.priceMultiplier ?? this.priceMultiplier
+        this.storageMultiplier = data.storageMultiplier ?? this.storageMultiplier
         this.storage = data.storage
         this.sellNum = data.sellNum
         this.owned = data.owned

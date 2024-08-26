@@ -75,3 +75,11 @@ export function humanTime(ms) {
     }
     return `${(ms / 3_600_000).toFixed(1)}h`
 }
+
+export function encode(str) {
+    return btoa(encodeURIComponent(str))
+}
+
+export function decode(str) {
+    return decodeURIComponent(atob(str))
+}

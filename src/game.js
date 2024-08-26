@@ -8,7 +8,7 @@ import { MonsterTile, PondTile } from './PondTile.js'
 import { Resource } from './Resource.js'
 import { GROUP_ICONS, CATEGORY_TITLES, CATEGORIES, CATEGORIES_ORDER, MODALS } from './consts.js'
 import { UPGRADES } from './upgrades.js'
-import { bigNum, humanTime, makeIndex } from './utils.js'
+import { bigNum, decode, encode, humanTime, makeIndex } from './utils.js'
 
 globalThis.haltAnimation = false
 
@@ -519,11 +519,13 @@ const app = Vue.createApp({
             if (this.DEBUG) {
                 console.log('Saving game:', saveData)
             }
-            localStorage.setItem('saveData', JSON.stringify(saveData))
+            localStorage.setItem('saveData', encode(JSON.stringify(saveData)))
         },
         loadGame() {
             try {
-                const saveData = JSON.parse(localStorage.getItem('saveData'))
+                const saveDataStr = localStorage.getItem('saveData')
+                const isOld = saveDataStr?.startsWith('{')
+                const saveData = JSON.parse(isOld ? saveDataStr : decode(saveDataStr))
                 if (!saveData) {
                     return
                 }
