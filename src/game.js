@@ -70,7 +70,11 @@ const app = Vue.createApp({
                 fishCaught: 0,
                 fishMissed: 0,
                 fishRarities: 0,
-                fishTank: []
+                fishTank: [],
+                landClicks: 0,
+                won: false,
+                winTime: null,
+                winLandClicks: 0
             },
 
             // Settings
@@ -258,6 +262,10 @@ const app = Vue.createApp({
             }
         },
         setClickMode(mode) {
+            // if click mode already is 'mode', set it to 'click'
+            if (this.clickMode === mode) {
+                mode = 'click'
+            }
             this.clickMode = mode
             this.movingTileIdx = -1
         },
@@ -283,7 +291,7 @@ const app = Vue.createApp({
             // Get the cost of the next automator
             let upgrade = this.UPGRADES_INDEX[automator.upgradeName]
             let owned = this.boughtUpgrades[automator.upgradeName]
-            const price = this.getUpgradeCostNum(upgrade, owned + 1)
+            const price = this.getUpgradeCostNum(upgrade, owned)
             if (!this.incur(price)) return
             this.boughtUpgrades[automator.upgradeName] += 1
         },
@@ -320,6 +328,7 @@ const app = Vue.createApp({
 
             switch (this.clickMode) {
                 case 'click':
+                    this.stats.landClicks++
                     tile.click(true)
                     break
                 case 'sell': {
@@ -476,6 +485,9 @@ const app = Vue.createApp({
                     setTimeout(() => {
                         this.showMessage('You can continue playing if you want to. Check back later for updates!')
                     }, 5000)
+                    this.stats.won = true
+                    this.stats.winTime = +new Date() - this.startTime
+                    this.stats.winLandClicks = this.stats.landClicks
                     break
             }
 
@@ -531,6 +543,9 @@ const app = Vue.createApp({
         loadGame() {
             try {
                 const saveDataStr = localStorage.getItem('saveData')
+                if (!saveDataStr) {
+                    return
+                }
                 const isOld = saveDataStr?.startsWith('{')
                 const saveData = JSON.parse(isOld ? saveDataStr : decode(saveDataStr))
                 if (!saveData) {
@@ -596,6 +611,13 @@ const app = Vue.createApp({
             }
             return humanTime(diff)
         },
+        timeTaken() {
+            if (!this.stats.won) {
+                return 'N/A'
+            }
+            let winTimeInMinutes = Math.round(this.stats.winTime / 60_000)
+            return humanTime(this.stats.winTime) + ` (${winTimeInMinutes} min)`
+        },
         sellLevel() {
             return this.boughtUpgrades['Wooden Finger']
         },
@@ -623,8 +645,9 @@ const app = Vue.createApp({
                 view.push({
                     type: tile.type,
                     tile,
-                    icon: tile.icon,
                     style: this.getTileStyle(tile),
+                    icon: tile.icon,
+                    iconStyle: tile.iconStyle,
                     progressStyle: {
                         width: `${tile.stageP * 100}%`
                     },

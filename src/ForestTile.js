@@ -42,16 +42,13 @@ export class ForestTile extends Tile {
     update(elapsed) {
         super.update(elapsed)
 
+        let sicknessMultiplier = this.isSick ? 0.1 : 1
         if (this.type === FOREST_TILE_TYPES.tree) {
-            let ageGain = elapsed * (this.app.boughtUpgrades['Fertilizer'] + 1)
-            // If the tree is sick, it should grow slower
-            if (this.isSick) {
-                ageGain /= 10
-            }
+            let ageGain = elapsed * (this.app.boughtUpgrades['Fertilizer'] + 1) * sicknessMultiplier
             this.age += ageGain
             let healthRegain = elapsed / (TREE_BASE_MATURE_TIME * 2)
-            if (this.age > TREE_DEATH_AGE) {
-                healthRegain *= -1
+            if (this.age > TREE_DEATH_AGE * sicknessMultiplier) {
+                healthRegain *= -1 / sicknessMultiplier
             }
             this.progress -= healthRegain
             if (this.progress < 0) {
@@ -162,24 +159,27 @@ export class ForestTile extends Tile {
         this.stage = 0
         this.stageP = 0
     }
-    getStyle(obj) {
-        obj = super.getStyle(obj)
+    get iconStyle() {
+        let scale = 1
+        let translateY = 0
+        let filter = 'none'
         switch (this.type) {
             case FOREST_TILE_TYPES.hole:
-                obj.lineHeight = 1.5
+                scale = 0.5
                 break
             case FOREST_TILE_TYPES.tree:
-                if (this.stage === 0) {
-                    // Extra small seedling
-                    obj.fontSizeM = 0.55
-                    obj.lineHeight = 3
-                } else if (!this.isFullyGrownTree) {
-                    obj.fontSizeM = 0.75
-                    obj.lineHeight = 1.8
+                if (!this.isFullyGrownTree) {
+                    scale = 0.25 + this.stageP / 2
                 }
                 break
         }
-        return obj
+        if (this.isSick) {
+            filter = 'brightness(0.9) saturate(0.25)'
+        }
+        return {
+            transform: `scale(${scale}) translateY(${translateY}em)`,
+            filter
+        }
     }
     get icon() {
         switch (this.type) {
@@ -231,12 +231,12 @@ export class ForestTile extends Tile {
     get luckySeedChance() {
         return this.app.calculated.luckySeedChance
     }
-    get iconBottomRight() {
-        // If any adjacent tile is a kiln, show skull emoji
-        if (this.isSick) {
-            return '💀'
-        }
-    }
+    // get iconBottomRight() {
+    //     // If any adjacent tile is a kiln, show skull emoji
+    //     if (this.isSick) {
+    //         return '💀'
+    //     }
+    // }
 
     static resources = [
         new Resource(RESOURCE_TYPES.wood, {
@@ -370,11 +370,11 @@ export class ForestTile extends Tile {
         },
         // Automation
         createAutomatorUpgrade({
-            name: 'Auto Digger',
-            description: 'Automatically dig holes on empty land',
+            name: 'Auto Chopper',
+            description: 'Automatically chop down trees',
             baseCost: 800,
-            costMultiplier: 1.2,
-            speed: 0.75,
+            costMultiplier: 1.5,
+            speed: 2 / 3,
             group: GROUPS.forest
         }),
         createAutomatorUpgrade({
@@ -386,11 +386,11 @@ export class ForestTile extends Tile {
             group: GROUPS.forest
         }),
         createAutomatorUpgrade({
-            name: 'Auto Chopper',
-            description: 'Automatically chop down trees',
+            name: 'Auto Digger',
+            description: 'Automatically dig holes on empty land',
             baseCost: 1250,
-            costMultiplier: 1.5,
-            speed: 2 / 3,
+            costMultiplier: 1.2,
+            speed: 0.75,
             group: GROUPS.forest
         }),
         createAutomatorUpgrade({

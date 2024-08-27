@@ -40,13 +40,13 @@ const MINE_MAX_RESOURCES_PER_LEVEL = {
 }
 const MINE_RESOURCE_CLICKS = {
     diamond: 200,
-    metal: 75,
+    metal: 100,
     clay: 50
 }
 
 const DIAMOND_PRICE_BASE = 5_000
 const METAL_PRICE_BASE = 500
-const CLAY_PRICE_BASE = 90
+const CLAY_PRICE_BASE = 150
 
 const DIAMONDS_STORAGE_SIZE = 3
 const METAL_STORAGE_SIZE = 10

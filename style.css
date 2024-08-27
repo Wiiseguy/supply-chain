@@ -195,6 +195,10 @@ button:disabled {
         position: absolute;
         text-shadow: 0 0 1px rgba(0, 0, 0, 0.5);
     }
+    .icon {
+        transition: filter 1s;
+        display: inline-block;
+    }
 }
 .progress {
     position: absolute;

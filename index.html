@@ -26,7 +26,9 @@
                 <div :style="landStyle" class="land" :class="'clickmode-'+clickMode">
                     <div v-for="tile in landView" :style="tile.style" class="land-tile" :class="tile.classes"
                         :title="tile.tooltip" @click="clickTile(tile)">
-                        <span class="icon wiggle-target grow-bounce-target bounce-down-target">{{tile.icon}}</span>
+                        <span class="wiggle-target grow-bounce-target bounce-down-target">
+                            <span class="icon" :style="tile.iconStyle">{{tile.icon}}</span>
+                        </span>
                         <span v-if="tile.tile?.fail" class="fail fade-out">❌</span>
                         <div class="progress" :style="tile.progressStyle"></div>
                         <div class="progress progress-alt" :style="tile.progressAltStyle"></div>
@@ -52,6 +54,15 @@
                     </div>
                 </div>
 
+                <div v-if="stats.won" class="text-center mb-5">
+                    <h1>You Win!</h1>
+                    <p>Time taken: {{timeTaken}}</p>
+                    <p>Total tile clicks: {{num(stats.winLandClicks)}}</p>
+                    <p>
+                        <button @click="resetGame" class="btn btn-sm btn-danger">Restart</button>
+                    </p>
+                </div>
+
                 <h5 class="pl-1" @click="DEBUG && (money+=1, money*=10)">
                     <strong>$</strong>&nbsp; {{ num(money) }}
                     <div v-if="automatorsView.length > 0" class="small text-muted">
@@ -64,12 +75,13 @@
                     <div v-if="modalObj">
                         <h5>Select a recipe to bake</h5>
                         <!--
-                        [ { "resource": "brick", "reqs": { "clay": 10 }, "time": 10, "icon": "🧱" } ]
+                        [ { "resource": "brick", "yield": 5, "reqs": { "clay": 10 }, "time": 10, "icon": "🧱" } ]
                         -->
                         <button class="btn-full" v-for="recipe in modalObj.recipes"
-                            @click="modalObj.selectedResource = recipe.resource" class="btn-sm btn-bake-resource"
-                            :class="{'btn-primary': modalObj.selectedResource === recipe.resource}">
-                            {{ recipe.icon }} {{ recipe.resource }} from <span v-for="r in Object.keys(recipe.reqs)">{{
+                            @click="modalObj.recipeId = recipe.id" class="btn-sm btn-bake-resource"
+                            :class="{'btn-primary': modalObj.recipeId === recipe.id}">
+                            {{recipe.yield}} X {{ recipe.icon }} <strong>{{ recipe.resource }}</strong> from <span
+                                v-for="r in Object.keys(recipe.reqs)">{{
                                 recipe.reqs[r] }} {{
                                 r
                                 }}</span> -
@@ -77,8 +89,8 @@
                         </button>
                         <div class="text-right mt-4">
                             <button class="btn-sm" @click="closeModal(MODALS.kilnBake)">Cancel</button>
-                            <button class="btn-sm btn-success mr-2"
-                                @click="modalObj.tile.onModalSetRecipe(modalObj.selectedResource)">Bake</button>
+                            <button class="btn-sm btn-success mr-2" :disabled="!modalObj.recipeId"
+                                @click="modalObj.tile.onModalSetRecipe(modalObj.recipeId)">Bake</button>
                         </div>
                 </dialog>
 

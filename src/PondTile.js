@@ -200,6 +200,16 @@ export class PondTile extends Tile {
         }
         return GROUP_ICONS.pond
     }
+    get iconStyle() {
+        let filter = 'none'
+        let rotation = 270 //(this.age * 10) % 360
+        if (this.isSick) {
+            filter = `brightness(0.9) saturate(0.5) hue-rotate(${rotation}deg)`
+        }
+        return {
+            filter
+        }
+    }
     get tooltip() {
         return 'Pond tile - click when the fishing pole wiggles to catch a fish!'
     }
@@ -212,12 +222,12 @@ export class PondTile extends Tile {
     get isSick() {
         return this.adjacentTiles.some(tile => tile.tileType === TILE_TYPES.kiln)
     }
-    get iconBottomRight() {
-        // If any adjacent tile is a kiln, show skull emoji
-        if (this.isSick) {
-            return '💀'
-        }
-    }
+    // get iconBottomRight() {
+    //     // If any adjacent tile is a kiln, show skull emoji
+    //     if (this.isSick) {
+    //         return '💀'
+    //     }
+    // }
 
     static resources = [
         new Resource(RESOURCE_TYPES.fish, {
@@ -271,7 +281,7 @@ export class PondTile extends Tile {
             category: CATEGORIES.tiles,
             group: GROUPS.pond,
             resourceCosts: {
-                [RESOURCE_TYPES.wood]: 1
+                [RESOURCE_TYPES.wood]: 10
             },
             onBuy(app) {
                 app.addTile(new PondTile(app))
