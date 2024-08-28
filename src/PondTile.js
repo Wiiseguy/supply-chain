@@ -170,10 +170,10 @@ export class PondTile extends Tile {
             if (this.isRare) {
                 const resource = this.caughtFish.resource
                 this.app.resources[resource].gain(1)
-                this.showMessage(`Lucky! Found a ${this.caughtFish.icon} ${this.caughtFish.name}!`, manual)
+                this.showMessage(`Lucky! Found a... ${this.caughtFish.icon} ${this.caughtFish.name}!`, manual)
             } else {
                 this.app.resources.fish.gain(this.caughtFish.gain)
-                let message = `Caught a ${this.caughtFish.icon} ${this.caughtFish.name}`
+                let message = `Caught a... ${this.caughtFish.icon} ${this.caughtFish.name}`
                 if (this.caughtFish.gain > 1) {
                     message += `, worth ${this.caughtFish.gain} fish`
                 }

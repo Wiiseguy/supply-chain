@@ -17,7 +17,7 @@ const MINE_TILE_TYPES = {
 }
 const MINE_EXCAVATOR_POWER = 1 / 50 // 50 clicks to get to the next stage
 const MINE_TUNNELER_POWER = 1 / 100
-const MINE_SUPPORT_BEAM_COST = 200 // wood
+const MINE_SUPPORT_BEAM_COST = 100 // wood
 const MINE_RESOURCE_ICONS = {
     diamond: '💎',
     metal: '🔧',

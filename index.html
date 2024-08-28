@@ -172,6 +172,9 @@
                     <div class="mb-3">
                         Time played: {{ num(timeSinceStart) }}
                     </div>
+                    <div v-if="stats.restarts > 0">
+                        Restarts: {{ num(stats.restarts) }}
+                    </div>
                     <div>
                         Trees chopped: {{ num(stats.treesChopped) }}
                     </div>

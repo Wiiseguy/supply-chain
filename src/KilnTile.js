@@ -50,7 +50,9 @@ export class KilnTile extends Tile {
                 resource.gain(this.activeRecipe.yield)
                 this.app.stats.resourcesBaked += this.activeRecipe.yield
                 this.app.showMessage(
-                    `Baked ${this.activeRecipe.yield} ${resource.displayName(this.activeRecipe.yield)}!`
+                    `Baked ${this.activeRecipe.yield} ${resource.icon} ${resource.displayName(
+                        this.activeRecipe.yield
+                    )}!`
                 )
                 this.progress = 0
             }

@@ -76,7 +76,8 @@ const app = Vue.createApp({
                 landClicks: 0,
                 won: false,
                 winTime: null,
-                winLandClicks: 0
+                winLandClicks: 0,
+                restarts: 0
             },
 
             // Settings
@@ -561,12 +562,14 @@ const app = Vue.createApp({
                 if (!saveData) {
                     return
                 }
-                this.money = saveData.money
-                Object.values(this.resources).forEach(resource => {
-                    resource.loadSaveData(saveData.resources[resource.name])
-                })
+                this.money = saveData.money ?? this.money
+                if (saveData.resources) {
+                    Object.values(this.resources).forEach(resource => {
+                        resource.loadSaveData(saveData.resources[resource.name])
+                    })
+                }
                 this.land.length = 0
-                saveData.land.forEach(tileData => {
+                saveData.land?.forEach(tileData => {
                     const tileClass = this.TILE_REVIVERS[tileData.tileType]
                     if (!tileClass) {
                         console.error('No reviver found for tile type:', tileData.tileType)
@@ -589,7 +592,7 @@ const app = Vue.createApp({
                         Object.assign(automator, savedAutomator)
                     }
                 })
-                this.startTime = new Date(saveData.startTime)
+                this.startTime = saveData.startTime ? new Date(saveData.startTime) : this.startTime
                 this.onLandChange()
             } catch (e) {
                 // Clear corrupted save data
@@ -600,7 +603,12 @@ const app = Vue.createApp({
         },
         resetGame() {
             if (confirm('Are you sure you want to reset the game?')) {
-                localStorage.removeItem('saveData')
+                let saveData = {
+                    stats: {
+                        restarts: this.stats.restarts + 1
+                    }
+                }
+                localStorage.setItem('saveData', encode(JSON.stringify(saveData)))
                 location.reload()
             }
         },
