@@ -222,7 +222,6 @@ export class MineTile extends Tile {
         }
     }
     get iconTopLeft() {
-        // Show the type of resource in the bottom right corner in the rock and tunnel stages
         if (this.type === MINE_TILE_TYPES.rock || this.type === MINE_TILE_TYPES.tunnel) {
             return MINE_RESOURCE_ICONS[this.subType]
         }
@@ -463,7 +462,7 @@ export class MineTile extends Tile {
         createAutomatorUpgrade({
             name: 'Resource Miner',
             description: 'Automatically mine resources',
-            baseCost: 5_000,
+            baseCost: 5000,
             costMultiplier: 1.2,
             speed: 1,
             group: GROUPS.mine,
@@ -472,7 +471,7 @@ export class MineTile extends Tile {
         createAutomatorUpgrade({
             name: 'Tunneler',
             description: 'Automatically dig tunnels through rocks while building support beams',
-            baseCost: 12000,
+            baseCost: 7500,
             costMultiplier: 1.2,
             speed: 1,
             group: GROUPS.mine,

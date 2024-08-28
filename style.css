@@ -297,6 +297,7 @@ button:disabled {
 }
 
 .btn-toggle-automator {
+    width: 3.5em;
     .progress {
         top: inherit;
         bottom: 0;

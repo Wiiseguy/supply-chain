@@ -60,12 +60,15 @@ export const RESOURCE_TYPES = {
     clay: 'clay',
     fish: 'fish',
     donut: 'donut',
+    brick: 'brick',
+    apple: 'apple',
+    lemon: 'lemon',
     wheat: 'wheat',
     bread: 'bread',
-    brick: 'brick',
     sand: 'sand',
     glass: 'glass'
 }
+
 const RESOURCE_TIERS = {
     // Tier 1: Base resources. Are provided by nature or can be grown
     tier1: [

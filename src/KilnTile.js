@@ -48,7 +48,11 @@ export class KilnTile extends Tile {
                 this.state = KILN_STATES.open
                 const resource = this.app.resources[this.activeRecipe.resource]
                 resource.gain(this.activeRecipe.yield)
-                this.app.showMessage('Resource baked!')
+                this.app.stats.resourcesBaked += this.activeRecipe.yield
+                this.app.showMessage(
+                    `Baked ${this.activeRecipe.yield} ${resource.displayName(this.activeRecipe.yield)}!`
+                )
+                this.progress = 0
             }
         }
     }
@@ -110,6 +114,15 @@ export class KilnTile extends Tile {
     get activeRecipe() {
         return KILN_RECIPES.find(r => r.id === this.recipeId)
     }
+    get canBake() {
+        if (!this.activeRecipe) return false
+        return (
+            this.state === KILN_STATES.open &&
+            Object.entries(this.activeRecipe.reqs).every(([resourceName, amount]) => {
+                return this.app.resources[resourceName].owned >= amount
+            })
+        )
+    }
 
     get icon() {
         return '🏭'
@@ -131,9 +144,16 @@ export class KilnTile extends Tile {
         }
     }
     get iconStyle() {
+        let brightness = 1
+
+        if (this.state === KILN_STATES.open) {
+            brightness = 0.2
+            if (this.canBake) {
+                brightness = 0.5
+            }
+        }
         return {
-            // Filter brightness to 0 if kiln is not baking
-            filter: this.state !== KILN_STATES.baking ? 'brightness(0.2)' : undefined
+            filter: `brightness(${brightness})`
         }
     }
 

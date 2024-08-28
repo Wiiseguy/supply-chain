@@ -76,6 +76,9 @@ export class Resource {
             this.owned += toReclaim
         }
     }
+    displayName(n = 1) {
+        return n === 1 ? this.displayNameSingular : this.displayNamePlural
+    }
     getSaveData() {
         return {
             priceMultiplier: this.priceMultiplier,

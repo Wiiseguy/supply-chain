@@ -16,29 +16,31 @@ const FISHING_TIME_VARIANCE = 30 // seconds - bite time is between (BASE - VARIA
 const FISHING_WIGGLE_TIME = 30 // seconds
 const FISHING_WIGGLE_VARIANCE = 5 // seconds
 const RARE_FISH_LUCK_BASE = 0.4 // Base chance of catching a rare fish (0.4 means 0.6 chance of catching a normal fish)
-const SEALIFE = ['🐟', '🐠', '🦐', '🦞', '🦀', '🐡', '🐸', '🦑', '🐙', '🦈', '🐬', '🐧', '🐳', '🐋']
-const SEALIFE_GAINS = [1, 2, 5, 10, 20, 30, 40, 50, 75, 100, 150, 200, 500, 1000]
-const SEALIFE_NAMES = [
-    'Fish',
-    'Clownfish',
-    'Shrimp',
-    'Lobster',
-    'Crab',
-    'Pufferfish',
-    'Frog',
-    'Squid',
-    'Octopus',
-    'Shark',
-    'Dolphin',
-    'Penguin',
-    'Whale',
-    'Blue Whale'
+
+const SEALIFE = [
+    { name: 'Common fish', icon: '🐟', gain: 1, nonFish: false },
+    { name: 'Clownfish', icon: '🐠', gain: 2, nonFish: false },
+    { name: 'Shrimp', icon: '🦐', gain: 5, nonFish: true },
+    { name: 'Lobster', icon: '🦞', gain: 10, nonFish: true },
+    { name: 'Crab', icon: '🦀', gain: 20, nonFish: true },
+    { name: 'Pufferfish', icon: '🐡', gain: 30, nonFish: false },
+    { name: 'Frog', icon: '🐸', gain: 40, nonFish: true },
+    { name: 'Squid', icon: '🦑', gain: 50, nonFish: true },
+    { name: 'Octopus', icon: '🐙', gain: 75, nonFish: true },
+    { name: 'Shark', icon: '🦈', gain: 100, nonFish: false },
+    { name: 'Dolphin', icon: '🐬', gain: 150, nonFish: true },
+    { name: 'Penguin', icon: '🐧', gain: 200, nonFish: true },
+    { name: 'Whale', icon: '🐳', gain: 500, nonFish: true },
+    { name: 'Blue Whale', icon: '🐋', gain: 1000, nonFish: true }
 ]
-const NON_FISH = ['🦐', '🦞', '🦀', '🐸', '🐬', '🐧', '🐳', '🐋']
+
 // To make it more interesting, there should be a small chance of catching a wood, seed, metal, diamond, or clay
 const RARITY_CHANCE = 1 / 100
-const RARITIES = ['🏺', '🔧', '💎']
-const RARITY_GAINS = [RESOURCE_TYPES.clay, RESOURCE_TYPES.metal, RESOURCE_TYPES.diamond]
+const RARITIES = [
+    { name: 'Clay pot', icon: '🏺', resource: RESOURCE_TYPES.clay, gain: 1 },
+    { name: 'Piece of metal', icon: '🔧', resource: RESOURCE_TYPES.metal, gain: 1 },
+    { name: 'Diamond', icon: '💎', resource: RESOURCE_TYPES.diamond, gain: 1 }
+]
 
 const FISH_PRICE_BASE = 50
 const FISH_STORAGE_SIZE = 50
@@ -57,27 +59,23 @@ function randomResource(resourceList, luck = 0.5) {
     return resourceList[0]
 }
 
-// Check if list and gains lists are same length
-console.assert(SEALIFE.length === SEALIFE_GAINS.length, 'FISH and FISH_GAINS must be the same length')
-console.assert(RARITIES.length === RARITY_GAINS.length, 'RARITIES and RARITY_GAINS must be the same length')
-
 function simulate() {
-    for (let i = 0; i < SEALIFE.length; i++) {
-        console.log(SEALIFE[i], SEALIFE_GAINS[i])
+    for (const element of SEALIFE) {
+        console.log(element)
     }
     // Simulate many catches
     const fishCounts = {}
     for (let i = 0; i < 100; i++) {
         const fish = randomResource(SEALIFE, 0.5)
-        if (!fishCounts[fish]) {
-            fishCounts[fish] = 0
+        if (!fishCounts[fish.icon]) {
+            fishCounts[fish.icon] = 0
         }
-        fishCounts[fish] += 1
+        fishCounts[fish.icon] += 1
     }
     console.log(fishCounts)
     // Log what wasn't caught
     for (const fish of SEALIFE) {
-        if (!fishCounts[fish]) {
+        if (!fishCounts[fish.icon]) {
             console.log(fish, 'was not caught')
         }
     }
@@ -148,13 +146,14 @@ export class PondTile extends Tile {
             this.stopAnimations()
             let rarityChance = RARITY_CHANCE
             let rareFishLuck = this.rareFishLuck
+            let rareRarityLuck = this.rareFishLuck
             if (this.isSick) {
                 // Increase the chance of non-fish and decrease the chance of rare fish
                 rarityChance = 0.5
                 rareFishLuck = 0.1
             }
             if (isLucky(rarityChance)) {
-                this.caughtFish = randomResource(RARITIES, rareFishLuck)
+                this.caughtFish = randomResource(RARITIES, rareRarityLuck)
                 this.isRare = true
                 this.app.stats.fishRarities += 1
             } else {
@@ -169,24 +168,22 @@ export class PondTile extends Tile {
         }
         if (this.caughtFish) {
             if (this.isRare) {
-                const idx = RARITIES.indexOf(this.caughtFish)
-                const resource = RARITY_GAINS[idx]
+                const resource = this.caughtFish.resource
                 this.app.resources[resource].gain(1)
-                this.showMessage(`Lucky! Found a ${this.caughtFish}!`, manual)
+                this.showMessage(`Lucky! Found a ${this.caughtFish.icon} ${this.caughtFish.name}!`, manual)
             } else {
-                const idx = SEALIFE.indexOf(this.caughtFish)
-                const fishGain = SEALIFE_GAINS[idx]
-                this.app.resources.fish.gain(fishGain)
-                const isNonFish = NON_FISH.includes(this.caughtFish)
-                this.showMessage(
-                    `Caught a ${this.caughtFish}, worth ${fishGain} fish${isNonFish ? ' (somehow)' : ''}!`,
-                    manual
-                )
+                this.app.resources.fish.gain(this.caughtFish.gain)
+                let message = `Caught a ${this.caughtFish.icon} ${this.caughtFish.name}`
+                if (this.caughtFish.gain > 1) {
+                    message += `, worth ${this.caughtFish.gain} fish`
+                }
+                message += (this.caughtFish.nonFish ? ' (somehow)' : '') + '!'
+                this.showMessage(message, manual)
 
                 // Add to fish tank!
-                let fishTankRow = this.app.stats.fishTank.find(row => row[0] === this.caughtFish)
+                let fishTankRow = this.app.stats.fishTank.find(row => row[0] === this.caughtFish.icon)
                 if (!fishTankRow) {
-                    fishTankRow = [this.caughtFish, 0]
+                    fishTankRow = [this.caughtFish.icon, 0]
                     this.app.stats.fishTank.push(fishTankRow)
                 }
                 fishTankRow[1] += 1
@@ -196,7 +193,7 @@ export class PondTile extends Tile {
     }
     get icon() {
         if (this.caughtFish) {
-            return this.caughtFish
+            return this.caughtFish.icon
         }
         return GROUP_ICONS.pond
     }
@@ -334,8 +331,8 @@ export class PondTile extends Tile {
             name: 'Lucky Bait',
             description: 'Increase the chance of catching rare fish',
             initialOwned: 0,
-            baseCost: 9000,
-            costMultiplier: 1.5,
+            baseCost: 4000,
+            costMultiplier: 2,
             category: CATEGORIES.special,
             group: GROUPS.pond,
             max: 5,

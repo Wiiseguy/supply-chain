@@ -62,6 +62,7 @@ const app = Vue.createApp({
                 started: false,
                 moneySpent: 0,
                 treesChopped: 0,
+                saplingsKilled: 0,
                 luckySeeds: 0,
                 luckyTrees: 0,
                 resourcesMined: 0,
@@ -71,6 +72,7 @@ const app = Vue.createApp({
                 fishMissed: 0,
                 fishRarities: 0,
                 fishTank: [],
+                resourcesBaked: 0,
                 landClicks: 0,
                 won: false,
                 winTime: null,
@@ -80,7 +82,8 @@ const app = Vue.createApp({
             // Settings
             settings: {
                 automation: true,
-                dark: true
+                dark: true,
+                tileSizeMultiplier: 1
             }
         }
     },
@@ -257,6 +260,9 @@ const app = Vue.createApp({
             }
             if (tileClass.resources) {
                 tileClass.resources.forEach(r => {
+                    if (!r.name) {
+                        console.error('Resource name not defined for', r, 'in', tileClass)
+                    }
                     this.resources[r.name] = r
                 })
             }
@@ -394,9 +400,9 @@ const app = Vue.createApp({
             tile.getStyle(styleObj)
             return {
                 backgroundColor: `rgba(${styleObj.bgRgb}, ${styleObj.bgOpacity})`,
-                width: `${TILE_SIZE}px`,
-                height: `${TILE_SIZE}px`,
-                fontSize: `${TILE_SIZE * 0.75 * styleObj.fontSizeM}px`,
+                width: `${this.tileSize}px`,
+                height: `${this.tileSize}px`,
+                fontSize: `${this.tileSize * 0.75 * styleObj.fontSizeM}px`,
                 lineHeight: styleObj.lineHeight ? `${styleObj.lineHeight}em` : null
             }
         },
@@ -521,6 +527,10 @@ const app = Vue.createApp({
             automator.enabled = !automator.enabled
         },
 
+        toggleTileSize() {
+            this.settings.tileSizeMultiplier = this.settings.tileSizeMultiplier === 1 ? 2 : 1
+        },
+
         saveGame() {
             const saveData = {
                 money: this.money,
@@ -635,8 +645,10 @@ const app = Vue.createApp({
         },
         landStyle() {
             return {
-                width: `${this.landSize[0] * TILE_SIZE}px`,
-                height: `${this.landSize[1] * TILE_SIZE}px`
+                /** @ts-ignore */
+                width: `${this.landSize[0] * this.tileSize}px`,
+                /** @ts-ignore */
+                height: `${this.landSize[1] * this.tileSize}px`
             }
         },
         landView() {
@@ -701,6 +713,10 @@ const app = Vue.createApp({
                 }
             })
             return result
+        },
+        resourcesViewSortedByEarnings() {
+            /** @ts-ignore */
+            return [...this.resourcesView].sort((a, b) => b.earnings - a.earnings)
         },
         automatorsView() {
             // Filter out automators that are not yet bought
@@ -773,6 +789,10 @@ const app = Vue.createApp({
             return {
                 opacity: this.messageFade
             }
+        },
+
+        tileSize() {
+            return this.settings.tileSizeMultiplier * TILE_SIZE
         }
     }
 })

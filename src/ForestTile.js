@@ -3,7 +3,7 @@ import { Calculator } from './Calculator.js'
 import { CATEGORIES, GROUPS, RESOURCE_TYPES, TILE_TYPES } from './consts.js'
 import { Resource } from './Resource.js'
 import Tile from './Tile.js'
-import { createAutomatorUpgrade, isLucky } from './utils.js'
+import { createAutomatorUpgrade, isLucky, randomInt } from './utils.js'
 
 const FOREST_TILE_TYPES = {
     empty: 'empty',
@@ -11,10 +11,11 @@ const FOREST_TILE_TYPES = {
     tree: 'tree'
 }
 
-const WOOD_PRICE_BASE = 5
-const SEED_PRICE_BASE = 50
-const WOOD_STORAGE_SIZE = 100
-const SEEDS_STORAGE_SIZE = 10
+const TREE_TYPES = {
+    normal: 'normal', // Wood-only tree
+    apple: 'apple', // Apple tree, gives apples and wood
+    lemon: 'lemon' // Lemon tree, gives lemons and wood
+}
 
 export const INITIAL_SEEDS = 4
 
@@ -37,6 +38,7 @@ export class ForestTile extends Tile {
     constructor(app) {
         super(app, ForestTile.type)
         this.type = FOREST_TILE_TYPES.empty
+        this.treeType = TREE_TYPES.normal
         this.seedProblem = false
     }
     update(elapsed) {
@@ -100,16 +102,31 @@ export class ForestTile extends Tile {
             }
         }
     }
+    fellGain() {
+        let woodGainM = TREE_WOOD_GAINS[this.stage]
+        let woodGains = TREE_WOOD_GAINS_BASE * woodGainM
+        this.app.resources.wood.gain(woodGains)
+        this.app.resources.seed.gain(1)
+
+        switch (this.treeType) {
+            case TREE_TYPES.apple:
+                this.app.resources.apple.gain(randomInt(10, 30))
+                break
+            case TREE_TYPES.lemon:
+                this.app.resources.lemon.gain(randomInt(5, 20))
+                break
+        }
+    }
     chop(manual) {
         this.progress += this.chopPower
         this.animateWiggle()
         if (this.progress >= 1) {
-            this.progress = 0
-            let woodGainM = TREE_WOOD_GAINS[this.stage]
-            let woodGains = TREE_WOOD_GAINS_BASE * woodGainM
-            this.app.resources.wood.gain(woodGains)
-            this.app.resources.seed.gain(1)
+            if (!this.isFullyGrownTree) {
+                this.app.stats.saplingsKilled += 1
+            }
             this.app.stats.treesChopped += 1
+            this.progress = 0
+            this.fellGain()
             let msg = ''
             // If lucky, get an extra seed
             if (isLucky(this.luckySeedChance)) {
@@ -127,6 +144,29 @@ export class ForestTile extends Tile {
             }
             if (msg && manual) {
                 this.app.showMessage(msg)
+            }
+
+            // If all 4 adjacent tiles are trees, there's a chance of a changing the tree type to apple
+            if (
+                this.treeType === TREE_TYPES.normal &&
+                this.adjacentTiles.length === 4 &&
+                this.adjacentTiles.every(tile => tile instanceof ForestTile)
+            ) {
+                if (isLucky(0.1)) {
+                    this.treeType = TREE_TYPES.apple
+                    this.app.showMessage('Tree has evolved into an apple tree!')
+                }
+            }
+            // If all adjacent tiles are ponds, there's a chance of a changing the tree type to lemon
+            if (
+                this.treeType === TREE_TYPES.normal &&
+                this.adjacentTiles.length === 4 &&
+                this.adjacentTiles.every(tile => tile.tileType === TILE_TYPES.pond)
+            ) {
+                if (isLucky(0.1)) {
+                    this.treeType = TREE_TYPES.lemon
+                    this.app.showMessage('Tree has evolved into a lemon tree!')
+                }
             }
         }
     }
@@ -231,29 +271,47 @@ export class ForestTile extends Tile {
     get luckySeedChance() {
         return this.app.calculated.luckySeedChance
     }
-    // get iconBottomRight() {
-    //     // If any adjacent tile is a kiln, show skull emoji
-    //     if (this.isSick) {
-    //         return '💀'
-    //     }
-    // }
+    get iconTopLeft() {
+        switch (this.treeType) {
+            case TREE_TYPES.apple:
+                return '🍎'
+            case TREE_TYPES.lemon:
+                return '🍋'
+            default:
+                return ''
+        }
+    }
 
     static resources = [
         new Resource(RESOURCE_TYPES.wood, {
             displayNameSingular: 'Wood',
             displayNamePlural: 'Wood',
             icon: '🪓',
-            basePrice: WOOD_PRICE_BASE,
-            storageBaseSize: WOOD_STORAGE_SIZE
+            basePrice: 5,
+            storageBaseSize: 100
         }),
         new Resource(RESOURCE_TYPES.seed, {
             displayNameSingular: 'Seed',
             displayNamePlural: 'Seeds',
             icon: '🌱',
-            basePrice: SEED_PRICE_BASE,
-            storageBaseSize: SEEDS_STORAGE_SIZE,
+            basePrice: 50,
+            storageBaseSize: 10,
             initialOwned: INITIAL_SEEDS,
             minimum: 1
+        }),
+        new Resource(RESOURCE_TYPES.apple, {
+            displayNameSingular: 'Apple',
+            displayNamePlural: 'Apples',
+            icon: '🍎',
+            basePrice: 1,
+            storageBaseSize: 1000
+        }),
+        new Resource(RESOURCE_TYPES.lemon, {
+            displayNameSingular: 'Lemon',
+            displayNamePlural: 'Lemons',
+            icon: '🍋',
+            basePrice: 2,
+            storageBaseSize: 500
         })
     ]
 
@@ -301,6 +359,10 @@ export class ForestTile extends Tile {
         }),
         new Automator('Seed Reclaimer', app => {
             app.resources.seed.reclaim(1)
+        }),
+        new Automator('Fruit Seller', app => {
+            app.sellResource(app.resources.apple, 1)
+            app.sellResource(app.resources.lemon, 1)
         })
     ]
 
@@ -425,6 +487,18 @@ export class ForestTile extends Tile {
             costMultiplier: 1.2,
             speed: 1 / 30,
             group: GROUPS.forest
+        }),
+        // Fruit seller, sells apples and lemons, only visible has non-zero amount of apples or lemons
+        createAutomatorUpgrade({
+            name: 'Fruit Seller',
+            description: 'Automatically sell apples and lemons',
+            baseCost: 9000,
+            costMultiplier: 1.3,
+            speed: 1,
+            group: GROUPS.forest,
+            isVisible(app) {
+                return app.resources.apple.totalOwned > 0 || app.resources.lemon.totalOwned > 0
+            }
         }),
         // Special upgrades
         {
