@@ -7,13 +7,16 @@
     <title>Idle Game Prototype</title>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css"
+        integrity="sha512-Kc323vGBEqzTmouAECnVceyQqyqdsSiqLQISBL29aUW4U/M7pSPA/gEUZQqv1cwx4OnYxTxve5UMg5GT6L4JJg=="
+        crossorigin="anonymous" referrerpolicy="no-referrer" />
     <link rel="stylesheet" href="style.css">
     <link rel="icon" type="image/png" href="favicon.png" />
 </head>
 
 <body class="dark">
     <div id="app" class="m-3" v-cloak>
-        <h5 @dblclick="setDebug">Supply Chain Prototype</h5>
+        <h5 @dblclick="setDebug"><i class="fa-solid fa-seedling"></i> Supply Chain Prototype</h5>
         <div class="theme-toggle hover-opacity">
             <a @click="toggleDarkMode" class="btn-link" title="Switch between light / dark mode">
                 <span v-if="settings.dark">🌙</span>

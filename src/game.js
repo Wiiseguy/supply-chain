@@ -366,6 +366,12 @@ const app = Vue.createApp({
                         this.showMessage('Click another tile to swap with this one or click the same tile to cancel')
                     } else {
                         const movingTileTarget = this.land.indexOf(tile)
+                        if (movingTileTarget === this.movingTileIdx) {
+                            this.movingTileIdx = -1
+                            this.showMessage('Move tile cancelled')
+                            this.setClickMode('click')
+                            break
+                        }
                         // Swap the tiles
                         const temp = this.land[movingTileTarget]
                         this.land[movingTileTarget] = this.land[this.movingTileIdx]
@@ -568,7 +574,9 @@ const app = Vue.createApp({
                         resource.loadSaveData(saveData.resources[resource.name])
                     })
                 }
-                this.land.length = 0
+                if (saveData.land) {
+                    this.land.length = 0
+                }
                 saveData.land?.forEach(tileData => {
                     const tileClass = this.TILE_REVIVERS[tileData.tileType]
                     if (!tileClass) {

@@ -23,9 +23,8 @@ const TREE_SELF_SEED_CHANCE = 1 / 100
 const EXTRA_SEED_CHANCE_BASE = 1 / 10
 
 const CHOP_POWER_BASE = 0.025
-// Define tree aging - let's say a tree takes a minute to grow fully
 const TREE_BASE_MATURE_TIME = 60 // 60 seconds
-const TREE_DEATH_AGE = TREE_BASE_MATURE_TIME * 5
+const TREE_DEATH_AGE = TREE_BASE_MATURE_TIME * 3
 const TREE_GROWTH_STAGES = ['🌱', '🌿', '🌳', '🌲']
 const TREE_GROWTH_STAGES_BASE_INTERVAL = TREE_BASE_MATURE_TIME / TREE_GROWTH_STAGES.length
 // Define the gains per stage, if a tree is not fully grown yet, it should give much less wood exponentially
@@ -49,7 +48,7 @@ export class ForestTile extends Tile {
             let ageGain = elapsed * (this.app.boughtUpgrades['Fertilizer'] + 1) * sicknessMultiplier
             this.age += ageGain
             let healthRegain = elapsed / (TREE_BASE_MATURE_TIME * 2)
-            if (this.age > TREE_DEATH_AGE * sicknessMultiplier) {
+            if (this.isDying) {
                 healthRegain *= -1 / sicknessMultiplier
             }
             this.progress -= healthRegain
@@ -67,6 +66,8 @@ export class ForestTile extends Tile {
             }
             // stageP is the percentage of the age until it has reached the final stage
             this.stageP = Math.min(1, this.age / (TREE_BASE_MATURE_TIME - TREE_GROWTH_STAGES_BASE_INTERVAL))
+
+            // Give it the last push once it's reached the end
             if (this.progress > 1) {
                 this.chop()
             }
@@ -117,6 +118,32 @@ export class ForestTile extends Tile {
                 break
         }
     }
+    tryEvolve() {
+        let msg = ''
+        // If all 4 adjacent tiles are trees, there's a chance of a changing the tree type to apple
+        if (
+            this.treeType === TREE_TYPES.normal &&
+            this.adjacentTiles.length === 4 &&
+            this.adjacentTiles.every(tile => tile instanceof ForestTile)
+        ) {
+            if (isLucky(0.1)) {
+                this.treeType = TREE_TYPES.apple
+                msg += 'Tree has evolved into an apple tree! '
+            }
+        }
+        // If all adjacent tiles are ponds, there's a chance of a changing the tree type to lemon
+        if (
+            this.treeType === TREE_TYPES.normal &&
+            this.adjacentTiles.length === 4 &&
+            this.adjacentTiles.every(tile => tile.tileType === TILE_TYPES.pond)
+        ) {
+            if (isLucky(0.1)) {
+                this.treeType = TREE_TYPES.lemon
+                msg += 'Tree has evolved into a lemon tree! '
+            }
+        }
+        return msg
+    }
     chop(manual) {
         this.progress += this.chopPower
         this.animateWiggle()
@@ -128,45 +155,31 @@ export class ForestTile extends Tile {
             this.progress = 0
             this.fellGain()
             let msg = ''
+
             // If lucky, get an extra seed
             if (isLucky(this.luckySeedChance)) {
                 msg += 'Lucky! Got an extra seed! '
                 this.app.resources.seed.gain(1)
                 this.app.stats.luckySeeds += 1
             }
-            // If super lucky, automatically plant a seed
-            if (isLucky(TREE_SELF_SEED_CHANCE)) {
-                msg += 'Super lucky! Another tree is already growing here!'
+
+            if (this.isDying) {
+                // If the tree is dying, it will self-seed, but it will not count as a lucky seed
+                this.age = 0
+            } else if (isLucky(TREE_SELF_SEED_CHANCE)) {
+                // If super lucky, automatically plant a seed
+                msg += 'Super lucky! Another tree is already growing here! '
                 this.age = 0
                 this.app.stats.luckyTrees += 1
             } else {
+                // Otherwise, reset the tile completely
                 this.reset()
             }
+
+            msg += this.tryEvolve()
+
             if (msg && manual) {
                 this.app.showMessage(msg)
-            }
-
-            // If all 4 adjacent tiles are trees, there's a chance of a changing the tree type to apple
-            if (
-                this.treeType === TREE_TYPES.normal &&
-                this.adjacentTiles.length === 4 &&
-                this.adjacentTiles.every(tile => tile instanceof ForestTile)
-            ) {
-                if (isLucky(0.1)) {
-                    this.treeType = TREE_TYPES.apple
-                    this.app.showMessage('Tree has evolved into an apple tree!')
-                }
-            }
-            // If all adjacent tiles are ponds, there's a chance of a changing the tree type to lemon
-            if (
-                this.treeType === TREE_TYPES.normal &&
-                this.adjacentTiles.length === 4 &&
-                this.adjacentTiles.every(tile => tile.tileType === TILE_TYPES.pond)
-            ) {
-                if (isLucky(0.1)) {
-                    this.treeType = TREE_TYPES.lemon
-                    this.app.showMessage('Tree has evolved into a lemon tree!')
-                }
             }
         }
     }
@@ -175,6 +188,9 @@ export class ForestTile extends Tile {
     }
     get isSick() {
         return this.adjacentTiles.some(tile => tile.tileType === TILE_TYPES.kiln)
+    }
+    get isDying() {
+        return this.age > TREE_DEATH_AGE
     }
     click(manual = false) {
         switch (this.type) {
@@ -215,6 +231,8 @@ export class ForestTile extends Tile {
         }
         if (this.isSick) {
             filter = 'brightness(0.9) saturate(0.25)'
+        } else if (this.isDying) {
+            filter = 'saturate(0.5)'
         }
         return {
             transform: `scale(${scale}) translateY(${translateY}em)`,
@@ -510,11 +528,7 @@ export class ForestTile extends Tile {
             costMultiplier: 5,
             category: CATEGORIES.special,
             max: 3,
-            group: GROUPS.forest,
-            onBuy(app) {
-                // TODO: remove?
-                app.resources.wood.sellNum *= 10
-            }
+            group: GROUPS.forest
         },
         {
             name: 'Wood Marketing 1',
