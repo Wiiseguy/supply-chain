@@ -20,6 +20,9 @@ body.dark {
 }
 
 body {
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
     overflow-y: scroll;
     background-color: var(--bg);
     color: var(--text);
@@ -306,61 +309,18 @@ button:disabled {
     }
 }
 
-/* Animation to wiggle the tree, to simulate being chopped */
-@keyframes wiggle {
-    0% {
-        transform: rotate(0deg);
-    }
-    25% {
-        transform: rotate(5deg);
-    }
-    50% {
-        transform: rotate(-5deg);
-    }
-    75% {
-        transform: rotate(5deg);
-    }
-    100% {
-        transform: rotate(0deg);
-    }
+#blades {
+    /* Ensures the rotation is around the exact center of the blade assembly */
+    transform-origin: 50px 80px; /* Fixed center point */
+    animation: rotate 2s linear infinite;
 }
 
-/* Grow bounce animation */
-@keyframes growBounce {
-    0% {
-        transform: scale(1);
-    }
-    50% {
-        transform: scale(1.1);
-    }
-    100% {
-        transform: scale(1);
-    }
-}
-
-/* Bounce down animation, to simulate fish pulling the bobber */
-@keyframes bounceDown {
-    0% {
-        transform: translateY(0);
-    }
-    50% {
-        transform: translateY(0.5em);
-    }
-    100% {
-        transform: translateY(0);
-    }
-}
-
-/* Fade out animation */
-@keyframes fadeOut {
-    0% {
-        opacity: 1;
-    }
-    50% {
-        opacity: 1;
-    }
-    100% {
-        opacity: 0;
+.game-graphic {
+    rect,
+    path,
+    polygon {
+        stroke: black;
+        stroke-width: 3;
     }
 }
 
