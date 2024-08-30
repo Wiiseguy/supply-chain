@@ -1,4 +1,4 @@
-export const TILE_TYPES = {
+export const TILE_TYPES: Record<string, string> = {
     none: 'none',
     forest: 'forest',
     mine: 'mine',
@@ -13,7 +13,7 @@ export const TILE_TYPES = {
     // Factory: process raw materials into goods
 }
 
-export const GROUPS = {
+export const GROUPS: Record<string, string> = {
     land: 'land',
     tiles: 'tiles',
     forest: 'forest',
@@ -25,7 +25,7 @@ export const GROUPS = {
     ui: 'ui'
 }
 
-export const CATEGORIES = {
+export const CATEGORIES: Record<string, string> = {
     tools: 'tools',
     tiles: 'tiles',
     land: 'land',
@@ -43,7 +43,7 @@ export const CATEGORIES_ORDER = [
     CATEGORIES.special
 ]
 
-export const CATEGORY_TITLES = {
+export const CATEGORY_TITLES: Record<string, string> = {
     tools: 'Tools',
     tiles: 'Tiles',
     land: 'Land',
@@ -52,7 +52,7 @@ export const CATEGORY_TITLES = {
     special: 'Special'
 }
 
-export const RESOURCE_TYPES = {
+export const RESOURCE_TYPES: Record<string, string> = {
     wood: 'wood',
     seed: 'seed',
     diamond: 'diamond',
@@ -90,7 +90,7 @@ const FARM_TILE_TYPES = {
     crop: 'crop'
 }
 
-export const GROUP_ICONS = {
+export const GROUP_ICONS: Record<string, string> = {
     land: '🔲',
     forest: '🌲',
     mine: '⛏️',
@@ -103,6 +103,6 @@ export const GROUP_ICONS = {
     ui: '🖥️'
 }
 
-export const MODALS = {
+export const MODALS: Record<string, string> = {
     kilnBake: 'kilnBake'
 }

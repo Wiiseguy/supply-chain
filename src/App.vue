@@ -1,17 +1,22 @@
-<script lang="js">
+<script lang="ts">
 import Windmill from './components/Windmill.vue'
-import { Counter } from './Counter.js'
-import { DonutTile } from './DonutTile.js'
-import { EmptyTile } from './EmptyTile.js'
-import { ForestTile, INITIAL_SEEDS } from './ForestTile.js'
-import { KilnTile } from './KilnTile.js'
-import { MineTile } from './MineTile.js'
-import { MonsterTile, PondTile } from './PondTile.js'
-import { Resource } from './Resource.js'
-import { GROUP_ICONS, CATEGORY_TITLES, CATEGORIES, CATEGORIES_ORDER, MODALS } from './consts.js'
-import { UPGRADES } from './upgrades.js'
-import { bigNum, decode, encode, humanTime, makeIndex } from './utils.js'
+import Tile from './Tile'
+import { Counter } from './Counter'
+import { DonutTile } from './DonutTile'
+import { EmptyTile } from './EmptyTile'
+import { ForestTile, INITIAL_SEEDS } from './ForestTile'
+import { KilnTile } from './KilnTile'
+import { MineTile } from './MineTile'
+import { PondTile } from './PondTile'
+import { Resource } from './Resource'
+import { GROUP_ICONS, CATEGORY_TITLES, CATEGORIES, CATEGORIES_ORDER, MODALS } from './consts'
+import { UPGRADES } from './upgrades'
+import { bigNum, decode, encode, humanTime, makeIndex } from './utils'
+import { Upgrade } from './Upgrade'
+import { Calculator } from './Calculator'
+import { Automator } from './Automator'
 
+/** @ts-ignore */
 globalThis.haltAnimation = false
 
 const DEBUG = false
@@ -25,6 +30,15 @@ const DEFAULT_UPGRADE_BLUR_THRESHOLD = 0.5
 
 const INITIAL_MONEY = 0
 
+interface UpgradeView extends Upgrade {
+    cost: number
+    blurred: boolean
+    canBuy: boolean
+    owned: number
+    resourcesNeeded: { type: string; amount: number; icon: string }[]
+    groupIcon: string
+}
+
 export default {
     components: {
         Windmill
@@ -32,32 +46,31 @@ export default {
     data() {
         return {
             DEBUG,
-            UPGRADES,
-            UPGRADES_INDEX: {},
-            TILE_REVIVERS: {},
+            UPGRADES: [] as Upgrade[],
+            UPGRADES_INDEX: {} as Record<string, Upgrade>,
+            TILE_REVIVERS: {} as Record<string, typeof Tile>,
             MODALS,
 
             now: Date.now(),
             startTime: Date.now(),
             lastUpdate: Date.now(),
 
-            land: [],
-            resources: {},
-            automators: [],
-            calculators: [],
-            calculated: {},
-            counters: [], // how to give typescript type to things in data? a: use a function to return the data
-            countersView: [],
-            boughtUpgrades: {},
-            visibleUpgrades: [],
-            unblurredUpgrades: [],
+            land: [] as Tile[],
+            resources: {} as Record<string, Resource>,
+            automators: [] as Automator[],
+            calculators: [] as Calculator[],
+            calculated: {} as Record<string, any>,
+            counters: [] as Counter[],
+            boughtUpgrades: {} as Record<string, number>,
+            visibleUpgrades: [] as string[],
+            unblurredUpgrades: [] as string[],
             adjacentTileCache: new WeakMap(),
             clickMode: 'click',
             movingTileIdx: -1,
             message: '',
             messageFade: 0,
             showEarnings: false,
-            modalObj: null,
+            modalObj: null as any,
 
             // Vars
             money: INITIAL_MONEY,
@@ -80,7 +93,7 @@ export default {
                 resourcesBaked: 0,
                 landClicks: 0,
                 won: false,
-                winTime: null,
+                winTime: null as number | null,
                 winLandClicks: 0,
                 restarts: 0
             },
@@ -94,7 +107,7 @@ export default {
         }
     },
     created() {
-        this.UPGRADES = UPGRADES
+        this.UPGRADES = [...UPGRADES]
 
         // Initialize resources
         this.resources = {}
@@ -104,7 +117,7 @@ export default {
         this.registerTile(ForestTile)
         this.registerTile(MineTile)
         this.registerTile(PondTile)
-        //this.registerTile(DonutTile)
+        this.registerTile(DonutTile)
         //this.registerTile(MonsterTile)
         this.registerTile(KilnTile)
 
@@ -112,11 +125,11 @@ export default {
         this.UPGRADES.forEach(upgrade => {
             this.boughtUpgrades[upgrade.name] = upgrade.initialOwned ?? 0
         })
-        this.UPGRADES_INDEX = makeIndex(UPGRADES, 'name')
+        this.UPGRADES_INDEX = makeIndex(this.UPGRADES, 'name')
 
         // Initialize land
         for (let i = 0; i < this.boughtUpgrades['Forest Tile']; i++) {
-            this.land.push(new ForestTile(this))
+            this.land.push(new ForestTile(this as any))
         }
 
         this.counters = [new Counter('money', () => this.money)]
@@ -140,7 +153,7 @@ export default {
             i < this.boughtUpgrades['Extra Column'] * this.boughtUpgrades['Extra Row'];
             i++
         ) {
-            this.land.push(new EmptyTile(this))
+            this.land.push(new EmptyTile(this as any))
         }
     },
     mounted() {
@@ -166,24 +179,25 @@ export default {
         }
     },
     methods: {
-        num(n) {
+        num(n: number) {
             if (typeof n !== 'number') return n
             return bigNum(n)
         },
-        numf(n) {
+        numf(n: number) {
             return Math.round(n).toLocaleString()
         },
-        showMessage(message) {
+        showMessage(message: string) {
             console.log('Message:', message)
             this.message = message
             this.messageFade = 1
         },
-        showModal(modal, obj) {
-            this.$refs[modal].showModal()
+        showModal(modal: string, obj: any) {
+            //this.$refs[modal].showModal()
+            (this.$refs[modal] as HTMLDialogElement).showModal()
             this.modalObj = obj
         },
-        closeModal(modal) {
-            this.$refs[modal].close()
+        closeModal(modal: string) {
+            (this.$refs[modal] as HTMLDialogElement).close()
         },
         startGameLoop() {
             setInterval(this.gameLoop, 1000 / FPS)
@@ -203,13 +217,15 @@ export default {
             // Calculate money per second, etc.
             this.counters.forEach(counter => counter.update())
         },
-        updateGame(elapsed) {
+        updateGame(elapsed: number) {
+            /** @ts-ignore */
             globalThis.haltAnimation = false
 
             // If elapsed is massive, the game was paused maybe due to hibernation or tab switch
             // In that case, animations caused by setTimeout should not be triggered this update
             if (elapsed > 10) {
                 console.warn('Massive elapsed time detected, halting animations. Elapsed seconds:', elapsed)
+                /** @ts-ignore */
                 globalThis.haltAnimation = true
             }
 
@@ -226,7 +242,7 @@ export default {
 
             // Determine if upgrade should be made visible. Once visible, it should stay visible.
             // An upgrade should become visible if the player has a certain % of the cost of the upgrade
-            UPGRADES.forEach(upgrade => {
+            this.UPGRADES.forEach(upgrade => {
                 if (
                     !this.visibleUpgrades.includes(upgrade.name) &&
                     this.money >= upgrade.baseCost * DEFAULT_UPGRADE_VISIBILITY_THRESHOLD
@@ -244,16 +260,16 @@ export default {
             // Run automators
             if (this.settings.automation) {
                 this.automators.forEach(automator => {
-                    automator.run(this, elapsed)
+                    automator.run(this as any, elapsed)
                 })
             }
 
             // Run calculators
             this.calculators.forEach(calculator => {
-                this.calculated[calculator.name] = calculator.calculate(this, elapsed)
+                this.calculated[calculator.name] = calculator.calculate(this as any)
             })
         },
-        registerTile(tileClass) {
+        registerTile(tileClass: typeof Tile) {
             this.TILE_REVIVERS[tileClass.type] = tileClass
             if (tileClass.automators) {
                 this.automators.push(...tileClass.automators)
@@ -273,7 +289,7 @@ export default {
                 })
             }
         },
-        setClickMode(mode) {
+        setClickMode(mode: string) {
             // if click mode already is 'mode', set it to 'click'
             if (this.clickMode === mode) {
                 mode = 'click'
@@ -281,16 +297,11 @@ export default {
             this.clickMode = mode
             this.movingTileIdx = -1
         },
-        /**
-         *
-         * @param {Resource} resource
-         * @param {number} amount
-         */
-        sellResource(resource, amount = 0) {
+        sellResource(resource: Resource, amount = 0) {
             if (amount === 0) amount = resource.sellNum
             this.money += resource.sell(amount)
         },
-        sellAutomator(automator) {
+        sellAutomator(automator: Automator) {
             // Get the cost of the current automator
             let upgrade = this.UPGRADES_INDEX[automator.upgradeName]
             let owned = this.boughtUpgrades[automator.upgradeName]
@@ -299,7 +310,7 @@ export default {
             this.stats.moneySpent -= price // You get back all the money you spent on the automator!
             this.boughtUpgrades[automator.upgradeName] -= 1
         },
-        buyAutomator(automator) {
+        buyAutomator(automator: Automator) {
             // Get the cost of the next automator
             let upgrade = this.UPGRADES_INDEX[automator.upgradeName]
             let owned = this.boughtUpgrades[automator.upgradeName]
@@ -307,7 +318,7 @@ export default {
             if (!this.incur(price)) return
             this.boughtUpgrades[automator.upgradeName] += 1
         },
-        incur(money) {
+        incur(money: number) {
             if (this.money < money) {
                 return false
             }
@@ -316,7 +327,7 @@ export default {
             return true
         },
 
-        addTile(tile) {
+        addTile(tile: Tile) {
             // Find first empty tile and replace it with the new tile
             const emptyTileIndex = this.land.findIndex(tile => tile instanceof EmptyTile)
             if (emptyTileIndex === -1) {
@@ -332,7 +343,7 @@ export default {
             this.adjacentTileCache = new WeakMap()
         },
 
-        clickTile(tileModel) {
+        clickTile(tileModel: { tile: Tile }) {
             if (this.DEBUG) {
                 console.log('Clicked tile:', tileModel.tile)
             }
@@ -350,7 +361,7 @@ export default {
                     }
                     // Replace the tile with an empty tile in this.land
                     const index = this.land.indexOf(tile)
-                    this.land.splice(index, 1, new EmptyTile(this))
+                    this.land.splice(index, 1, new EmptyTile(this as any))
 
                     // Gain some money as a consolation and to prevent soft-locking or infinite money
                     //  determine the lowest possible sell price of the cheapest tile (probably 'Forest Tile')
@@ -402,10 +413,9 @@ export default {
             this.saveGame()
         },
 
-        getTileStyle(tile) {
+        getTileStyle(tile: Tile) {
             const styleObj = {
                 bgOpacity: 0,
-                lineHeight: null,
                 fontSizeM: 1,
                 bgRgb: '0, 128, 0'
             }
@@ -414,11 +424,10 @@ export default {
                 backgroundColor: `rgba(${styleObj.bgRgb}, ${styleObj.bgOpacity})`,
                 width: `${this.tileSize}px`,
                 height: `${this.tileSize}px`,
-                fontSize: `${this.tileSize * 0.75 * styleObj.fontSizeM}px`,
-                lineHeight: styleObj.lineHeight ? `${styleObj.lineHeight}em` : null
+                fontSize: `${this.tileSize * 0.75 * styleObj.fontSizeM}px`
             }
         },
-        getTileProgressAltStyle(tile) {
+        getTileProgressAltStyle(tile: Tile) {
             const health = tile.health
             if (health == null) {
                 return {}
@@ -427,7 +436,7 @@ export default {
                 width: `${health * 100}%`
             }
         },
-        getAdjacentTiles(tile) {
+        getAdjacentTiles(tile: Tile) {
             if (this.adjacentTileCache.has(tile)) {
                 return this.adjacentTileCache.get(tile)
             }
@@ -454,13 +463,13 @@ export default {
             return result
         },
 
-        getUpgradeCost(upgrade) {
+        getUpgradeCost(upgrade: Upgrade) {
             return this.getUpgradeCostNum(upgrade, this.boughtUpgrades[upgrade.name])
         },
-        getUpgradeCostNum(upgrade, num = 1) {
+        getUpgradeCostNum(upgrade: Upgrade, num = 1) {
             return upgrade.baseCost * Math.pow(upgrade.costMultiplier, num - upgrade.initialOwned)
         },
-        buyUpgrade(upgrade) {
+        buyUpgrade(upgrade: Upgrade) {
             if (!this.canBuyUpgrade(upgrade)) {
                 return false
             }
@@ -486,14 +495,14 @@ export default {
                     // For instance if the land is 2x2, the empty tiles must be added at index 2 and 5
                     // If the land is 3x3, the empty tiles must be added at index 3, 6 and 9
                     for (let i = height - 1; i >= 0; i--) {
-                        this.land.splice(width * (i + 1), 0, new EmptyTile(this))
+                        this.land.splice(width * (i + 1), 0, new EmptyTile(this as any))
                     }
                     this.onLandChange()
                     break
                 }
                 case 'Extra Row':
                     for (let i = 0; i < this.landSize[0]; i++) {
-                        this.land.push(new EmptyTile(this))
+                        this.land.push(new EmptyTile(this as any))
                     }
                     this.onLandChange()
                     break
@@ -513,16 +522,16 @@ export default {
 
             // If the upgrade has an onBuy function, call it
             if (upgrade.onBuy) {
-                upgrade.onBuy(this)
+                upgrade.onBuy(this as any)
             }
         },
-        hasUpgrade(upgradeName) {
+        hasUpgrade(upgradeName: string) {
             return this.boughtUpgrades[upgradeName] > 0
         },
         hasRoomForTile() {
             return this.land.some(tile => tile instanceof EmptyTile)
         },
-        canBuyUpgrade(upgrade) {
+        canBuyUpgrade(upgrade: Upgrade) {
             if (upgrade.tile && !this.hasRoomForTile()) {
                 return false
             }
@@ -535,7 +544,7 @@ export default {
             }
             return this.money >= this.getUpgradeCost(upgrade)
         },
-        toggleAutomator(automator) {
+        toggleAutomator(automator: Automator) {
             automator.enabled = !automator.enabled
         },
 
@@ -546,7 +555,7 @@ export default {
         saveGame() {
             const saveData = {
                 money: this.money,
-                resources: {},
+                resources: {} as Record<string, any>,
                 boughtUpgrades: this.boughtUpgrades,
                 land: this.land,
                 startTime: this.startTime,
@@ -568,6 +577,7 @@ export default {
                 if (!saveDataStr) {
                     return
                 }
+                console.log('Loading save data')
                 const isOld = saveDataStr?.startsWith('{')
                 const saveData = JSON.parse(isOld ? saveDataStr : decode(saveDataStr))
                 if (!saveData) {
@@ -582,13 +592,13 @@ export default {
                 if (saveData.land) {
                     this.land.length = 0
                 }
-                saveData.land?.forEach(tileData => {
+                saveData.land?.forEach((tileData: Tile) => {
                     const tileClass = this.TILE_REVIVERS[tileData.tileType]
                     if (!tileClass) {
                         console.error('No reviver found for tile type:', tileData.tileType)
                         return
                     }
-                    const tileInstance = new tileClass(this)
+                    const tileInstance = new tileClass(this as any, tileData.tileType) // Note: 2nd param is not actually used for derived classes of Tile, but this keeps TS happy
                     // Set properties from tileData into tileInstance
                     Object.assign(tileInstance, tileData)
                     this.land.push(tileInstance)
@@ -599,13 +609,13 @@ export default {
                 this.automators.forEach(automator => {
                     // Find automator in saveData.automators and assign its properties to the automator
                     const savedAutomator = saveData.automators?.find(
-                        savedAutomator => savedAutomator.upgradeName === automator.upgradeName
+                        (savedAutomator: Automator) => savedAutomator.upgradeName === automator.upgradeName
                     )
                     if (savedAutomator) {
                         Object.assign(automator, savedAutomator)
                     }
                 })
-                this.startTime = saveData.startTime ? new Date(saveData.startTime) : this.startTime
+                this.startTime = saveData.startTime ? saveData.startTime : this.startTime
                 this.onLandChange()
             } catch (e) {
                 // Clear corrupted save data
@@ -643,7 +653,7 @@ export default {
             return humanTime(diff)
         },
         timeTaken() {
-            if (!this.stats.won) {
+            if (!this.stats.won || !this.stats.winTime) {
                 return 'N/A'
             }
             let winTimeInMinutes = Math.round(this.stats.winTime / 60_000)
@@ -651,12 +661,6 @@ export default {
         },
         sellLevel() {
             return this.boughtUpgrades['Wooden Finger']
-        },
-        forestLand() {
-            return this.land.filter(tile => tile instanceof ForestTile)
-        },
-        mineLand() {
-            return this.land.filter(tile => tile instanceof MineTile)
         },
         landSize() {
             return [this.boughtUpgrades['Extra Column'], this.boughtUpgrades['Extra Row']]
@@ -673,9 +677,8 @@ export default {
             }
         },
         landView() {
-            const view = []
-            this.land.forEach(tile => {
-                view.push({
+            return this.land.map(tile => {
+                return {
                     type: tile.type,
                     tile,
                     style: this.getTileStyle(tile),
@@ -691,9 +694,8 @@ export default {
                         moving: this.movingTileIdx === this.land.indexOf(tile)
                     },
                     tooltip: tile.tooltip
-                })
+                }
             })
-            return view
         },
         totalResourceEarnings() {
             /** @ts-ignore */
@@ -718,7 +720,7 @@ export default {
 
         perS() {
             // Return obj with name, current, delta
-            const result = {}
+            const result = {} as Record<string, number>
             this.counters.forEach(counter => {
                 result[counter.name] = counter.delta
             })
@@ -759,12 +761,12 @@ export default {
                     }
                 })
         },
-        upgradesView() {
+        upgradesView(): UpgradeView[] {
             return this.UPGRADES.filter(upgrade => {
                 if (upgrade.max && this.boughtUpgrades[upgrade.name] >= upgrade.max) {
                     return false
                 }
-                const isVisibleByLogic = upgrade.isVisible ? upgrade.isVisible(this) : true
+                const isVisibleByLogic = upgrade.isVisible ? upgrade.isVisible(this as any) : true
                 return isVisibleByLogic && this.visibleUpgrades.includes(upgrade.name)
             })
                 .map(upgrade => {
@@ -787,7 +789,7 @@ export default {
                 .sort((a, b) => a.baseCost - b.baseCost)
         },
         upgradesByCategoryView() {
-            const upgradesByCategory = {}
+            const upgradesByCategory = {} as Record<string, UpgradeView[]>
             /** @ts-ignore */
             this.upgradesView.forEach(upgrade => {
                 if (!upgradesByCategory[upgrade.category]) {
@@ -821,7 +823,7 @@ export default {
 
 <template>
     <h5 @dblclick="setDebug"><i class="fa-solid fa-seedling"></i> Supply Chain Prototype</h5>
-    <!-- <windmill /> -->
+    <windmill />
 
     <div class="theme-toggle hover-opacity">
         <a @click="toggleDarkMode" class="btn-link" title="Switch between light / dark mode">
@@ -978,7 +980,7 @@ export default {
             <div class="mt-5 selectable">
                 <h5>Statistics</h5>
                 <div class="mb-3">
-                    Time played: {{ num(timeSinceStart) }}
+                    Time played: {{ timeSinceStart }}
                 </div>
                 <div v-if="stats.restarts > 0">
                     Restarts: {{ num(stats.restarts) }}
@@ -1006,7 +1008,7 @@ export default {
                 </div>
                 <div v-if="stats.fishCaught > 0" class="mt-3">
                     <span :title="`Rare fish chance sequence is ${100 * calculated.rareFishLuck}%`">Fish caught: {{
-        num(stats.fishCaught) }}</span>
+                        num(stats.fishCaught) }}</span>
                     <div v-if="stats.fishTank.length > 0">
                         <span v-for="i in stats.fishTank" class="mr-3">{{ i[0] }} {{ i[1] }}</span>
                     </div>
@@ -1059,16 +1061,16 @@ export default {
                     <tr>
                         <td colspan="5"><strong>Total profit</strong></td>
                         <td class="text-right num" :class="{
-        'text-success': totalProfit > 0,
-        'text-danger': totalProfit < 0
-    }"><strong>$ {{ num(totalProfit) }}</strong></td>
+                            'text-success': totalProfit > 0,
+                            'text-danger': totalProfit < 0
+                        }"><strong>$ {{ num(totalProfit) }}</strong></td>
                     </tr>
                 </table>
             </div>
             <div class="mt-3">
                 <a @click="toggleTileSize" class="btn btn-sm btn-secondary">Toggle tile size
                     ({{ settings.tileSizeMultiplier
-        === 1 ? 'Normal' : 'Big' }})</a>
+                        === 1 ? 'Normal' : 'Big' }})</a>
             </div>
             <div class="hover-opacity" style="margin-top:200px">
                 <button @click="resetGame" class="btn btn-sm btn-danger">Reset game</button>
@@ -1083,9 +1085,9 @@ export default {
                             @click="buyUpgrade(item)" :disabled="!item.canBuy"
                             :title="item.blurred ? '?' : item.description">
                             <span class="can-blur font-weight-bold" :class="{ blur: item.blurred }">{{
-        item.displayName ??
-        item.name
-    }}</span>
+                                item.displayName ??
+                                item.name
+                                }}</span>
                             <sup v-if="item.max !== 1 && item.owned > 0"></sup><br>
                             <small>
                                 $ {{ num(item.cost) }}

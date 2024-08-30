@@ -1,13 +1,13 @@
-import { TILE_TYPES } from './consts.js'
-import Tile from './Tile.js'
+import { TILE_TYPES } from './consts'
+import Tile from './Tile'
 
 export class EmptyTile extends Tile {
-    static type = TILE_TYPES.none
+    static readonly type = TILE_TYPES.none
 
-    constructor(app) {
+    constructor(app: IApp) {
         super(app, EmptyTile.type)
     }
-    update(elapsed) {
+    update(elapsed: number) {
         super.update(elapsed)
     }
 
@@ -22,16 +22,16 @@ export class EmptyTile extends Tile {
         }
     }
 
-    getStyle(obj) {
+    getStyle(obj: ITileStyle) {
         obj.bgOpacity = 0.5
         obj.bgRgb = '0,0,0'
     }
 
-    static resources = []
+    static readonly resources = []
 
-    static calculators = []
+    static readonly calculators = []
 
-    static automators = []
+    static readonly automators = []
 
-    static upgrades = []
+    static readonly upgrades = []
 }

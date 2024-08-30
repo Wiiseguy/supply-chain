@@ -1,16 +1,18 @@
-import { Automator } from './Automator.js'
-import { CATEGORIES, GROUP_ICONS, GROUPS, RESOURCE_TYPES, TILE_TYPES } from './consts.js'
-import { Resource } from './Resource.js'
-import Tile from './Tile.js'
-import { createAutomatorUpgrade, pick } from './utils.js'
+import { Automator } from './Automator'
+import { CATEGORIES, GROUP_ICONS, GROUPS, RESOURCE_TYPES, TILE_TYPES } from './consts'
+import { Resource } from './Resource'
+import Tile from './Tile'
+import { Upgrade } from './Upgrade'
+import { pick } from './utils'
 
 export class DonutTile extends Tile {
-    static type = TILE_TYPES.donut
+    static readonly type = TILE_TYPES.donut
 
-    constructor(app) {
+    constructor(app: IApp) {
         super(app, DonutTile.type)
     }
-    update(elapsed) {
+
+    update(elapsed: number) {
         super.update(elapsed)
     }
     sell() {
@@ -22,7 +24,7 @@ export class DonutTile extends Tile {
         this.animateGrow()
     }
 
-    autoClick(times) {
+    autoClick(times: number) {
         this.app.resources.donut.gain(times)
     }
 
@@ -30,7 +32,7 @@ export class DonutTile extends Tile {
         return GROUP_ICONS.donut
     }
 
-    static resources = [
+    static readonly resources = [
         new Resource(RESOURCE_TYPES.donut, {
             displayNameSingular: 'Donut',
             displayNamePlural: 'Donuts',
@@ -41,9 +43,9 @@ export class DonutTile extends Tile {
         })
     ]
 
-    static calculators = []
+    static readonly calculators = []
 
-    static automators = [
+    static readonly automators = [
         new Automator('Donut Clicker', app => {
             const donut = pick(app.land.filter(t => t instanceof DonutTile))
             if (donut) {
@@ -58,25 +60,23 @@ export class DonutTile extends Tile {
         })
     ]
 
-    static hasTile = app => app.land.some(tile => tile instanceof DonutTile)
+    static readonly hasTile = (app: IApp) => app.land.some(tile => tile instanceof DonutTile)
 
-    static upgrades = [
-        {
+    static readonly upgrades: Upgrade[] = [
+        new Upgrade({
             name: 'Donut Tile',
             tile: true,
             description: 'Claim a tile of land to mess about with cookies... I mean donuts!',
-            initialOwned: 0,
             baseCost: 500,
             costMultiplier: 2,
-            speed: undefined,
             category: CATEGORIES.tiles,
             group: GROUPS.donut,
-            onBuy(app) {
+            onBuy(app: IApp) {
                 app.addTile(new DonutTile(app))
             }
-        },
+        }),
         // Automators
-        createAutomatorUpgrade({
+        Upgrade.createAutomator({
             name: 'Donut Clicker',
             description: 'Automatically click donuts, just like that other game',
             baseCost: 1000,
@@ -85,7 +85,7 @@ export class DonutTile extends Tile {
             group: GROUPS.donut,
             isVisible: DonutTile.hasTile
         }),
-        createAutomatorUpgrade({
+        Upgrade.createAutomator({
             name: 'Donut Grandpa',
             description: 'Donut Grandpa will click 5 donuts for you',
             baseCost: 5000,

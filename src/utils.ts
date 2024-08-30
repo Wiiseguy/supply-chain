@@ -1,7 +1,9 @@
-import { CATEGORIES } from './consts.js'
-
-export function setBoolPropTimeout(obj, prop, timeOutProp, time) {
-    if (globalThis.haltAnimation) return
+export function setBoolPropTimeout(obj: any, prop: string, timeOutProp: string, time: number) {
+    /** @ts-ignore */
+    if (globalThis.haltAnimation) {
+        console.log('test haltAnimation if this works remove this console log')
+        return
+    }
     clearTimeout(obj[timeOutProp])
     obj[prop] = false
     setTimeout(() => {
@@ -12,35 +14,38 @@ export function setBoolPropTimeout(obj, prop, timeOutProp, time) {
     }, time)
 }
 
-export function makeIndex(arr, key) {
-    return arr.reduce((acc, item) => {
-        acc[item[key]] = item
-        return acc
-    }, {})
+export function makeIndex<T>(arr: T[], key: string): Record<string, T> {
+    return arr.reduce(
+        (acc, item: any) => {
+            acc[item[key]] = item
+            return acc
+        },
+        {} as Record<string, T>
+    )
 }
 
-export function pluck(arr) {
+export function pluck<T>(arr: T[]): T {
     return arr.splice(Math.floor(Math.random() * arr.length), 1)[0]
 }
 
-export function pick(arr) {
+export function pick<T>(arr: T[]): T {
     return arr[Math.floor(Math.random() * arr.length)]
 }
 
-export function pickIndex(arr) {
+export function pickIndex(arr: any[]) {
     return Math.floor(Math.random() * arr.length)
 }
 
-export function isLucky(chance) {
+export function isLucky(chance: number) {
     // Returns true or false based on the chance 0 = never, 1 = always
     return Math.random() < chance
 }
 
-export function randomInt(min, max) {
+export function randomInt(min: number, max: number) {
     return Math.floor(Math.random() * (max - min + 1) + min)
 }
 
-export function bigNum(n) {
+export function bigNum(n: number) {
     const sign = Math.sign(n)
     n = Math.abs(n)
     if (n < 1000000) {
@@ -69,7 +74,7 @@ export function bigNum(n) {
     return `${formatted} ${suffixes[suffixIndex]}`
 }
 
-export function humanTime(ms) {
+export function humanTime(ms: number) {
     if (ms < 1000) {
         return `${ms}ms`
     }
@@ -82,26 +87,10 @@ export function humanTime(ms) {
     return `${(ms / 3_600_000).toFixed(1)}h`
 }
 
-export function encode(str) {
+export function encode(str: string) {
     return btoa(encodeURIComponent(str))
 }
 
-export function decode(str) {
+export function decode(str: string) {
     return decodeURIComponent(atob(str))
-}
-
-export function createAutomatorUpgrade(opts) {
-    return {
-        name: '',
-        displayName: undefined,
-        description: '',
-        initialOwned: 0,
-        baseCost: 1000,
-        costMultiplier: 1.5,
-        speed: 1,
-        category: CATEGORIES.automation,
-        ...opts,
-        isVisible: app => (opts.isVisible ? opts.isVisible(app) : true) && app.boughtUpgrades[opts.name] == 0,
-        automator: true
-    }
 }

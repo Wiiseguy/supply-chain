@@ -1,8 +1,9 @@
-import { Automator } from './Automator.js'
-import { CATEGORIES, GROUPS, MODALS, RESOURCE_TYPES, TILE_TYPES } from './consts.js'
-import { Resource } from './Resource.js'
-import Tile from './Tile.js'
-import { createAutomatorUpgrade, pick } from './utils.js'
+import { Automator } from './Automator'
+import { CATEGORIES, GROUPS, MODALS, RESOURCE_TYPES, TILE_TYPES } from './consts'
+import { Resource } from './Resource'
+import Tile from './Tile'
+import { Upgrade } from './Upgrade'
+import { pick } from './utils'
 
 // Kiln tile
 // Kilns are used to bake bricks from clay
@@ -26,16 +27,21 @@ const KILN_STATES = {
 }
 
 export class KilnTile extends Tile {
-    static type = TILE_TYPES.kiln
+    static readonly type = TILE_TYPES.kiln
 
-    constructor(app) {
+    state: string
+    recipeId: number
+    timer: number
+    timerTarget: number
+
+    constructor(app: IApp) {
         super(app, KilnTile.type)
         this.state = KILN_STATES.unset
         this.recipeId = -1
         this.timer = 0
         this.timerTarget = 0
     }
-    update(elapsed) {
+    update(elapsed: number) {
         this.stageP = this.progress
         if (this.recipeId === -1 && this.state !== KILN_STATES.unset) {
             this.state = KILN_STATES.unset
@@ -46,6 +52,10 @@ export class KilnTile extends Tile {
             if (this.timer >= this.timerTarget) {
                 this.timer = 0
                 this.state = KILN_STATES.open
+                if (!this.activeRecipe) {
+                    console.error('No active recipe found for id:', this.recipeId)
+                    return
+                }
                 const resource = this.app.resources[this.activeRecipe.resource]
                 resource.gain(this.activeRecipe.yield)
                 this.app.stats.resourcesBaked += this.activeRecipe.yield
@@ -58,12 +68,16 @@ export class KilnTile extends Tile {
             }
         }
     }
-    bake(manual) {
+    bake(manual = false) {
         if (this.state !== KILN_STATES.open) {
             console.error('bake: Kiln is not in open state:', this.state)
             return
         }
         const recipe = this.activeRecipe
+        if (!recipe) {
+            console.error('bake: No active recipe found for id:', this.recipeId)
+            return
+        }
         const reqEntries = Object.entries(recipe.reqs)
         // Check if the required resources are available
         for (const [resourceName, amount] of reqEntries) {
@@ -106,7 +120,7 @@ export class KilnTile extends Tile {
                 console.error('Unknown kiln state:', this.state)
         }
     }
-    onModalSetRecipe(recipeId) {
+    onModalSetRecipe(recipeId: number) {
         console.log('onModalClose', recipeId, this)
         this.recipeId = recipeId
         this.state = KILN_STATES.open
@@ -159,7 +173,7 @@ export class KilnTile extends Tile {
         }
     }
 
-    static resources = [
+    static readonly resources = [
         new Resource(RESOURCE_TYPES.brick, {
             displayNameSingular: 'Brick',
             displayNamePlural: 'Bricks',
@@ -170,9 +184,9 @@ export class KilnTile extends Tile {
         })
     ]
 
-    static automators = [
+    static readonly automators = [
         new Automator('Kiln Baker', app => {
-            const kiln = pick(app.land.filter(t => t instanceof KilnTile && t.state === KILN_STATES.open))
+            const kiln = pick(app.land.filter(t => t instanceof KilnTile && t.state === KILN_STATES.open) as KilnTile[])
             if (kiln) {
                 kiln.bake()
             }
@@ -182,35 +196,33 @@ export class KilnTile extends Tile {
         })
     ]
 
-    static upgrades = [
-        {
+    static readonly upgrades: Upgrade[] = [
+        new Upgrade({
             name: 'Kiln Tile',
             tile: true,
             description: 'Claim a tile of land to bake resources',
-            initialOwned: 0,
             baseCost: 10000,
             resourceCosts: {
                 [RESOURCE_TYPES.clay]: 10,
                 [RESOURCE_TYPES.metal]: 5
             },
             costMultiplier: 2,
-            speed: undefined,
             category: CATEGORIES.tiles,
             group: GROUPS.kiln,
-            onBuy(app) {
+            onBuy(app: IApp) {
                 app.addTile(new KilnTile(app))
             }
-        },
-        createAutomatorUpgrade({
+        }),
+        Upgrade.createAutomator({
             name: 'Brick Seller',
             description: 'Automatically sell bricks',
             baseCost: 20_000,
             costMultiplier: 1.2,
             speed: 1 / 10,
             group: GROUPS.kiln,
-            isVisible: app => app.resources[RESOURCE_TYPES.brick].totalOwned > 0
+            isVisible: (app: IApp) => app.resources[RESOURCE_TYPES.brick].totalOwned > 0
         }),
-        createAutomatorUpgrade({
+        Upgrade.createAutomator({
             name: 'Kiln Baker',
             description: 'Automatically handle the kiln for you',
             baseCost: 22_000,

@@ -1,9 +1,10 @@
-import { Automator } from './Automator.js'
-import { Calculator } from './Calculator.js'
-import { CATEGORIES, GROUP_ICONS, GROUPS, RESOURCE_TYPES, TILE_TYPES } from './consts.js'
-import { Resource } from './Resource.js'
-import Tile from './Tile.js'
-import { createAutomatorUpgrade, isLucky } from './utils.js'
+import { Automator } from './Automator'
+import { Calculator } from './Calculator'
+import { CATEGORIES, GROUP_ICONS, GROUPS, RESOURCE_TYPES, TILE_TYPES } from './consts'
+import { Resource } from './Resource'
+import Tile from './Tile'
+import { Upgrade } from './Upgrade'
+import { isLucky } from './utils'
 
 // Pond stuff
 // Ponds are a source of fish, or some rarer things like resources
@@ -45,7 +46,7 @@ const RARITIES = [
 const FISH_PRICE_BASE = 50
 const FISH_STORAGE_SIZE = 50
 
-function randomResource(resourceList, luck = 0.5) {
+function randomResource(resourceList: any[], luck = 0.5) {
     luck = 1 - luck // Invert luck - causing the first item to not be the most likely
     // If Luck is not 0.5, we will need to add/subtrack each step until so the luck curve is correct
     const delta = (luck - 0.5) / resourceList.length
@@ -59,41 +60,42 @@ function randomResource(resourceList, luck = 0.5) {
     return resourceList[0]
 }
 
-function simulate() {
-    for (const element of SEALIFE) {
-        console.log(element)
-    }
-    // Simulate many catches
-    const fishCounts = {}
-    for (let i = 0; i < 100; i++) {
-        const fish = randomResource(SEALIFE, 0.5)
-        if (!fishCounts[fish.icon]) {
-            fishCounts[fish.icon] = 0
-        }
-        fishCounts[fish.icon] += 1
-    }
-    console.log(fishCounts)
-    // Log what wasn't caught
-    for (const fish of SEALIFE) {
-        if (!fishCounts[fish.icon]) {
-            console.log(fish, 'was not caught')
-        }
-    }
-}
+// function simulate() {
+//     for (const element of SEALIFE) {
+//         console.log(element)
+//     }
+//     // Simulate many catches
+//     const fishCounts = {}
+//     for (let i = 0; i < 100; i++) {
+//         const fish = randomResource(SEALIFE, 0.5)
+//         if (!fishCounts[fish.icon]) {
+//             fishCounts[fish.icon] = 0
+//         }
+//         fishCounts[fish.icon] += 1
+//     }
+//     console.log(fishCounts)
+//     // Log what wasn't caught
+//     for (const fish of SEALIFE) {
+//         if (!fishCounts[fish.icon]) {
+//             console.log(fish, 'was not caught')
+//         }
+//     }
+// }
 
 export class PondTile extends Tile {
-    static type = TILE_TYPES.pond
+    static readonly type = TILE_TYPES.pond
 
     catchTime = 0
     wiggleTime = 0
     wiggleSaturation = 0
-    caughtFish = null
+    pondFind: IPondFind | null = null
     isRare = false
-    constructor(app) {
+
+    constructor(app: IApp) {
         super(app, PondTile.type)
         this.reset()
     }
-    update(elapsed) {
+    update(elapsed: number) {
         super.update(elapsed)
         if (this.catchTime > 0) {
             this.catchTime -= elapsed
@@ -124,14 +126,71 @@ export class PondTile extends Tile {
         this.app.boughtUpgrades['Pond Tile'] -= 1
     }
     reset() {
-        this.caughtFish = null
+        this.pondFind = null
         this.catchTime = FISHING_TIME_BASE + (Math.random() - 0.5) * FISHING_TIME_VARIANCE * 2
         this.wiggleTime = 0
         this.progress = 0
     }
-    showMessage(message, manual) {
+
+    showMessage(message: string, manual: boolean) {
         if (!manual) return
         this.app.showMessage(message)
+    }
+
+    catch(manual: boolean) {
+        this.stopAnimations()
+        let rarityChance = RARITY_CHANCE
+        let rareFishLuck = this.rareFishLuck
+        let rareRarityLuck = this.rareFishLuck
+        if (this.isSick) {
+            // Increase the chance of non-fish and decrease the chance of rare fish
+            rarityChance = 0.5
+            rareFishLuck = 0.1
+        }
+        if (isLucky(rarityChance)) {
+            this.pondFind = randomResource(RARITIES, rareRarityLuck)
+            this.isRare = true
+            this.app.stats.fishRarities += 1
+        } else {
+            this.pondFind = randomResource(SEALIFE, rareFishLuck)
+            this.isRare = false
+            this.app.stats.fishCaught += 1
+        }
+        this.showMessage('Caught something!', manual)
+        this.animateGrow()
+        this.wiggleTime = 0
+    }
+    take(manual: boolean) {
+        if (!this.pondFind) return
+
+        if (this.isRare) {
+            const rarity = this.pondFind
+            const resource = rarity.resource
+            if (!resource) {
+                console.error('No resource for rarity', rarity)
+                return
+            }
+            this.app.resources[resource].gain(1)
+            this.showMessage(`Lucky! Found a... ${this.pondFind.icon} ${this.pondFind.name}!`, manual)
+        } else {
+            this.app.resources.fish.gain(this.pondFind.gain)
+            let message = `Caught a... ${this.pondFind.icon} ${this.pondFind.name}`
+            if (this.pondFind.gain > 1) {
+                message += `, worth ${this.pondFind.gain} fish`
+            }
+            message += (this.pondFind.nonFish ? ' (somehow)' : '') + '!'
+            this.showMessage(message, manual)
+
+            // Add to fish tank!
+            // @ts-ignore
+            let fishTankRow = this.app.stats.fishTank.find(row => row[0] === this.pondFind.icon)
+            if (!fishTankRow) {
+                fishTankRow = [this.pondFind.icon, 0]
+                this.app.stats.fishTank.push(fishTankRow)
+            }
+            fishTankRow[1] += 1
+        }
+        this.reset()
     }
 
     click(manual = false) {
@@ -143,57 +202,16 @@ export class PondTile extends Tile {
             return
         }
         if (this.wiggleTime > 0) {
-            this.stopAnimations()
-            let rarityChance = RARITY_CHANCE
-            let rareFishLuck = this.rareFishLuck
-            let rareRarityLuck = this.rareFishLuck
-            if (this.isSick) {
-                // Increase the chance of non-fish and decrease the chance of rare fish
-                rarityChance = 0.5
-                rareFishLuck = 0.1
-            }
-            if (isLucky(rarityChance)) {
-                this.caughtFish = randomResource(RARITIES, rareRarityLuck)
-                this.isRare = true
-                this.app.stats.fishRarities += 1
-            } else {
-                this.caughtFish = randomResource(SEALIFE, rareFishLuck)
-                this.isRare = false
-                this.app.stats.fishCaught += 1
-            }
-            this.showMessage('Caught something!', manual)
-            this.animateGrow()
-            this.wiggleTime = 0
+            this.catch(manual)
             return
         }
-        if (this.caughtFish) {
-            if (this.isRare) {
-                const resource = this.caughtFish.resource
-                this.app.resources[resource].gain(1)
-                this.showMessage(`Lucky! Found a... ${this.caughtFish.icon} ${this.caughtFish.name}!`, manual)
-            } else {
-                this.app.resources.fish.gain(this.caughtFish.gain)
-                let message = `Caught a... ${this.caughtFish.icon} ${this.caughtFish.name}`
-                if (this.caughtFish.gain > 1) {
-                    message += `, worth ${this.caughtFish.gain} fish`
-                }
-                message += (this.caughtFish.nonFish ? ' (somehow)' : '') + '!'
-                this.showMessage(message, manual)
-
-                // Add to fish tank!
-                let fishTankRow = this.app.stats.fishTank.find(row => row[0] === this.caughtFish.icon)
-                if (!fishTankRow) {
-                    fishTankRow = [this.caughtFish.icon, 0]
-                    this.app.stats.fishTank.push(fishTankRow)
-                }
-                fishTankRow[1] += 1
-            }
-            this.reset()
+        if (this.pondFind) {
+            this.take(manual)
         }
     }
     get icon() {
-        if (this.caughtFish) {
-            return this.caughtFish.icon
+        if (this.pondFind) {
+            return this.pondFind.icon
         }
         return GROUP_ICONS.pond
     }
@@ -226,7 +244,7 @@ export class PondTile extends Tile {
     //     }
     // }
 
-    static resources = [
+    static readonly resources = [
         new Resource(RESOURCE_TYPES.fish, {
             displayNameSingular: 'Fish',
             displayNamePlural: 'Fish',
@@ -236,11 +254,11 @@ export class PondTile extends Tile {
         })
     ]
 
-    static calculators = [
+    static readonly calculators = [
         new Calculator('rareFishLuck', app => RARE_FISH_LUCK_BASE + app.boughtUpgrades['Lucky Bait'] * 0.1)
     ]
 
-    static automators = [
+    static readonly automators = [
         new Automator('Auto Fisher', app => {
             // Give priority to wiggling tiles
             const wiggling = app.land.find(t => t instanceof PondTile && t.wiggleTime > 0)
@@ -249,7 +267,7 @@ export class PondTile extends Tile {
                 return
             }
             // Check if there is a fish to catch and click that instead
-            const caught = app.land.find(t => t instanceof PondTile && t.caughtFish)
+            const caught = app.land.find(t => t instanceof PondTile && t.pondFind)
             if (caught) {
                 caught.click()
             }
@@ -262,29 +280,27 @@ export class PondTile extends Tile {
         })
     ]
 
-    static hasTile(app) {
+    static hasTile(app: IApp) {
         return app.land.some(t => t instanceof PondTile)
     }
 
-    static upgrades = [
-        {
+    static readonly upgrades: Upgrade[] = [
+        new Upgrade({
             name: 'Pond Tile',
             tile: true,
             description: 'Claim a tile of land to fish in',
-            initialOwned: 0,
             baseCost: 250,
             costMultiplier: 1.5,
-            speed: undefined,
             category: CATEGORIES.tiles,
             group: GROUPS.pond,
             resourceCosts: {
                 [RESOURCE_TYPES.wood]: 10
             },
-            onBuy(app) {
+            onBuy(app: IApp) {
                 app.addTile(new PondTile(app))
             }
-        },
-        {
+        }),
+        new Upgrade({
             name: 'Fish Storage',
             displayName: 'Fish Tank',
             description: 'Increase the amount of fish you can store',
@@ -293,12 +309,12 @@ export class PondTile extends Tile {
             costMultiplier: 1.4,
             category: CATEGORIES.storage,
             group: GROUPS.pond,
-            onBuy(app) {
+            onBuy(app: IApp) {
                 app.resources.fish.storage += 1
             },
             isVisible: PondTile.hasTile
-        },
-        createAutomatorUpgrade({
+        }),
+        Upgrade.createAutomator({
             name: 'Fish Seller',
             description: 'Automatically sell fish. Selfish. Shellfish?',
             baseCost: 5000,
@@ -307,7 +323,7 @@ export class PondTile extends Tile {
             group: GROUPS.pond,
             isVisible: PondTile.hasTile
         }),
-        createAutomatorUpgrade({
+        Upgrade.createAutomator({
             name: 'Fish Reclaimer',
             displayName: 'Fish Re-fisher',
             description: 'Collect lost fish swimming about thinking they were lucky',
@@ -317,7 +333,7 @@ export class PondTile extends Tile {
             group: GROUPS.pond,
             isVisible: PondTile.hasTile
         }),
-        createAutomatorUpgrade({
+        Upgrade.createAutomator({
             name: 'Auto Fisher',
             description: 'Automatically fish for you',
             baseCost: 6000,
@@ -327,17 +343,16 @@ export class PondTile extends Tile {
             isVisible: PondTile.hasTile
         }),
         // Special
-        {
+        new Upgrade({
             name: 'Lucky Bait',
             description: 'Increase the chance of catching rare fish',
-            initialOwned: 0,
             baseCost: 4000,
             costMultiplier: 2,
             category: CATEGORIES.special,
             group: GROUPS.pond,
             max: 5,
             isVisible: PondTile.hasTile
-        }
+        })
     ]
 }
 
@@ -435,9 +450,12 @@ const MONSTER_TILE_STAGES = {
 }
 
 export class MonsterTile extends Tile {
-    static type = TILE_TYPES.monster
+    static readonly type = TILE_TYPES.monster
 
-    constructor(app) {
+    type: string
+    monster = null
+
+    constructor(app: IApp) {
         super(app, MonsterTile.type)
         this.type = MONSTER_TILE_STAGES.castle
         this.monster = null
@@ -466,25 +484,23 @@ export class MonsterTile extends Tile {
         this.app.boughtUpgrades['Monster Tile'] -= 1
     }
 
-    static hasTile(app) {
+    static hasTile(app: IApp) {
         return app.land.some(t => t instanceof MonsterTile)
     }
 
-    static upgrades = [
-        {
+    static readonly upgrades: Upgrade[] = [
+        new Upgrade({
             name: 'Monster Tile',
             displayName: 'Castle Tile',
             tile: true,
             description: 'Claim a tile of land to fight monsters on',
-            initialOwned: 0,
             baseCost: 500,
             costMultiplier: 2,
-            speed: undefined,
             category: CATEGORIES.tiles,
             group: GROUPS.monster,
-            onBuy(app) {
+            onBuy(app: IApp) {
                 app.addTile(new MonsterTile(app))
             }
-        }
+        })
     ]
 }

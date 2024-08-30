@@ -1,7 +1,14 @@
 const COUNTER_SAMPLE_LENGTH = 5
 
 export class Counter {
-    constructor(name, fn) {
+    name: string
+    fn: () => number
+    delta: number
+    smoothedDelta: number
+    prevValues: number[]
+    prevDeltas: number[]
+
+    constructor(name: string, fn: () => number) {
         this.name = name
         this.fn = fn
         this.delta = 0

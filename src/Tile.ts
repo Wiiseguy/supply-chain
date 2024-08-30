@@ -1,12 +1,32 @@
-import { setBoolPropTimeout } from './utils.js'
+import { Automator } from './Automator'
+import { Calculator } from './Calculator'
+import { Resource } from './Resource'
+import { Upgrade } from './Upgrade'
+import { setBoolPropTimeout } from './utils'
 
 class Tile {
-    app = null
-    constructor(app, tileType) {
+    static readonly type: string = 'none'
+    app: IApp
+    tileType: string
+    type: string
+    progress: number
+    age: number
+    stage: number
+    stageP: number
+    wiggle: boolean
+    fail: boolean
+    grow: boolean
+    bounceDown: boolean
+    wiggleTimeout: number
+    failTimeout: number
+    growTimeout: number
+    bounceDownTimeout: number
+    constructor(app: IApp, tileType: string) {
         this.app = app
         Object.defineProperty(this, 'app', { enumerable: false })
 
         this.tileType = tileType
+        this.type = ''
         this.progress = 0
         this.age = 0
         this.stage = 0
@@ -43,7 +63,9 @@ class Tile {
         this.grow = false
         this.bounceDown = false
     }
-    update(_elapsed) {}
+    update(_elapsed: number) {
+        // Empty
+    }
     sell() {
         console.error('Sell not implemented for', this)
     }
@@ -53,7 +75,7 @@ class Tile {
     get tooltip() {
         return 'Empty tile'
     }
-    get level() {
+    get level(): number | null {
         return null
     }
     get classes() {
@@ -63,13 +85,35 @@ class Tile {
             'bounce-down': this.bounceDown
         }
     }
-    getStyle(obj) {
-        obj.bgOpacity = this.progress
-        return obj
+    get icon() {
+        return ''
     }
-    get health() {
+    get iconTopLeft(): string | null {
         return null
     }
+    get iconTopRight(): string | null {
+        return null
+    }
+    get iconBottomLeft(): string | null {
+        return null
+    }
+    get iconBottomRight(): string | null {
+        return null
+    }
+    get iconStyle() {
+        return {}
+    }
+    get health(): number | null {
+        return null
+    }
+    getStyle(obj: ITileStyle): void {
+        obj.bgOpacity = this.progress
+    }
+
+    static readonly automators: Automator[] = []
+    static readonly resources: Resource[] = []
+    static readonly calculators: Calculator[] = []
+    static readonly upgrades: Upgrade[] = []
 }
 
 export default Tile

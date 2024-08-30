@@ -1,10 +1,33 @@
+interface ResourceSettings {
+    displayNameSingular: string
+    displayNamePlural: string
+    icon: string
+    basePrice: number
+    storageBaseSize: number
+    initialOwned?: number
+    minimum?: number
+}
+
 export class Resource {
-    /**
-     *
-     * @param {*} name
-     * @param { { displayNameSingular: string, displayNamePlural: string, icon: string, basePrice: number, storageBaseSize: number, initialOwned?: number, minimum?: number } } settings
-     */
-    constructor(name, settings) {
+    readonly name: string
+    readonly displayNameSingular: string
+    readonly displayNamePlural: string
+    readonly icon: string
+    readonly minimum: number
+    readonly basePrice: number
+    priceMultiplier: number
+    storageBaseSize: number
+    storage: number
+    storageMultiplier: number
+    lost: number
+    sellNum: number
+    owned: number
+    sold: number
+    incurred: number
+    earnings: number
+    totalOwned: number
+
+    constructor(name: string, settings: ResourceSettings) {
         this.name = name
         this.displayNameSingular = settings.displayNameSingular
         this.displayNamePlural = settings.displayNamePlural
@@ -38,13 +61,13 @@ export class Resource {
     get price() {
         return this.basePrice * this.priceMultiplier
     }
-    sellPriceTheoretical(n) {
+    sellPriceTheoretical(n: number) {
         return n * this.price
     }
-    sellPrice(n) {
+    sellPrice(n: number) {
         return Math.min(n, this.owned - this.minimum) * this.price
     }
-    gain(n) {
+    gain(n: number) {
         this.owned += n
         this.totalOwned += n
         if (this.owned > this.storageSize) {
@@ -52,8 +75,7 @@ export class Resource {
             this.owned = this.storageSize
         }
     }
-    // Subtract n from owned if sufficient, return false if not
-    incur(n) {
+    incur(n: number) {
         if (this.owned < n) {
             return false
         }
@@ -61,7 +83,7 @@ export class Resource {
         this.incurred += n
         return true
     }
-    sell(n) {
+    sell(n: number) {
         n = Math.min(n, this.owned - this.minimum)
         this.owned -= n
         const sellPrice = n * this.price
@@ -93,7 +115,8 @@ export class Resource {
             earnings: this.earnings
         }
     }
-    loadSaveData(data) {
+
+    loadSaveData(data: Resource) {
         if (!data) {
             return
         }

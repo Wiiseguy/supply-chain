@@ -1,54 +1,50 @@
-import { CATEGORIES, GROUPS } from './consts.js'
+import { CATEGORIES, GROUPS } from './consts'
+import { Upgrade } from './Upgrade.js'
 
-export const UPGRADES = [
-    {
+export const UPGRADES: Upgrade[] = [
+    new Upgrade({
         name: 'Extra Column',
         description: 'Buy an extra column of land',
         initialOwned: 2,
         baseCost: 100,
         costMultiplier: 5,
-        speed: undefined,
         category: CATEGORIES.land,
         group: GROUPS.land
-    },
-    {
+    }),
+    new Upgrade({
         name: 'Extra Row',
         description: 'Buy an extra row of land',
         initialOwned: 2,
         baseCost: 100,
         costMultiplier: 5,
-        speed: undefined,
         category: CATEGORIES.land,
         group: GROUPS.land
-    },
+    }),
     // Special upgrades
-    {
+    new Upgrade({
         name: 'Ledger',
         displayName: 'The Ledger',
         description: 'Keep detailed track of your profits in a ledger!',
-        initialOwned: 0,
         baseCost: 5000,
         category: CATEGORIES.special,
         max: 1,
         group: GROUPS.ui
-    },
-    {
+    }),
+    new Upgrade({
         name: 'Bulldozer',
         description: 'Unlock the ability to sell and move tiles',
-        initialOwned: 0,
         baseCost: 5000,
         category: CATEGORIES.special,
         max: 1,
         group: GROUPS.ui
-    },
+    }),
     // Final win game upgrade
-    {
+    new Upgrade({
         name: 'Win Game',
         description: 'Congratulations! You have won the game!',
-        initialOwned: 0,
         baseCost: 1_000_000,
         category: CATEGORIES.special,
         group: GROUPS.ui,
         max: 1
-    }
+    })
 ]

@@ -1,8 +1,9 @@
-import { Automator } from './Automator.js'
-import { CATEGORIES, GROUPS, RESOURCE_TYPES, TILE_TYPES } from './consts.js'
-import { Resource } from './Resource.js'
-import Tile from './Tile.js'
-import { createAutomatorUpgrade, isLucky, pick } from './utils.js'
+import { Automator } from './Automator'
+import { CATEGORIES, GROUPS, RESOURCE_TYPES, TILE_TYPES } from './consts'
+import { Resource } from './Resource'
+import Tile from './Tile'
+import { Upgrade } from './Upgrade'
+import { isLucky, pick } from './utils'
 
 // Mine stuff
 // Mines work different from forests, each stage has levels. The first stage has one level, the second has 3, the third has Infinite
@@ -18,27 +19,27 @@ const MINE_TILE_TYPES = {
 const MINE_EXCAVATOR_POWER = 1 / 50 // 50 clicks to get to the next stage
 const MINE_TUNNELER_POWER = 1 / 100
 const MINE_SUPPORT_BEAM_COST = 100 // wood
-const MINE_RESOURCE_ICONS = {
+const MINE_RESOURCE_ICONS: Record<string, string> = {
     diamond: '💎',
     metal: '🔧',
     clay: '🏺'
 }
-const MINE_RESOURCE_OPENING_LEVELS = {
+const MINE_RESOURCE_OPENING_LEVELS: Record<string, number> = {
     diamond: 1,
     metal: 1,
     clay: 1
 }
-const MINE_RESOURCE_TUNNELING_LEVELS = {
+const MINE_RESOURCE_TUNNELING_LEVELS: Record<string, number> = {
     diamond: 3,
     metal: 1,
     clay: 1
 }
-const MINE_MAX_RESOURCES_PER_LEVEL = {
+const MINE_MAX_RESOURCES_PER_LEVEL: Record<string, number> = {
     diamond: 5,
     metal: 10,
     clay: 25
 }
-const MINE_RESOURCE_CLICKS = {
+const MINE_RESOURCE_CLICKS: Record<string, number> = {
     diamond: 200,
     metal: 100,
     clay: 50
@@ -55,15 +56,18 @@ const CLAY_STORAGE_SIZE = 50
 const LUCKY_RESOURCE_MINE_CHANCE = 1 / 10
 
 export class MineTile extends Tile {
-    static type = TILE_TYPES.mine
+    static readonly type = TILE_TYPES.mine
 
-    constructor(app, subType) {
+    type: string
+    subType: string
+    tunnelProblem: boolean
+    constructor(app: IApp, subType: string) {
         super(app, MineTile.type)
         this.type = MINE_TILE_TYPES.rock
         this.subType = subType
         this.tunnelProblem = false
     }
-    update(_elapsed) {
+    update() {
         this.stageP = this.progress
     }
     sell() {
@@ -85,7 +89,7 @@ export class MineTile extends Tile {
         }
         this.app.boughtUpgrades[upgrade] -= 1
     }
-    dig(manual) {
+    dig(manual = false) {
         this.progress += this.excavatorPower
         if (this.progress >= 1) {
             this.stage += 1
@@ -100,7 +104,7 @@ export class MineTile extends Tile {
             }
         }
     }
-    tunnel(manual) {
+    tunnel(manual = false) {
         this.progress += this.tunnelerPower
         this.animateWiggle()
         this.tunnelProblem = false
@@ -115,10 +119,8 @@ export class MineTile extends Tile {
                     if (manual) {
                         this.app.showMessage(`Cave full of ${this.subType} found!`)
                     }
-                } else {
-                    if (manual) {
-                        this.app.showMessage(`Support beams built with ${this.app.num(MINE_SUPPORT_BEAM_COST)} wood!`)
-                    }
+                } else if (manual) {
+                    this.app.showMessage(`Support beams built with ${this.app.num(MINE_SUPPORT_BEAM_COST)} wood!`)
                 }
             } else {
                 this.animateFail()
@@ -133,7 +135,7 @@ export class MineTile extends Tile {
             }
         }
     }
-    mine(manual) {
+    mine(manual = false) {
         this.progress += this.resourceMinerPower / MINE_RESOURCE_CLICKS[this.subType]
         this.animateWiggle()
         if (this.progress >= 1) {
@@ -237,20 +239,20 @@ export class MineTile extends Tile {
         return this.app.boughtUpgrades['Pickaxe'] + 1
     }
 
-    static hasTile(app) {
+    static hasTile(app: IApp) {
         return app.land.some(tile => tile.tileType === MineTile.type)
     }
-    static hasClayMineTile(app) {
-        return app.land.some(tile => tile.tileType === MineTile.type && tile.subType === RESOURCE_TYPES.clay)
+    static hasClayMineTile(app: IApp) {
+        return app.land.some(tile => tile instanceof MineTile && tile.subType === RESOURCE_TYPES.clay)
     }
-    static hasMetalMineTile(app) {
-        return app.land.some(tile => tile.tileType === MineTile.type && tile.subType === RESOURCE_TYPES.metal)
+    static hasMetalMineTile(app: IApp) {
+        return app.land.some(tile => tile instanceof MineTile && tile.subType === RESOURCE_TYPES.metal)
     }
-    static hasDiamondMineTile(app) {
-        return app.land.some(tile => tile.tileType === MineTile.type && tile.subType === RESOURCE_TYPES.diamond)
+    static hasDiamondMineTile(app: IApp) {
+        return app.land.some(tile => tile instanceof MineTile && tile.subType === RESOURCE_TYPES.diamond)
     }
 
-    static resources = [
+    static readonly resources = [
         new Resource(RESOURCE_TYPES.clay, {
             displayNameSingular: 'Clay',
             displayNamePlural: 'Clay',
@@ -274,21 +276,27 @@ export class MineTile extends Tile {
         })
     ]
 
-    static automators = [
+    static readonly automators = [
         new Automator('Auto Shoveler', app => {
-            const tile = pick(app.mineLand.filter(tile => tile.type === MINE_TILE_TYPES.rock))
+            const tile = pick(
+                app.land.filter(tile => tile instanceof MineTile && tile.type === MINE_TILE_TYPES.rock) as MineTile[]
+            )
             if (tile) {
                 tile.dig()
             }
         }),
         new Automator('Tunneler', app => {
-            const tile = pick(app.mineLand.filter(tile => tile.type === MINE_TILE_TYPES.tunnel))
+            const tile = pick(
+                app.land.filter(tile => tile instanceof MineTile && tile.type === MINE_TILE_TYPES.tunnel) as MineTile[]
+            )
             if (tile) {
                 tile.tunnel()
             }
         }),
         new Automator('Resource Miner', app => {
-            const resourceTiles = app.mineLand.filter(tile => tile.type === MINE_TILE_TYPES.resource)
+            const resourceTiles = app.land.filter(
+                tile => tile instanceof MineTile && tile.type === MINE_TILE_TYPES.resource
+            ) as MineTile[]
             const tile = pick(resourceTiles)
             if (!tile) {
                 return
@@ -322,144 +330,129 @@ export class MineTile extends Tile {
         })
     ]
 
-    static upgrades = [
-        {
+    static readonly upgrades: Upgrade[] = [
+        new Upgrade({
             name: 'Shovel',
             displayName: 'Bigger Excavator',
             description: 'Trade your excavator for a bigger one to dig an entrance for a mine',
-            initialOwned: 0,
             baseCost: 10000,
             costMultiplier: 1.5,
-            speed: undefined,
             category: CATEGORIES.tools,
             group: GROUPS.mine,
             isVisible: () => false
-        },
-        {
+        }),
+        new Upgrade({
             name: 'Tunneling',
             displayName: 'Improved Tunneling',
             description: 'Research improved tunneling techniques',
-            initialOwned: 0,
             baseCost: 10000,
             costMultiplier: 1.75,
-            speed: undefined,
             category: CATEGORIES.tools,
             group: GROUPS.mine,
             isVisible: MineTile.hasTile
-        },
-        {
+        }),
+        new Upgrade({
             name: 'Pickaxe',
             displayName: 'Harden Pickaxe',
             description: 'Mine resources faster with a hardened pickaxe',
-            initialOwned: 0,
             baseCost: 10000,
             costMultiplier: 2,
-            speed: undefined,
             category: CATEGORIES.tools,
             group: GROUPS.mine,
             isVisible: MineTile.hasTile
-        },
+        }),
         // Land
-        {
+        new Upgrade({
             name: 'Clay Mine Tile',
             tile: true,
             description: 'Claim a tile of land to dig for clay',
-            initialOwned: 0,
             baseCost: 1500,
             costMultiplier: 1.25,
-            speed: undefined,
             category: CATEGORIES.tiles,
             group: GROUPS.mine,
             resourceCosts: {
                 [RESOURCE_TYPES.wood]: 25
             },
-            onBuy(app) {
+            onBuy(app: IApp) {
                 app.addTile(new MineTile(app, RESOURCE_TYPES.clay))
             }
-        },
-        {
+        }),
+        new Upgrade({
             name: 'Metal Mine Tile',
             tile: true,
             description: 'Claim a tile of land to dig for metal',
-            initialOwned: 0,
             baseCost: 2000,
             costMultiplier: 1.25,
-            speed: undefined,
             category: CATEGORIES.tiles,
             group: GROUPS.mine,
             resourceCosts: {
                 [RESOURCE_TYPES.wood]: 50
             },
-            onBuy(app) {
+            onBuy(app: IApp) {
                 app.addTile(new MineTile(app, RESOURCE_TYPES.metal))
             }
-        },
-        {
+        }),
+        new Upgrade({
             name: 'Diamond Mine Tile',
             tile: true,
             description: 'Claim a tile of land to dig for diamonds',
-            initialOwned: 0,
             baseCost: 5000,
             costMultiplier: 1.25,
-            speed: undefined,
             category: CATEGORIES.tiles,
             group: GROUPS.mine,
             resourceCosts: {
                 [RESOURCE_TYPES.wood]: 100,
                 [RESOURCE_TYPES.metal]: 10
             },
-            onBuy(app) {
+            onBuy(app: IApp) {
                 app.addTile(new MineTile(app, RESOURCE_TYPES.diamond))
             }
-        },
+        }),
         // Storage
-        {
+        new Upgrade({
             name: 'Clay Storage',
             displayName: 'Clay Pot',
             description: 'Increase the amount of clay you can store',
             initialOwned: 1,
             baseCost: 5000,
             costMultiplier: 1.5,
-            speed: undefined,
             category: CATEGORIES.storage,
             group: GROUPS.mine,
-            onBuy(app) {
+            onBuy(app: IApp) {
                 app.resources.clay.storage += 1
             },
             isVisible: MineTile.hasClayMineTile
-        },
-        {
+        }),
+        new Upgrade({
             name: 'Metal Storage',
             displayName: 'Metal Crate',
             description: 'Increase the amount of metal you can store',
             initialOwned: 1,
             baseCost: 5000,
             costMultiplier: 2,
-            speed: undefined,
             category: CATEGORIES.storage,
             group: GROUPS.mine,
-            onBuy(app) {
+            onBuy(app: IApp) {
                 app.resources.metal.storage += 1
             },
             isVisible: MineTile.hasMetalMineTile
-        },
-        {
+        }),
+        new Upgrade({
             name: 'Diamond Storage',
             displayName: 'Diamond Box',
             description: 'Increase the amount of diamonds you can store',
             initialOwned: 1,
             baseCost: 12_500,
             costMultiplier: 2,
-            speed: undefined,
             category: CATEGORIES.storage,
             group: GROUPS.mine,
-            onBuy(app) {
+            onBuy(app: IApp) {
                 app.resources.diamond.storage += 1
             },
             isVisible: MineTile.hasDiamondMineTile
-        },
+        }),
         // Automation
-        createAutomatorUpgrade({
+        Upgrade.createAutomator({
             name: 'Resource Miner',
             description: 'Automatically mine resources',
             baseCost: 5000,
@@ -468,7 +461,7 @@ export class MineTile extends Tile {
             group: GROUPS.mine,
             isVisible: MineTile.hasTile
         }),
-        createAutomatorUpgrade({
+        Upgrade.createAutomator({
             name: 'Tunneler',
             description: 'Automatically dig tunnels through rocks while building support beams',
             baseCost: 7500,
@@ -477,7 +470,7 @@ export class MineTile extends Tile {
             group: GROUPS.mine,
             isVisible: MineTile.hasTile
         }),
-        createAutomatorUpgrade({
+        Upgrade.createAutomator({
             name: 'Auto Shoveler',
             displayName: 'Auto Mine Maker',
             description:
@@ -488,7 +481,7 @@ export class MineTile extends Tile {
             group: GROUPS.mine,
             isVisible: MineTile.hasTile
         }),
-        createAutomatorUpgrade({
+        Upgrade.createAutomator({
             name: 'Metal Seller',
             description: 'Automatically sell metal',
             baseCost: 15_000,
@@ -497,7 +490,7 @@ export class MineTile extends Tile {
             group: GROUPS.mine,
             isVisible: MineTile.hasMetalMineTile
         }),
-        createAutomatorUpgrade({
+        Upgrade.createAutomator({
             name: 'Metal Reclaimer',
             displayName: 'Metal Detector',
             description: 'Send out a metal detector to find lost metal in your mine',
@@ -507,7 +500,7 @@ export class MineTile extends Tile {
             group: GROUPS.mine,
             isVisible: MineTile.hasMetalMineTile
         }),
-        createAutomatorUpgrade({
+        Upgrade.createAutomator({
             name: 'Clay Seller',
             description: 'Automatically sell clay',
             baseCost: 12_000,
@@ -516,7 +509,7 @@ export class MineTile extends Tile {
             group: GROUPS.mine,
             isVisible: MineTile.hasClayMineTile
         }),
-        createAutomatorUpgrade({
+        Upgrade.createAutomator({
             name: 'Clay Reclaimer',
             displayName: 'Clay Collector',
             description: 'Send out a clay collector to find lost clay in your mine',
@@ -526,7 +519,7 @@ export class MineTile extends Tile {
             group: GROUPS.mine,
             isVisible: MineTile.hasClayMineTile
         }),
-        createAutomatorUpgrade({
+        Upgrade.createAutomator({
             name: 'Diamond Seller',
             description: 'Automatically sell diamonds',
             baseCost: 20_000,
@@ -535,7 +528,7 @@ export class MineTile extends Tile {
             group: GROUPS.mine,
             isVisible: MineTile.hasDiamondMineTile
         }),
-        createAutomatorUpgrade({
+        Upgrade.createAutomator({
             name: 'Diamond Reclaimer',
             displayName: 'Mine Magpie',
             description:
@@ -547,33 +540,31 @@ export class MineTile extends Tile {
             isVisible: MineTile.hasDiamondMineTile
         }),
         // Special upgrades
-        {
+        new Upgrade({
             name: 'Diamond Marketing 1',
             displayName: 'Diamond Polishing',
             description: 'Give diamonds a shiny polish and increase their price by 1.5x',
-            initialOwned: 0,
             baseCost: 50_000,
             category: CATEGORIES.special,
             max: 1,
             group: GROUPS.mine,
-            onBuy(app) {
+            onBuy(app: IApp) {
                 app.resources.diamond.priceMultiplier *= 1.5
             },
             isVisible: MineTile.hasDiamondMineTile
-        },
-        {
+        }),
+        new Upgrade({
             name: 'Diamond Marketing 2',
             displayName: 'Diamond Shine',
             description: 'Give diamonds an even shinier polish and increase their price by 2x',
-            initialOwned: 0,
             baseCost: 150_000,
             category: CATEGORIES.special,
             max: 1,
             group: GROUPS.mine,
-            onBuy(app) {
+            onBuy(app: IApp) {
                 app.resources.diamond.priceMultiplier *= 2
             },
             isVisible: MineTile.hasDiamondMineTile
-        }
+        })
     ]
 }
