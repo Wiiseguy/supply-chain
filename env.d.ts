@@ -35,7 +35,6 @@ declare interface IStats {
     fishMissed: number
     fishRarities: number
     fishCaught: number
-    // It's an array like [ [string, number] ]
     fishTank: Array<[string, number]>
 
     resourcesBaked: number
@@ -43,16 +42,18 @@ declare interface IStats {
 
 declare interface IUpgrade {
     speed?: number
+    energyCost?: number
 }
 
 declare interface ITile {
     tileType: string
 
     click(manual?: boolean): void
+    sell(): void
 }
 declare interface IForestTile extends ITile {
     type: string
-    dick(): string
+    dig(): string
 }
 declare interface IMineTile extends ITile {
     type: string

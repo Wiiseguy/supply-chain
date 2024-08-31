@@ -22,6 +22,15 @@ export const UPGRADES: Upgrade[] = [
     }),
     // Special upgrades
     new Upgrade({
+        name: 'Battery',
+        description: 'A one-time battery that gives you 1000 energy',
+        baseCost: 500,
+        max: 1,
+        category: CATEGORIES.special,
+        group: GROUPS.energy,
+        onBuy: app => app.resources.energy.gain(1000)
+    }),
+    new Upgrade({
         name: 'Ledger',
         displayName: 'The Ledger',
         description: 'Keep detailed track of your profits in a ledger!',

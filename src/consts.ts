@@ -7,7 +7,8 @@ export const TILE_TYPES: Record<string, string> = {
     donut: 'donut',
     farm: 'farm',
     desert: 'desert',
-    kiln: 'kiln'
+    kiln: 'kiln',
+    windmill: 'windmill'
     // What other types could there be?
     // Oil rig: drill for oil
     // Factory: process raw materials into goods
@@ -22,6 +23,7 @@ export const GROUPS: Record<string, string> = {
     monster: 'monster',
     donut: 'donut',
     kiln: 'kiln',
+    windmill: 'windmill',
     ui: 'ui'
 }
 
@@ -53,6 +55,7 @@ export const CATEGORY_TITLES: Record<string, string> = {
 }
 
 export const RESOURCE_TYPES: Record<string, string> = {
+    energy: 'energy',
     wood: 'wood',
     seed: 'seed',
     diamond: 'diamond',
@@ -100,9 +103,11 @@ export const GROUP_ICONS: Record<string, string> = {
     farm: '🌾',
     desert: '🏜️',
     kiln: '🏭',
+    energy: '⚡',
     ui: '🖥️'
 }
 
 export const MODALS: Record<string, string> = {
-    kilnBake: 'kilnBake'
+    kilnBake: 'kilnBake',
+    windmill: 'windmill'
 }

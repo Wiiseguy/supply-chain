@@ -9,18 +9,21 @@ import { KilnTile } from './KilnTile'
 import { MineTile } from './MineTile'
 import { PondTile } from './PondTile'
 import { Resource } from './Resource'
-import { GROUP_ICONS, CATEGORY_TITLES, CATEGORIES, CATEGORIES_ORDER, MODALS } from './consts'
+import { GROUP_ICONS, CATEGORY_TITLES, CATEGORIES, CATEGORIES_ORDER, MODALS, RESOURCE_TYPES } from './consts'
 import { UPGRADES } from './upgrades'
 import { bigNum, decode, encode, humanTime, makeIndex } from './utils'
 import { Upgrade } from './Upgrade'
 import { Calculator } from './Calculator'
 import { Automator } from './Automator'
+import { WindmillTile } from './WindmillTile'
 
 /** @ts-ignore */
 globalThis.haltAnimation = false
 
 const DEBUG = false
 const FPS = 30
+const FRAME_TIME = 1 / FPS
+const MAX_CATCHUP_STEPS = (60 * 15) / FRAME_TIME // 15 minutes = 27000 steps
 const SAVE_INTERVAL = 30 // Save every 60 seconds
 
 const TILE_SIZE = 64
@@ -110,16 +113,28 @@ export default {
         this.UPGRADES = [...UPGRADES]
 
         // Initialize resources
-        this.resources = {}
+        this.resources = {
+            [RESOURCE_TYPES.energy]: new Resource(RESOURCE_TYPES.energy, {
+                displayNameSingular: 'Energy',
+                displayNamePlural: 'Energy',
+                icon: '⚡',
+                basePrice: 0,
+                storageBaseSize: 1000,
+                initialOwned: 0,
+                canOverflow: false,
+                canTrade: false
+            })
+        }
 
         // Initialize Tile types
         this.registerTile(EmptyTile)
         this.registerTile(ForestTile)
         this.registerTile(MineTile)
         this.registerTile(PondTile)
-        this.registerTile(DonutTile)
+        //this.registerTile(DonutTile)
         //this.registerTile(MonsterTile)
         this.registerTile(KilnTile)
+        this.registerTile(WindmillTile)
 
         // Initialize bought upgrades obj
         this.UPGRADES.forEach(upgrade => {
@@ -132,7 +147,10 @@ export default {
             this.land.push(new ForestTile(this as any))
         }
 
-        this.counters = [new Counter('money', () => this.money)]
+        this.counters = [
+            new Counter('money', () => this.money),
+            new Counter('energy', () => this.resources.energy.owned)
+        ]
 
         // Check if all UPGRADES of type automation have a corresponding automator programmed in
         this.UPGRADES.forEach(upgrade => {
@@ -183,8 +201,11 @@ export default {
             if (typeof n !== 'number') return n
             return bigNum(n)
         },
-        numf(n: number) {
-            return Math.round(n).toLocaleString()
+        numf(n: number, numDecimals = 0) {
+            return n.toLocaleString(undefined, {
+                minimumFractionDigits: numDecimals,
+                maximumFractionDigits: numDecimals
+            })
         },
         showMessage(message: string) {
             console.log('Message:', message)
@@ -203,6 +224,10 @@ export default {
             setInterval(this.gameLoop, 1000 / FPS)
             setInterval(this.perSecond, 1000)
             setInterval(this.saveGame, SAVE_INTERVAL * 1000)
+        },
+        megaElapse(mins = 1) {
+            // Elapse time by 1 min
+            this.updateGame(mins * 60)
         },
         gameLoop() {
             const now = Date.now()
@@ -234,11 +259,37 @@ export default {
                 this.messageFade = 0
             }
 
-            this.land.forEach(tile => {
-                tile.stageP = 0
-                tile.update(elapsed)
-                tile.stageP = Math.min(1, tile.stageP)
-            })
+            // If elapsed is >= FRAME_TIME, we need to update the tile multiple times in chunks of FPS
+            // This is to catch up on the time that was lost when the game was "paused"
+            // To prevent from CPU hanging too long, we have to Math.min the steps to about 15 minutes
+
+            let steps = elapsed / FRAME_TIME
+            if (steps > MAX_CATCHUP_STEPS) {
+                console.warn('Massive steps detected. Steps:', steps, 'Reducing to:', MAX_CATCHUP_STEPS)
+                steps = MAX_CATCHUP_STEPS
+            }
+            for (let i = 0; i < steps; i++) {
+                let simulatedElapsed = Math.min(FRAME_TIME, elapsed - i * FRAME_TIME)
+
+                // Update tiles
+                this.land.forEach(tile => {
+                    tile.stageP = 0
+                    tile.update(simulatedElapsed)
+                    tile.stageP = Math.min(1, tile.stageP)
+                })
+
+                // Run automators
+                if (this.settings.automation) {
+                    this.automators.forEach(automator => {
+                        automator.run(this as any, simulatedElapsed)
+                    })
+                }
+
+                // Run calculators
+                this.calculators.forEach(calculator => {
+                    this.calculated[calculator.name] = calculator.calculate(this as any)
+                })
+            }
 
             // Determine if upgrade should be made visible. Once visible, it should stay visible.
             // An upgrade should become visible if the player has a certain % of the cost of the upgrade
@@ -257,17 +308,7 @@ export default {
                 }
             })
 
-            // Run automators
-            if (this.settings.automation) {
-                this.automators.forEach(automator => {
-                    automator.run(this as any, elapsed)
-                })
-            }
 
-            // Run calculators
-            this.calculators.forEach(calculator => {
-                this.calculated[calculator.name] = calculator.calculate(this as any)
-            })
         },
         registerTile(tileClass: typeof Tile) {
             this.TILE_REVIVERS[tileClass.type] = tileClass
@@ -761,6 +802,10 @@ export default {
                     }
                 })
         },
+        anyAutomatorNoPower() {
+            if (this.automators.length === 0 || !this.settings.automation) return false
+            return this.automators.some(automator => automator.enabled && automator.noPower)
+        },
         upgradesView(): UpgradeView[] {
             return this.UPGRADES.filter(upgrade => {
                 if (upgrade.max && this.boughtUpgrades[upgrade.name] >= upgrade.max) {
@@ -823,13 +868,19 @@ export default {
 
 <template>
     <h5 @dblclick="setDebug"><i class="fa-solid fa-seedling"></i> Supply Chain Prototype</h5>
-    <windmill />
 
     <div class="theme-toggle hover-opacity">
         <a @click="toggleDarkMode" class="btn-link" title="Switch between light / dark mode">
             <span v-if="settings.dark">🌙</span>
             <span v-else>☀️</span>
         </a>
+    </div>
+    <div v-if="DEBUG">
+        <button @click="megaElapse(1)" class="btn btn-sm btn-danger">Mega Elapse 1</button>
+        <button @click="megaElapse(2)" class="btn btn-sm btn-danger">Mega Elapse 2</button>
+        <button @click="megaElapse(5)" class="btn btn-sm btn-danger">Mega Elapse 5</button>
+        <button @click="megaElapse(10)" class="btn btn-sm btn-danger">Mega Elapse 10</button>
+        <button @click="megaElapse(60)" class="btn btn-sm btn-danger">Mega Elapse 60</button>
     </div>
     <div class="row">
         <div class="message" v-if="message" :style="messageStyle">{{ message }}</div>
@@ -838,7 +889,9 @@ export default {
                 <div v-for="tile in landView" :style="tile.style" class="land-tile" :class="tile.classes"
                     :title="tile.tooltip" @click="clickTile(tile)">
                     <span class="wiggle-target grow-bounce-target bounce-down-target">
-                        <span class="icon" :style="tile.iconStyle">{{ tile.icon }}</span>
+                        <component v-if="tile.tile.component" :is="tile.tile.component" :tile="tile.tile"
+                            :width="tileSize" :height="tileSize" />
+                        <span v-else class="icon" :style="tile.iconStyle">{{ tile.icon }}</span>
                     </span>
                     <span v-if="tile.tile?.fail" class="fail fade-out">❌</span>
                     <div class="progress" :style="tile.progressStyle"></div>
@@ -874,35 +927,18 @@ export default {
                 </p>
             </div>
 
-            <h5 class="pl-1" @click="DEBUG && (money += 1, money *= 10)">
-                <strong>$</strong>&nbsp; {{ num(money) }}
+            <h5 class="pl-1">
+                <div @click="DEBUG && (money += 1, money *= 10)"><strong>$</strong>&nbsp; {{ num(money) }}</div>
                 <div v-if="automatorsView.length > 0" class="small text-muted">
                     Money p/s: $ {{ num(perS.money) }}
                 </div>
-            </h5>
-
-            <!-- Modals -->
-            <dialog :ref="MODALS.kilnBake">
-                <div v-if="modalObj">
-                    <h5>Select a recipe to bake</h5>
-                    <!--
-                        [ { "resource": "brick", "yield": 5, "reqs": { "clay": 10 }, "time": 10, "icon": "🧱" } ]
-                        -->
-                    <button class="btn-full btn-sm btn-bake-resource" v-for="recipe in modalObj.recipes"
-                        @click="modalObj.recipeId = recipe.id"
-                        :class="{ 'btn-primary': modalObj.recipeId === recipe.id }">
-                        {{ recipe.yield }} X {{ recipe.icon }} <strong>{{ recipe.resource }}</strong> from <span
-                            v-for="r in Object.keys(recipe.reqs)">{{ recipe.reqs[r] }} {{ r }}
-                        </span> -
-                        <small>{{ num(recipe.time) }}s</small>
-                    </button>
-                    <div class="text-right mt-4">
-                        <button class="btn-sm" @click="closeModal(MODALS.kilnBake)">Cancel</button>
-                        <button class="btn-sm btn-success mr-2" :disabled="!modalObj.recipeId"
-                            @click="modalObj.tile.onModalSetRecipe(modalObj.recipeId)">Bake</button>
-                    </div>
+                <div v-if="resources.energy.totalOwned > 0" class="small" @click="DEBUG && resources.energy.incur(10)"
+                    :title="perS.energy < 0.001 ? `You are using more energy than you're producing!` : ''"
+                    :class="{ 'text-danger': perS.energy < 0.001, 'text-muted': perS.energy >= 0 }">
+                    Energy p/s: {{ numf(perS.energy, 2) }}
+                    <i v-if="anyAutomatorNoPower" class="fa-solid fa-battery-empty text-danger blink"></i>
                 </div>
-            </dialog>
+            </h5>
 
             <!-- Resource stats -->
             <table>
@@ -911,27 +947,29 @@ export default {
                     <td @click="DEBUG && r.gain(r.storageSize)">
                         <span :class="{ 'text-warning': r.owned == r.storageSize }">
                             <span>{{ r.displayNamePlural }}: {{ num(r.owned) }} / {{ num(r.storageSize) }}</span>
-                            <span v-if="r.lost" class="ml-3 text-danger"
+                            <span v-if="r.canOverflow && r.lost > 0" class="ml-3 text-danger"
                                 :title="`Lost ${r.displayNamePlural.toLowerCase()}: caused by not having enough storage`">
                                 {{ num(-r.lost) }}</span>
                         </span>
                     </td>
                     <td>
-                        <button @click="sellResource(r, 1)" :disabled="!r.any" class="btn-xs btn-sell-resource">
-                            Sell 1 <span class="text-success">+ $ {{ num(r.price) }}</span>
-                        </button>
-                        <button @click="sellResource(r, 10)" :disabled="!r.any" class="btn-xs btn-sell-resource"
-                            v-if="sellLevel > 0">
-                            Sell 10 <span class="text-success">+ $ {{ num(r.sellPrice(10)) }}</span>
-                        </button>
-                        <button @click="sellResource(r, 100)" :disabled="!r.any" class="btn-xs btn-sell-resource"
-                            v-if="r.storageSize >= 100 && sellLevel > 1">
-                            Sell 100 <span class="text-success">+ $ {{ num(r.sellPrice(100)) }}</span>
-                        </button>
-                        <button @click="sellResource(r, r.owned)" :disabled="!r.any" class="btn-xs btn-sell-resource"
-                            v-if="sellLevel > 2">
-                            Sell all <span class="text-success">+ $ {{ num(r.sellPrice(r.owned)) }}</span>
-                        </button>
+                        <div v-if="r.canTrade">
+                            <button @click="sellResource(r, 1)" :disabled="!r.any" class="btn-xs btn-sell-resource">
+                                Sell 1 <span class="text-success">+ $ {{ num(r.price) }}</span>
+                            </button>
+                            <button @click="sellResource(r, 10)" :disabled="!r.any" class="btn-xs btn-sell-resource"
+                                v-if="sellLevel > 0">
+                                Sell 10 <span class="text-success">+ $ {{ num(r.sellPrice(10)) }}</span>
+                            </button>
+                            <button @click="sellResource(r, 100)" :disabled="!r.any" class="btn-xs btn-sell-resource"
+                                v-if="r.storageSize >= 100 && sellLevel > 1">
+                                Sell 100 <span class="text-success">+ $ {{ num(r.sellPrice(100)) }}</span>
+                            </button>
+                            <button @click="sellResource(r, r.owned)" :disabled="!r.any"
+                                class="btn-xs btn-sell-resource" v-if="sellLevel > 2">
+                                Sell all <span class="text-success">+ $ {{ num(r.sellPrice(r.owned)) }}</span>
+                            </button>
+                        </div>
                     </td>
                 </tr>
             </table>
@@ -964,7 +1002,10 @@ export default {
                                     :style="{ width: (a.speed < 5 ? (a.saturation * 100) : 100) + '%' }"></span>
                             </button>
                         </td>
-                        <td>{{ a.icon }} {{ a.displayName }}</td>
+                        <td>
+                            <i v-if="a.noPower" class="fa-solid fa-battery-empty text-danger blink"></i>
+                            {{ a.icon }} {{ a.displayName }}
+                        </td>
                         <td class="px-3 text-right font-weight-bold">{{ num(boughtUpgrades[a.upgradeName]) }}</td>
                         <td><button @click="sellAutomator(a)" type="button" :title="`$ ${num(a.sellPrice)}`"
                                 class="btn-xs btn-sell-automator">Sell
@@ -1102,6 +1143,47 @@ export default {
             </transition-group>
         </div>
     </div>
+
+    <!-- Modals -->
+    <dialog :ref="MODALS.kilnBake">
+        <div v-if="modalObj">
+            <h5>Select a recipe to bake</h5>
+            <button class="btn-full btn-sm btn-bake-resource" v-for="recipe in modalObj.recipes"
+                @click="modalObj.recipeId = recipe.id" :class="{ 'btn-primary': modalObj.recipeId === recipe.id }">
+                {{ recipe.yield }} X {{ recipe.icon }} <strong>{{ recipe.resource }}</strong> from <span
+                    v-for="r in Object.keys(recipe.reqs)">{{ recipe.reqs[r] }} {{ r }}
+                </span> -
+                <small>{{ num(recipe.time) }}s</small>
+            </button>
+            <div class="text-right mt-4">
+                <button class="btn-sm" @click="closeModal(MODALS.kilnBake)">Cancel</button>
+                <button class="btn-sm btn-success mr-2" :disabled="!modalObj.recipeId"
+                    @click="modalObj.tile.onModalSetRecipe(modalObj.recipeId)">Bake</button>
+            </div>
+        </div>
+    </dialog>
+    <dialog :ref="MODALS.windmill">
+        <div v-if="modalObj">
+            <h5>Windmill</h5>
+            <p v-if="modalObj.tile.product">This Windmill is set to produce <strong>{{
+                modalObj.tile?.product?.name }}</strong></p>
+            <div>
+                <button class="btn-full btn-sm" @click="modalObj.tile.working = !modalObj.tile.working"
+                    :class="{ 'btn-success': !modalObj.tile.working }">{{ modalObj.tile.working ? 'Stop' :
+                        'Start' }} production</button>
+            </div>
+            <!-- <pre>{{ modalObj }}</pre> -->
+            <div v-for="p in modalObj.PRODUCTS">
+                <button class="btn-full btn-sm" :class="{ 'btn-primary': modalObj.tile.productId === p.id }"
+                    @click="modalObj.tile.setProduct(p.id)">
+                    {{ p.name }}<br>
+                    <small>{{ p.description }} <strong>({{ p.gain }} p/s)</strong></small></button>
+            </div>
+            <div class="text-right mt-4">
+                <button class="btn-sm" @click="closeModal(MODALS.windmill)">Close</button>
+            </div>
+        </div>
+    </dialog>
 </template>
 
 <style scoped>

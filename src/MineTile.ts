@@ -55,7 +55,7 @@ const CLAY_STORAGE_SIZE = 50
 
 const LUCKY_RESOURCE_MINE_CHANCE = 1 / 10
 
-export class MineTile extends Tile {
+export class MineTile extends Tile implements ITile {
     static readonly type = TILE_TYPES.mine
 
     type: string

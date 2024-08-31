@@ -67,13 +67,13 @@ class Tile {
         // Empty
     }
     sell() {
-        console.error('Sell not implemented for', this)
+        throw new Error('sell: Method not implemented!')
     }
     click(manual = false) {
         console.error('Click not implemented for', this, 'manual:', manual)
     }
     get tooltip() {
-        return 'Empty tile'
+        return ''
     }
     get level(): number | null {
         return null
@@ -108,6 +108,10 @@ class Tile {
     }
     getStyle(obj: ITileStyle): void {
         obj.bgOpacity = this.progress
+    }
+
+    get component(): any {
+        return null
     }
 
     static readonly automators: Automator[] = []

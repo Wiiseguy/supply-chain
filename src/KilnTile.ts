@@ -26,7 +26,7 @@ const KILN_STATES = {
     baking: 'baking' // Resource is being baked, can't be clicked. When baking is done, the resource is gained and the state is set back to open
 }
 
-export class KilnTile extends Tile {
+export class KilnTile extends Tile implements ITile {
     static readonly type = TILE_TYPES.kiln
 
     state: string
@@ -119,6 +119,9 @@ export class KilnTile extends Tile {
             default:
                 console.error('Unknown kiln state:', this.state)
         }
+    }
+    sell() {
+        this.app.boughtUpgrades['Kiln Tile'] = 0
     }
     onModalSetRecipe(recipeId: number) {
         console.log('onModalClose', recipeId, this)

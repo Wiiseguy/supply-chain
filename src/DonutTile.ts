@@ -5,7 +5,7 @@ import Tile from './Tile'
 import { Upgrade } from './Upgrade'
 import { pick } from './utils'
 
-export class DonutTile extends Tile {
+export class DonutTile extends Tile implements ITile {
     static readonly type = TILE_TYPES.donut
 
     constructor(app: IApp) {

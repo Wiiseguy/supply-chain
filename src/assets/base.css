@@ -277,11 +277,6 @@ button:disabled {
     pointer-events: none;
 }
 
-.fade-out {
-    /* once, 1s, ease-out */
-    animation: fadeOut 1s ease-out;
-}
-
 .btn-upgrade {
     position: relative;
     .group-icon {
@@ -309,10 +304,17 @@ button:disabled {
     }
 }
 
-#blades {
-    /* Ensures the rotation is around the exact center of the blade assembly */
-    transform-origin: 50px 80px; /* Fixed center point */
+.fade-out {
+    /* once, 1s, ease-out */
+    animation: fadeOut 1s ease-out;
+}
+
+.rotate {
     animation: rotate 2s linear infinite;
+}
+
+.blink {
+    animation: blink 1s infinite;
 }
 
 .game-graphic {
@@ -320,8 +322,9 @@ button:disabled {
     path,
     polygon {
         stroke: black;
-        stroke-width: 3;
+        stroke-width: 6;
     }
+    vertical-align: top;
 }
 
 /* Vue transitions */

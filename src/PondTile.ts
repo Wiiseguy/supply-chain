@@ -82,7 +82,7 @@ function randomResource(resourceList: any[], luck = 0.5) {
 //     }
 // }
 
-export class PondTile extends Tile {
+export class PondTile extends Tile implements ITile {
     static readonly type = TILE_TYPES.pond
 
     catchTime = 0
@@ -449,7 +449,7 @@ const MONSTER_TILE_STAGES = {
     victory: 'victory'
 }
 
-export class MonsterTile extends Tile {
+export class MonsterTile extends Tile implements ITile {
     static readonly type = TILE_TYPES.monster
 
     type: string

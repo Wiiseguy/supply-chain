@@ -1,7 +1,6 @@
 export function setBoolPropTimeout(obj: any, prop: string, timeOutProp: string, time: number) {
     /** @ts-ignore */
     if (globalThis.haltAnimation) {
-        console.log('test haltAnimation if this works remove this console log')
         return
     }
     clearTimeout(obj[timeOutProp])

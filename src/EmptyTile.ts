@@ -1,11 +1,14 @@
 import { TILE_TYPES } from './consts'
 import Tile from './Tile'
 
-export class EmptyTile extends Tile {
+export class EmptyTile extends Tile implements ITile {
     static readonly type = TILE_TYPES.none
 
     constructor(app: IApp) {
         super(app, EmptyTile.type)
+    }
+    sell(): void {
+        throw new Error('Method not implemented.')
     }
     update(elapsed: number) {
         super.update(elapsed)

@@ -32,7 +32,7 @@ const TREE_GROWTH_STAGES_BASE_INTERVAL = TREE_BASE_MATURE_TIME / TREE_GROWTH_STA
 const TREE_WOOD_GAINS = [0.1, 0.25, 0.5, 1]
 const TREE_WOOD_GAINS_BASE = 10
 
-export class ForestTile extends Tile {
+export class ForestTile extends Tile implements ITile {
     static readonly type = TILE_TYPES.forest
 
     type: string
@@ -65,7 +65,7 @@ export class ForestTile extends Tile {
                 TREE_GROWTH_STAGES.length - 1,
                 Math.floor(this.age / TREE_GROWTH_STAGES_BASE_INTERVAL)
             )
-            // If stage has changed, wiggly wiggle
+            // If stage has changed, animate
             if (prevStage !== this.stage) {
                 this.animateGrow()
             }

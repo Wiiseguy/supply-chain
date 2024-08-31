@@ -16,6 +16,7 @@ interface IUpgradeSettings {
     group: string
     speed?: number // Used by automator upgrades
     automator?: boolean
+    energyCost?: number
 }
 
 export class Upgrade {
@@ -34,6 +35,7 @@ export class Upgrade {
     group: string
     speed?: number
     automator?: boolean
+    energyCost?: number
 
     constructor(upgrade: IUpgradeSettings) {
         if (!upgrade.name) console.error('Upgrade name is required')
@@ -56,6 +58,7 @@ export class Upgrade {
         this.group = upgrade.group
         this.speed = upgrade.speed ?? 1
         this.automator = upgrade.automator || false
+        this.energyCost = upgrade.energyCost ?? 0.01
     }
 
     static createAutomator(opts: IUpgradeSettings) {

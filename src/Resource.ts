@@ -6,6 +6,9 @@ interface ResourceSettings {
     storageBaseSize: number
     initialOwned?: number
     minimum?: number
+    canOverflow?: boolean
+    canTrade?: boolean
+    unit?: string
 }
 
 export class Resource {
@@ -15,6 +18,9 @@ export class Resource {
     readonly icon: string
     readonly minimum: number
     readonly basePrice: number
+    readonly canOverflow: boolean
+    readonly canTrade: boolean
+    readonly unit: string
     priceMultiplier: number
     storageBaseSize: number
     storage: number
@@ -34,6 +40,9 @@ export class Resource {
         this.icon = settings.icon
         this.minimum = settings.minimum ?? 0 // The minimum amount of this resource that must be kept, like seeds should not be able to be sold if there are less than 2, because then the game is soft-locked
         this.basePrice = settings.basePrice
+        this.canOverflow = settings.canOverflow ?? true // Whether this resource can be lost if it exceeds storage capacity. Things like energy should not be able to be lost.
+        this.canTrade = settings.canTrade ?? true // Whether this resource can be traded. Things like energy should not be able to be traded.
+        this.unit = settings.unit ?? '' // The unit of this resource, like 'g' for grams, 'J' for joules, etc.
         this.priceMultiplier = 1
         this.storageBaseSize = settings.storageBaseSize
         this.storage = 1 // Number of storage units
