@@ -1,9 +1,9 @@
-import { Automator } from './Automator'
-import { CATEGORIES, GROUPS, RESOURCE_TYPES, TILE_TYPES } from './consts'
-import { Resource } from './Resource'
+import { Automator } from '../Automator'
+import { CATEGORIES, GROUPS, RESOURCE_TYPES, TILE_TYPES } from '../consts'
+import { Resource } from '../Resource'
 import Tile from './Tile'
-import { Upgrade } from './Upgrade'
-import { isLucky, pick } from './utils'
+import { Upgrade } from '../Upgrade'
+import { isLucky, pick } from '../utils'
 
 // Mine stuff
 // Mines work different from forests, each stage has levels. The first stage has one level, the second has 3, the third has Infinite

@@ -1,4 +1,4 @@
-import { TILE_TYPES } from './consts'
+import { TILE_TYPES } from '../consts'
 import Tile from './Tile'
 
 export class EmptyTile extends Tile implements ITile {

@@ -1,9 +1,9 @@
-import { Automator } from './Automator'
-import { CATEGORIES, GROUPS, MODALS, RESOURCE_TYPES, TILE_TYPES } from './consts'
-import { Resource } from './Resource'
+import { Automator } from '../Automator'
+import { CATEGORIES, GROUPS, MODALS, RESOURCE_TYPES, TILE_TYPES } from '../consts'
+import { Resource } from '../Resource'
 import Tile from './Tile'
-import { Upgrade } from './Upgrade'
-import { pick } from './utils'
+import { Upgrade } from '../Upgrade'
+import { pick } from '../utils'
 
 // Kiln tile
 // Kilns are used to bake bricks from clay

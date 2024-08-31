@@ -1,10 +1,10 @@
-import { Automator } from './Automator'
-import { Calculator } from './Calculator'
-import { CATEGORIES, GROUPS, RESOURCE_TYPES, TILE_TYPES } from './consts'
-import { Resource } from './Resource'
+import { Automator } from '../Automator'
+import { Calculator } from '../Calculator'
+import { CATEGORIES, GROUPS, RESOURCE_TYPES, TILE_TYPES } from '../consts'
+import { Resource } from '../Resource'
 import Tile from './Tile'
-import { Upgrade } from './Upgrade'
-import { isLucky, randomInt } from './utils'
+import { Upgrade } from '../Upgrade'
+import { isLucky, randomInt } from '../utils'
 
 const FOREST_TILE_TYPES = {
     empty: 'empty',

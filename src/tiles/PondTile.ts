@@ -1,10 +1,10 @@
-import { Automator } from './Automator'
-import { Calculator } from './Calculator'
-import { CATEGORIES, GROUP_ICONS, GROUPS, RESOURCE_TYPES, TILE_TYPES } from './consts'
-import { Resource } from './Resource'
+import { Automator } from '../Automator'
+import { Calculator } from '../Calculator'
+import { CATEGORIES, GROUP_ICONS, GROUPS, RESOURCE_TYPES, TILE_TYPES } from '../consts'
+import { Resource } from '../Resource'
 import Tile from './Tile'
-import { Upgrade } from './Upgrade'
-import { isLucky } from './utils'
+import { Upgrade } from '../Upgrade'
+import { isLucky } from '../utils'
 
 // Pond stuff
 // Ponds are a source of fish, or some rarer things like resources

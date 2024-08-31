@@ -1,8 +1,8 @@
 import { markRaw } from 'vue'
-import Windmill from './components/Windmill.vue'
-import { CATEGORIES, GROUPS, MODALS, RESOURCE_TYPES, TILE_TYPES } from './consts'
+import Windmill from '@/components/Windmill.vue'
+import { CATEGORIES, GROUPS, MODALS, RESOURCE_TYPES, TILE_TYPES } from '../consts'
 import Tile from './Tile'
-import { Upgrade } from './Upgrade'
+import { Upgrade } from '../Upgrade'
 
 const ENERGY_GAIN = 1 / 10 // 1 energy per 10 seconds
 

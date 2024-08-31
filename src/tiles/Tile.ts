@@ -1,8 +1,8 @@
-import { Automator } from './Automator'
-import { Calculator } from './Calculator'
-import { Resource } from './Resource'
-import { Upgrade } from './Upgrade'
-import { setBoolPropTimeout } from './utils'
+import { Automator } from '../Automator'
+import { Calculator } from '../Calculator'
+import { Resource } from '../Resource'
+import { Upgrade } from '../Upgrade'
+import { setBoolPropTimeout } from '../utils'
 
 class Tile {
     static readonly type: string = 'none'

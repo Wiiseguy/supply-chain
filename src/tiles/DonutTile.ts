@@ -1,9 +1,9 @@
-import { Automator } from './Automator'
-import { CATEGORIES, GROUP_ICONS, GROUPS, RESOURCE_TYPES, TILE_TYPES } from './consts'
-import { Resource } from './Resource'
+import { Automator } from '../Automator'
+import { CATEGORIES, GROUP_ICONS, GROUPS, RESOURCE_TYPES, TILE_TYPES } from '../consts'
+import { Resource } from '../Resource'
 import Tile from './Tile'
-import { Upgrade } from './Upgrade'
-import { pick } from './utils'
+import { Upgrade } from '../Upgrade'
+import { pick } from '../utils'
 
 export class DonutTile extends Tile implements ITile {
     static readonly type = TILE_TYPES.donut
