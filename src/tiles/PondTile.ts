@@ -358,6 +358,7 @@ export class PondTile extends Tile implements ITile {
 
 // Monster tile
 
+/** @ts-ignore */
 const MONSTERS_IDEAS = [
     '🦠',
     '🦗',
@@ -382,6 +383,7 @@ const MONSTERS_IDEAS = [
     '🧟‍♀️'
 ]
 
+/** @ts-ignore */
 const MONSTERS = [
     {
         name: 'Microbe',

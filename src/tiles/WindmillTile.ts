@@ -4,14 +4,14 @@ import { CATEGORIES, GROUPS, MODALS, RESOURCE_TYPES, TILE_TYPES } from '../const
 import Tile from './Tile'
 import { Upgrade } from '../Upgrade'
 
-const ENERGY_GAIN = 1 / 10 // 1 energy per 10 seconds
+const ENERGY_GAIN = 10 // 1 energy per 10 seconds
 
 // Mills can produce energy or grind resources
 const PRODUCTS = [
     {
         id: 1,
         name: 'Energy',
-        description: 'Windmills can generate energy from the wind',
+        description: 'This windmill will generate energy from the wind.',
         resource: RESOURCE_TYPES.energy,
         gain: ENERGY_GAIN
     }
@@ -40,7 +40,7 @@ export class WindmillTile extends Tile implements ITile {
         this.app.showModal(MODALS.windmill, { tile: this, PRODUCTS })
     }
     sell() {
-        this.app.boughtUpgrades['Windmill Tile'] = 0
+        this.app.boughtUpgrades['Windmill Tile'] -= 1
     }
 
     setProduct(productId: number) {
@@ -74,7 +74,7 @@ export class WindmillTile extends Tile implements ITile {
             name: 'Windmill Tile',
             tile: true,
             description: 'Build a windmill to generate energy or grind resources',
-            baseCost: 1500,
+            baseCost: 5500,
             costMultiplier: 2,
             category: CATEGORIES.tiles,
             group: GROUPS.windmill,

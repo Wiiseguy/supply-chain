@@ -66,6 +66,9 @@ class Tile {
     update(_elapsed: number) {
         // Empty
     }
+    onLandChange() {
+        // Empty
+    }
     sell() {
         throw new Error('sell: Method not implemented!')
     }

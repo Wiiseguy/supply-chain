@@ -56,22 +56,34 @@ export const CATEGORY_TITLES: Record<string, string> = {
 
 export const RESOURCE_TYPES: Record<string, string> = {
     energy: 'energy',
+
     wood: 'wood',
     seed: 'seed',
+    apple: 'apple',
+    lemon: 'lemon',
+    orange: 'orange',
+    pear: 'pear',
+    banana: 'banana',
+    cherry: 'cherry',
+    strawberry: 'strawberry',
+    mango: 'mango',
+    pineapple: 'pineapple',
+
     diamond: 'diamond',
     metal: 'metal',
     clay: 'clay',
-    fish: 'fish',
     donut: 'donut',
     brick: 'brick',
-    apple: 'apple',
-    lemon: 'lemon',
+
+    fish: 'fish',
+
     wheat: 'wheat',
     bread: 'bread',
     sand: 'sand',
     glass: 'glass'
 }
 
+/** @ts-ignore */
 const RESOURCE_TIERS = {
     // Tier 1: Base resources. Are provided by nature or can be grown
     tier1: [
@@ -88,6 +100,7 @@ const RESOURCE_TIERS = {
     tier2: [RESOURCE_TYPES.bread, RESOURCE_TYPES.brick, RESOURCE_TYPES.glass]
 }
 
+/** @ts-ignore */
 const FARM_TILE_TYPES = {
     empty: 'empty',
     crop: 'crop'

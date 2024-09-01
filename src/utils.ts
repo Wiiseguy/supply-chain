@@ -93,3 +93,7 @@ export function encode(str: string) {
 export function decode(str: string) {
     return decodeURIComponent(atob(str))
 }
+
+export function aOrAn(word: string) {
+    return 'aeiou'.includes(word[0].toLowerCase()) ? 'an' : 'a'
+}

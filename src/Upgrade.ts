@@ -58,7 +58,7 @@ export class Upgrade {
         this.group = upgrade.group
         this.speed = upgrade.speed ?? 1
         this.automator = upgrade.automator || false
-        this.energyCost = upgrade.energyCost ?? 0.01
+        this.energyCost = upgrade.energyCost ?? 1
     }
 
     static createAutomator(opts: IUpgradeSettings) {

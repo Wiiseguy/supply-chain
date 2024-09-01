@@ -47,13 +47,13 @@ export class DonutTile extends Tile implements ITile {
 
     static readonly automators = [
         new Automator('Donut Clicker', app => {
-            const donut = pick(app.land.filter(t => t instanceof DonutTile))
+            const donut = pick(app.land.filter(t => t instanceof DonutTile) as DonutTile[])
             if (donut) {
                 donut.autoClick(1)
             }
         }),
         new Automator('Donut Grandpa', app => {
-            const donut = pick(app.land.filter(t => t instanceof DonutTile))
+            const donut = pick(app.land.filter(t => t instanceof DonutTile) as DonutTile[])
             if (donut) {
                 donut.autoClick(5)
             }

@@ -4,7 +4,7 @@ import { CATEGORIES, GROUPS, RESOURCE_TYPES, TILE_TYPES } from '../consts'
 import { Resource } from '../Resource'
 import Tile from './Tile'
 import { Upgrade } from '../Upgrade'
-import { isLucky, randomInt } from '../utils'
+import { aOrAn, isLucky, randomInt } from '../utils'
 
 const FOREST_TILE_TYPES = {
     empty: 'empty',
@@ -15,8 +15,61 @@ const FOREST_TILE_TYPES = {
 const TREE_TYPES = {
     normal: 'normal', // Wood-only tree
     apple: 'apple', // Apple tree, gives apples and wood
-    lemon: 'lemon' // Lemon tree, gives lemons and wood
+    lemon: 'lemon', // Lemon tree, gives lemons and wood
+    // add the rest of the fruit resources here
+    pear: 'pear',
+    orange: 'orange',
+    cherry: 'cherry',
+    strawberry: 'strawberry',
+    mango: 'mango',
+    banana: 'banana',
+    pineapple: 'pineapple'
 }
+
+const TREE_TYPE_GAINS: Record<string, [number, number]> = {
+    apple: [10, 30],
+    lemon: [5, 20],
+    pear: [10, 30],
+    orange: [5, 20],
+    cherry: [20, 50],
+    strawberry: [10, 20],
+    mango: [5, 10],
+    banana: [10, 30],
+    pineapple: [3, 8]
+}
+
+const TREE_EVOLUTIONS = [
+    {
+        surroundedWith: TILE_TYPES.forest,
+        chance: 0.1,
+        newType: TREE_TYPES.apple
+    },
+    {
+        surroundedWith: TILE_TYPES.pond,
+        chance: 0.1,
+        newType: TREE_TYPES.lemon
+    },
+    {
+        surroundedWith: TILE_TYPES.forest,
+        chance: 0.1,
+        newType: TREE_TYPES.pear
+    },
+    {
+        surroundedWith: TILE_TYPES.pond,
+        chance: 0.1,
+        newType: TREE_TYPES.orange
+    },
+    {
+        surroundedWith: TILE_TYPES.mine,
+        chance: 0.5,
+        newType: TREE_TYPES.cherry
+    },
+    {
+        surroundedWith: TILE_TYPES.windmill,
+        chance: 0.5,
+        newType: TREE_TYPES.mango
+    }
+]
 
 export const INITIAL_SEEDS = 4
 
@@ -38,12 +91,14 @@ export class ForestTile extends Tile implements ITile {
     type: string
     treeType: string
     seedProblem: boolean
+    isSick: boolean
 
     constructor(app: IApp) {
         super(app, ForestTile.type)
         this.type = FOREST_TILE_TYPES.empty
         this.treeType = TREE_TYPES.normal
         this.seedProblem = false
+        this.isSick = false
     }
     update(elapsed: number) {
         super.update(elapsed)
@@ -77,6 +132,9 @@ export class ForestTile extends Tile implements ITile {
                 this.chop()
             }
         }
+    }
+    onLandChange() {
+        this.isSick = this.adjacentTiles.some(tile => tile.tileType === TILE_TYPES.kiln)
     }
     sell() {
         this.app.boughtUpgrades['Forest Tile'] -= 1
@@ -114,39 +172,27 @@ export class ForestTile extends Tile implements ITile {
         this.app.resources.wood.gain(woodGains)
         this.app.resources.seed.gain(1)
 
-        switch (this.treeType) {
-            case TREE_TYPES.apple:
-                this.app.resources.apple.gain(randomInt(10, 30))
-                break
-            case TREE_TYPES.lemon:
-                this.app.resources.lemon.gain(randomInt(5, 20))
-                break
+        if (this.treeType !== TREE_TYPES.normal && this.isFullyGrownTree) {
+            let [min, max] = TREE_TYPE_GAINS[this.treeType]
+            this.app.resources[this.treeType].gain(randomInt(min, max))
         }
     }
     tryEvolve() {
         let msg = ''
-        // If all 4 adjacent tiles are trees, there's a chance of a changing the tree type to apple
-        if (
-            this.treeType === TREE_TYPES.normal &&
-            this.adjacentTiles.length === 4 &&
-            this.adjacentTiles.every(tile => tile instanceof ForestTile)
-        ) {
-            if (isLucky(0.1)) {
-                this.treeType = TREE_TYPES.apple
-                msg += 'Tree has evolved into an apple tree! '
+
+        for (let evolution of TREE_EVOLUTIONS) {
+            if (
+                this.treeType === TREE_TYPES.normal &&
+                this.adjacentTiles.length === 4 &&
+                this.adjacentTiles.every(tile => tile.tileType === evolution.surroundedWith)
+            ) {
+                if (isLucky(evolution.chance)) {
+                    this.treeType = evolution.newType
+                    msg += `Tree has evolved into ${aOrAn(evolution.newType)} ${evolution.newType} tree! `
+                }
             }
         }
-        // If all adjacent tiles are ponds, there's a chance of a changing the tree type to lemon
-        if (
-            this.treeType === TREE_TYPES.normal &&
-            this.adjacentTiles.length === 4 &&
-            this.adjacentTiles.every(tile => tile.tileType === TILE_TYPES.pond)
-        ) {
-            if (isLucky(0.1)) {
-                this.treeType = TREE_TYPES.lemon
-                msg += 'Tree has evolved into a lemon tree! '
-            }
-        }
+
         return msg
     }
     chop(manual = false) {
@@ -171,6 +217,7 @@ export class ForestTile extends Tile implements ITile {
             if (this.isDying) {
                 // If the tree is dying, it will self-seed, but it will not count as a lucky seed
                 this.age = 0
+                msg += `The old tree's offspring is already growing here! `
             } else if (isLucky(TREE_SELF_SEED_CHANCE)) {
                 // If super lucky, automatically plant a seed
                 msg += 'Super lucky! Another tree is already growing here! '
@@ -190,9 +237,6 @@ export class ForestTile extends Tile implements ITile {
     }
     get adjacentTiles() {
         return this.app.getAdjacentTiles(this)
-    }
-    get isSick() {
-        return this.adjacentTiles.some(tile => tile.tileType === TILE_TYPES.kiln)
     }
     get isDying() {
         return this.age > TREE_DEATH_AGE
@@ -295,14 +339,8 @@ export class ForestTile extends Tile implements ITile {
         return this.app.calculated.luckySeedChance
     }
     get iconTopLeft() {
-        switch (this.treeType) {
-            case TREE_TYPES.apple:
-                return '🍎'
-            case TREE_TYPES.lemon:
-                return '🍋'
-            default:
-                return ''
-        }
+        if (this.treeType === TREE_TYPES.normal) return ''
+        return this.app.resources[this.treeType].icon
     }
 
     static readonly resources = [
@@ -334,6 +372,55 @@ export class ForestTile extends Tile implements ITile {
             displayNamePlural: 'Lemons',
             icon: '🍋',
             basePrice: 2,
+            storageBaseSize: 500
+        }),
+        new Resource(RESOURCE_TYPES.pear, {
+            displayNameSingular: 'Pear',
+            displayNamePlural: 'Pears',
+            icon: '🍐',
+            basePrice: 2,
+            storageBaseSize: 1000
+        }),
+        new Resource(RESOURCE_TYPES.orange, {
+            displayNameSingular: 'Orange',
+            displayNamePlural: 'Oranges',
+            icon: '🍊',
+            basePrice: 3,
+            storageBaseSize: 500
+        }),
+        new Resource(RESOURCE_TYPES.cherry, {
+            displayNameSingular: 'Cherry',
+            displayNamePlural: 'Cherries',
+            icon: '🍒',
+            basePrice: 1,
+            storageBaseSize: 2500
+        }),
+        new Resource(RESOURCE_TYPES.strawberry, {
+            displayNameSingular: 'Strawberry',
+            displayNamePlural: 'Strawberries',
+            icon: '🍓',
+            basePrice: 5,
+            storageBaseSize: 500
+        }),
+        new Resource(RESOURCE_TYPES.mango, {
+            displayNameSingular: 'Mango',
+            displayNamePlural: 'Mangos',
+            icon: '🥭',
+            basePrice: 5,
+            storageBaseSize: 500
+        }),
+        new Resource(RESOURCE_TYPES.banana, {
+            displayNameSingular: 'Banana',
+            displayNamePlural: 'Bananas',
+            icon: '🍌',
+            basePrice: 2,
+            storageBaseSize: 1000
+        }),
+        new Resource(RESOURCE_TYPES.pineapple, {
+            displayNameSingular: 'Pineapple',
+            displayNamePlural: 'Pineapples',
+            icon: '🍍',
+            basePrice: 10,
             storageBaseSize: 500
         })
     ]
@@ -391,6 +478,24 @@ export class ForestTile extends Tile implements ITile {
         new Automator('Fruit Seller', app => {
             app.sellResource(app.resources.apple, 1)
             app.sellResource(app.resources.lemon, 1)
+            app.sellResource(app.resources.pear, 1)
+            app.sellResource(app.resources.orange, 1)
+            app.sellResource(app.resources.cherry, 1)
+            app.sellResource(app.resources.strawberry, 1)
+            app.sellResource(app.resources.mango, 1)
+            app.sellResource(app.resources.banana, 1)
+            app.sellResource(app.resources.pineapple, 1)
+        }),
+        new Automator('Fruit Reclaimer', app => {
+            app.resources.apple.reclaim(1)
+            app.resources.lemon.reclaim(1)
+            app.resources.pear.reclaim(1)
+            app.resources.orange.reclaim(1)
+            app.resources.cherry.reclaim(1)
+            app.resources.strawberry.reclaim(1)
+            app.resources.mango.reclaim(1)
+            app.resources.banana.reclaim(1)
+            app.resources.pineapple.reclaim(1)
         })
     ]
 
@@ -479,7 +584,7 @@ export class ForestTile extends Tile implements ITile {
         Upgrade.createAutomator({
             name: 'Wood Seller',
             description: 'Automatically sell wood',
-            baseCost: 2500,
+            baseCost: 1500,
             costMultiplier: 1.2,
             speed: 1 / 2,
             group: GROUPS.forest
@@ -487,7 +592,7 @@ export class ForestTile extends Tile implements ITile {
         Upgrade.createAutomator({
             name: 'Seed Seller',
             description: 'Automatically sell excess seeds',
-            baseCost: 3000,
+            baseCost: 2000,
             costMultiplier: 1.2,
             speed: 1 / 8,
             group: GROUPS.forest
@@ -504,7 +609,7 @@ export class ForestTile extends Tile implements ITile {
             name: 'Seed Reclaimer',
             displayName: 'Seed Scouter',
             description: 'Send out a scout to find lost seeds all over your forest land',
-            baseCost: 3500,
+            baseCost: 3000,
             costMultiplier: 1.2,
             speed: 1 / 30,
             group: GROUPS.forest
@@ -512,13 +617,45 @@ export class ForestTile extends Tile implements ITile {
         // Fruit seller, sells apples and lemons, only visible has non-zero amount of apples or lemons
         Upgrade.createAutomator({
             name: 'Fruit Seller',
-            description: 'Automatically sell apples and lemons',
+            description: 'Automatically sell tree fruits',
             baseCost: 9000,
             costMultiplier: 1.3,
             speed: 1,
             group: GROUPS.forest,
             isVisible(app: IApp) {
-                return app.resources.apple.totalOwned > 0 || app.resources.lemon.totalOwned > 0
+                return (
+                    app.resources.apple.totalOwned > 0 ||
+                    app.resources.lemon.totalOwned > 0 ||
+                    app.resources.pear.totalOwned > 0 ||
+                    app.resources.orange.totalOwned > 0 ||
+                    app.resources.cherry.totalOwned > 0 ||
+                    app.resources.strawberry.totalOwned > 0 ||
+                    app.resources.mango.totalOwned > 0 ||
+                    app.resources.banana.totalOwned > 0 ||
+                    app.resources.pineapple.totalOwned > 0
+                )
+            }
+        }),
+        // Fruit reclaimer
+        Upgrade.createAutomator({
+            name: 'Fruit Reclaimer',
+            description: 'Collect lost fruits',
+            baseCost: 9000,
+            costMultiplier: 1.2,
+            speed: 1 / 2,
+            group: GROUPS.forest,
+            isVisible(app: IApp) {
+                return (
+                    app.resources.apple.totalOwned > 0 ||
+                    app.resources.lemon.totalOwned > 0 ||
+                    app.resources.pear.totalOwned > 0 ||
+                    app.resources.orange.totalOwned > 0 ||
+                    app.resources.cherry.totalOwned > 0 ||
+                    app.resources.strawberry.totalOwned > 0 ||
+                    app.resources.mango.totalOwned > 0 ||
+                    app.resources.banana.totalOwned > 0 ||
+                    app.resources.pineapple.totalOwned > 0
+                )
             }
         }),
         // Special upgrades

@@ -121,7 +121,7 @@ export class KilnTile extends Tile implements ITile {
         }
     }
     sell() {
-        this.app.boughtUpgrades['Kiln Tile'] = 0
+        this.app.boughtUpgrades['Kiln Tile'] -= 1
     }
     onModalSetRecipe(recipeId: number) {
         console.log('onModalClose', recipeId, this)

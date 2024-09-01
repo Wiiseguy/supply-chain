@@ -74,6 +74,7 @@ export class Resource {
         return n * this.price
     }
     sellPrice(n: number) {
+        if (this.owned === 0) return 0
         return Math.min(n, this.owned - this.minimum) * this.price
     }
     gain(n: number) {

@@ -231,7 +231,7 @@ button:disabled {
     background-color: rgba(0, 0, 0, 0.5);
 }
 .land-tile.moving {
-    box-shadow: 0 0 10px #88ff88;
+    box-shadow: 0 0 10px #88ff88 !important;
 }
 .land.clickmode-move .land-tile.unclaimed {
     cursor: pointer;

@@ -2,6 +2,7 @@
 import Windmill from './components/Windmill.vue'
 import Tile from './tiles/Tile'
 import { Counter } from './Counter'
+/** @ts-ignore */
 import { DonutTile } from './tiles/DonutTile'
 import { EmptyTile } from './tiles/EmptyTile'
 import { ForestTile, INITIAL_SEEDS } from './tiles/ForestTile'
@@ -16,6 +17,7 @@ import { Upgrade } from './Upgrade'
 import { Calculator } from './Calculator'
 import { Automator } from './Automator'
 import { WindmillTile } from './tiles/WindmillTile'
+import { markRaw } from 'vue'
 
 /** @ts-ignore */
 globalThis.haltAnimation = false
@@ -23,7 +25,7 @@ globalThis.haltAnimation = false
 const DEBUG = false
 const FPS = 30
 const FRAME_TIME = 1 / FPS
-const MAX_CATCHUP_STEPS = (60 * 15) / FRAME_TIME // 15 minutes = 27000 steps
+const MAX_CATCHUP_STEPS = (60 * 5) / FRAME_TIME // 5 minutes = 9000 steps
 const SAVE_INTERVAL = 30 // Save every 60 seconds
 
 const TILE_SIZE = 64
@@ -110,7 +112,7 @@ export default {
         }
     },
     created() {
-        this.UPGRADES = [...UPGRADES]
+        this.UPGRADES = markRaw([...UPGRADES])
 
         // Initialize resources
         this.resources = {
@@ -119,10 +121,11 @@ export default {
                 displayNamePlural: 'Energy',
                 icon: '⚡',
                 basePrice: 0,
-                storageBaseSize: 1000,
+                storageBaseSize: 100000,
                 initialOwned: 0,
                 canOverflow: false,
-                canTrade: false
+                canTrade: false,
+                unit: 'J'
             })
         }
 
@@ -140,7 +143,7 @@ export default {
         this.UPGRADES.forEach(upgrade => {
             this.boughtUpgrades[upgrade.name] = upgrade.initialOwned ?? 0
         })
-        this.UPGRADES_INDEX = makeIndex(this.UPGRADES, 'name')
+        this.UPGRADES_INDEX = markRaw(makeIndex(this.UPGRADES, 'name'))
 
         // Initialize land
         for (let i = 0; i < this.boughtUpgrades['Forest Tile']; i++) {
@@ -173,6 +176,8 @@ export default {
         ) {
             this.land.push(new EmptyTile(this as any))
         }
+
+        this.onLandChange()
     },
     mounted() {
         if (!this.stats.started) {
@@ -268,27 +273,32 @@ export default {
                 console.warn('Massive steps detected. Steps:', steps, 'Reducing to:', MAX_CATCHUP_STEPS)
                 steps = MAX_CATCHUP_STEPS
             }
+            let land = this.land;
+            let automators = this.automators;
+            let isAutomation = this.settings.automation;
+            let calculators = this.calculators;
             for (let i = 0; i < steps; i++) {
                 let simulatedElapsed = Math.min(FRAME_TIME, elapsed - i * FRAME_TIME)
 
-                // Update tiles
-                this.land.forEach(tile => {
+                // Update tiles                
+                for (let i = 0; i < land.length; i++) {
+                    const tile = land[i]
                     tile.stageP = 0
                     tile.update(simulatedElapsed)
                     tile.stageP = Math.min(1, tile.stageP)
-                })
+                }
 
                 // Run automators
-                if (this.settings.automation) {
-                    this.automators.forEach(automator => {
-                        automator.run(this as any, simulatedElapsed)
-                    })
+                if (isAutomation) {
+                    for (let i = 0; i < automators.length; i++) {
+                        automators[i].run(this as any, simulatedElapsed)
+                    }
                 }
 
                 // Run calculators
-                this.calculators.forEach(calculator => {
-                    this.calculated[calculator.name] = calculator.calculate(this as any)
-                })
+                for (let i = 0; i < calculators.length; i++) {
+                    this.calculated[calculators[i].name] = calculators[i].calculate(this as any)
+                }
             }
 
             // Determine if upgrade should be made visible. Once visible, it should stay visible.
@@ -382,6 +392,11 @@ export default {
         onLandChange() {
             // Clear the adjacent tile cache
             this.adjacentTileCache = new WeakMap()
+
+            // Call onLandChange for each tile
+            this.land.forEach(tile => {
+                tile.onLandChange()
+            })
         },
 
         clickTile(tileModel: { tile: Tile }) {
@@ -594,23 +609,28 @@ export default {
         },
 
         saveGame() {
-            const saveData = {
-                money: this.money,
-                resources: {} as Record<string, any>,
-                boughtUpgrades: this.boughtUpgrades,
-                land: this.land,
-                startTime: this.startTime,
-                stats: this.stats,
-                settings: this.settings,
-                automators: this.automators
+            try {
+                const saveData = {
+                    money: this.money,
+                    resources: {} as Record<string, any>,
+                    boughtUpgrades: this.boughtUpgrades,
+                    land: this.land,
+                    startTime: this.startTime,
+                    stats: this.stats,
+                    settings: this.settings,
+                    automators: this.automators
+                }
+                Object.values(this.resources).forEach(resource => {
+                    saveData.resources[resource.name] = resource.getSaveData()
+                })
+                if (this.DEBUG) {
+                    console.log('Saving game:', saveData)
+                }
+                localStorage.setItem('saveData', encode(JSON.stringify(saveData)))
+            } catch (e) {
+                console.error('Error saving game:', e)
+                this.showMessage('Error saving game. Please try again.')
             }
-            Object.values(this.resources).forEach(resource => {
-                saveData.resources[resource.name] = resource.getSaveData()
-            })
-            if (this.DEBUG) {
-                console.log('Saving game:', saveData)
-            }
-            localStorage.setItem('saveData', encode(JSON.stringify(saveData)))
         },
         loadGame() {
             try {
@@ -769,7 +789,7 @@ export default {
         },
 
         resourcesView() {
-            let result = [this.resources.wood, this.resources.seed]
+            let result = [this.resources.energy, this.resources.wood, this.resources.seed]
             // For anything else, add it if it has more than 0 owned
             Object.values(this.resources).forEach(resource => {
                 if (!result.includes(resource) && resource.totalOwned > 0) {
@@ -798,6 +818,7 @@ export default {
                             this.getUpgradeCostNum(upgrade, this.boughtUpgrades[automator.upgradeName] - 1)
                         ),
                         displayName: upgrade.displayName ?? automator.upgradeName,
+                        description: upgrade.description ?? '',
                         icon: GROUP_ICONS[upgrade.group]
                     }
                 })
@@ -909,11 +930,14 @@ export default {
                     v-if="hasUpgrade('Bulldozer')">
                     <div class="btn-group">
                         <button @click="setClickMode('click')" :class="{ 'active': clickMode === 'click' }"
-                            class="btn btn-xs btn-tool">Click</button>
+                            title="Click (default)" class="btn btn-sm btn-tool"><i
+                                class="fa-solid fa-arrow-pointer"></i></button>
                         <button @click="setClickMode('sell')" :class="{ 'active': clickMode === 'sell' }"
-                            title="Sell a tile for $ 100" class="btn btn-xs btn-tool">Sell</button>
+                            title="Make a tile empty" class="btn btn-sm btn-tool"><i
+                                class="fa-solid fa-trash-can"></i></button>
                         <button @click="setClickMode('move')" :class="{ 'active': clickMode === 'move' }"
-                            class="btn btn-xs btn-tool">Move</button>
+                            title="Move tile" class="btn btn-sm btn-tool"><i
+                                class="fa-solid fa-up-down-left-right"></i></button>
                     </div>
                 </div>
             </div>
@@ -934,7 +958,7 @@ export default {
                 </div>
                 <div v-if="resources.energy.totalOwned > 0" class="small" @click="DEBUG && resources.energy.incur(10)"
                     :title="perS.energy < 0.001 ? `You are using more energy than you're producing!` : ''"
-                    :class="{ 'text-danger': perS.energy < 0.001, 'text-muted': perS.energy >= 0 }">
+                    :class="{ 'text-muted': true }">
                     Energy p/s: {{ numf(perS.energy, 2) }}
                     <i v-if="anyAutomatorNoPower" class="fa-solid fa-battery-empty text-danger blink"></i>
                 </div>
@@ -1002,11 +1026,13 @@ export default {
                                     :style="{ width: (a.speed < 5 ? (a.saturation * 100) : 100) + '%' }"></span>
                             </button>
                         </td>
-                        <td>
+                        <td :class="{ 'text-muted': !a.enabled }" :title="a.description">
                             <i v-if="a.noPower" class="fa-solid fa-battery-empty text-danger blink"></i>
                             {{ a.icon }} {{ a.displayName }}
                         </td>
-                        <td class="px-3 text-right font-weight-bold">{{ num(boughtUpgrades[a.upgradeName]) }}</td>
+                        <td class="px-3 text-right font-weight-bold" title="Owned">{{ num(boughtUpgrades[a.upgradeName])
+                            }}</td>
+                        <td class="text-right" title="Energy usage">{{ a.powerUsage }}W</td>
                         <td><button @click="sellAutomator(a)" type="button" :title="`$ ${num(a.sellPrice)}`"
                                 class="btn-xs btn-sell-automator">Sell
                                 1</button>
