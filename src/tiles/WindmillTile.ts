@@ -6,6 +6,8 @@ import { Upgrade } from '../Upgrade'
 
 const ENERGY_GAIN = 10 // 1 energy per 10 seconds
 
+const NEIGHBOR_BONUS = 0.1 // 10% bonus per neighbor
+
 // Mills can produce energy or grind resources
 const PRODUCTS = [
     {
@@ -22,22 +24,29 @@ export class WindmillTile extends Tile implements ITile {
 
     working: boolean
     productId: number
+    neighborBonus: number
 
     constructor(app: IApp) {
         super(app, WindmillTile.type)
         this.working = true
         this.productId = PRODUCTS[0].id
+        this.neighborBonus = 0
     }
     update(elapsed: number) {
         super.update(elapsed)
 
         if (this.working && this.product) {
-            this.app.resources[this.product.resource].gain(this.product.gain * elapsed)
+            this.app.resources[this.product.resource].gain(this.product.gain * elapsed * (1 + this.neighborBonus))
         }
+    }
+    onLandChange() {
+        this.neighborBonus =
+            this.app.getAdjacentTiles(this).filter(t => t instanceof WindmillTile).length * NEIGHBOR_BONUS
     }
 
     click() {
-        this.app.showModal(MODALS.windmill, { tile: this, PRODUCTS })
+        let adjacent = this.app.getAdjacentTiles(this).length
+        this.app.showModal(MODALS.windmill, { tile: this, PRODUCTS, MAX_NEIGHBOR_BONUS: NEIGHBOR_BONUS * adjacent })
     }
     sell() {
         this.app.boughtUpgrades['Windmill Tile'] -= 1
@@ -75,7 +84,7 @@ export class WindmillTile extends Tile implements ITile {
             tile: true,
             description: 'Build a windmill to generate energy or grind resources',
             baseCost: 5500,
-            costMultiplier: 2,
+            costMultiplier: 1.5,
             category: CATEGORIES.tiles,
             group: GROUPS.windmill,
             resourceCosts: {

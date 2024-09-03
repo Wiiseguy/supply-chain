@@ -317,7 +317,7 @@ export class PondTile extends Tile implements ITile {
         Upgrade.createAutomator({
             name: 'Fish Seller',
             description: 'Automatically sell fish. Selfish. Shellfish?',
-            baseCost: 5000,
+            baseCost: 4500,
             costMultiplier: 1.5,
             speed: 1 / 4,
             group: GROUPS.pond,
@@ -336,8 +336,8 @@ export class PondTile extends Tile implements ITile {
         Upgrade.createAutomator({
             name: 'Auto Fisher',
             description: 'Automatically fish for you',
-            baseCost: 6000,
-            costMultiplier: 2,
+            baseCost: 5000,
+            costMultiplier: 1.25,
             speed: 1 / FISHING_WIGGLE_TIME,
             group: GROUPS.pond,
             isVisible: PondTile.hasTile

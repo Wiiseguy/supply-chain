@@ -25,6 +25,7 @@ globalThis.haltAnimation = false
 const DEBUG = false
 const FPS = 30
 const FRAME_TIME = 1 / FPS
+const MIN_CATCHUP_STEPS = 2
 const MAX_CATCHUP_STEPS = (60 * 5) / FRAME_TIME // 5 minutes = 9000 steps
 const SAVE_INTERVAL = 30 // Save every 60 seconds
 
@@ -272,17 +273,18 @@ export default {
             if (steps > MAX_CATCHUP_STEPS) {
                 console.warn('Massive steps detected. Steps:', steps, 'Reducing to:', MAX_CATCHUP_STEPS)
                 steps = MAX_CATCHUP_STEPS
+            } else if (steps <= MIN_CATCHUP_STEPS) {
+                steps = 1 // Don't bother with small steps as it will only cause jitter
             }
             let land = this.land;
             let automators = this.automators;
             let isAutomation = this.settings.automation;
             let calculators = this.calculators;
+            let simulatedElapsed = FRAME_TIME
             for (let i = 0; i < steps; i++) {
-                let simulatedElapsed = Math.min(FRAME_TIME, elapsed - i * FRAME_TIME)
 
                 // Update tiles                
-                for (let i = 0; i < land.length; i++) {
-                    const tile = land[i]
+                for (const tile of land) {
                     tile.stageP = 0
                     tile.update(simulatedElapsed)
                     tile.stageP = Math.min(1, tile.stageP)
@@ -290,14 +292,14 @@ export default {
 
                 // Run automators
                 if (isAutomation) {
-                    for (let i = 0; i < automators.length; i++) {
-                        automators[i].run(this as any, simulatedElapsed)
+                    for (const a of automators) {
+                        a.run(this as any, simulatedElapsed)
                     }
                 }
 
                 // Run calculators
-                for (let i = 0; i < calculators.length; i++) {
-                    this.calculated[calculators[i].name] = calculators[i].calculate(this as any)
+                for (const c of calculators) {
+                    this.calculated[c.name] = c.calculate(this as any)
                 }
             }
 
@@ -677,7 +679,6 @@ export default {
                     }
                 })
                 this.startTime = saveData.startTime ? saveData.startTime : this.startTime
-                this.onLandChange()
             } catch (e) {
                 // Clear corrupted save data
                 localStorage.removeItem('saveData')
@@ -731,9 +732,7 @@ export default {
         },
         landStyle() {
             return {
-                /** @ts-ignore */
                 width: `${this.landSize[0] * this.tileSize}px`,
-                /** @ts-ignore */
                 height: `${this.landSize[1] * this.tileSize}px`
             }
         },
@@ -759,23 +758,18 @@ export default {
             })
         },
         totalResourceEarnings() {
-            /** @ts-ignore */
             return this.resourcesView.reduce((acc, resource) => acc + resource.earnings, 0)
         },
         totalResourcesOwned() {
-            /** @ts-ignore */
             return this.resourcesView.reduce((acc, resource) => acc + resource.totalOwned, 0)
         },
         totalResourcesSold() {
-            /** @ts-ignore */
             return this.resourcesView.reduce((acc, resource) => acc + resource.sold, 0)
         },
         totalResourcesIncurred() {
-            /** @ts-ignore */
             return this.resourcesView.reduce((acc, resource) => acc + resource.incurred, 0)
         },
         totalProfit() {
-            /** @ts-ignore */
             return this.totalResourceEarnings - this.stats.moneySpent
         },
 
@@ -789,8 +783,8 @@ export default {
         },
 
         resourcesView() {
-            let result = [this.resources.energy, this.resources.wood, this.resources.seed]
-            // For anything else, add it if it has more than 0 owned
+            const result = [] as Resource[]
+
             Object.values(this.resources).forEach(resource => {
                 if (!result.includes(resource) && resource.totalOwned > 0) {
                     result.push(resource)
@@ -799,8 +793,9 @@ export default {
             return result
         },
         resourcesViewSortedByEarnings() {
-            /** @ts-ignore */
-            return [...this.resourcesView].sort((a, b) => b.earnings - a.earnings)
+            return [...this.resourcesView]
+                .filter(resource => resource.canTrade)
+                .sort((a, b) => b.earnings - a.earnings)
         },
         automatorsView() {
             // Filter out automators that are not yet bought
@@ -856,7 +851,6 @@ export default {
         },
         upgradesByCategoryView() {
             const upgradesByCategory = {} as Record<string, UpgradeView[]>
-            /** @ts-ignore */
             this.upgradesView.forEach(upgrade => {
                 if (!upgradesByCategory[upgrade.category]) {
                     upgradesByCategory[upgrade.category] = []
@@ -968,7 +962,7 @@ export default {
             <table>
                 <tr v-for="r in resourcesView">
                     <td class="text-center">{{ r.icon }}</td>
-                    <td @click="DEBUG && r.gain(r.storageSize)">
+                    <td @click="e => DEBUG && (e.shiftKey ? r.flush() : r.gain(e.ctrlKey ? 1 : r.storageSize))">
                         <span :class="{ 'text-warning': r.owned == r.storageSize }">
                             <span>{{ r.displayNamePlural }}: {{ num(r.owned) }} / {{ num(r.storageSize) }}</span>
                             <span v-if="r.canOverflow && r.lost > 0" class="ml-3 text-danger"
@@ -1009,7 +1003,7 @@ export default {
             <!-- Automators -->
             <div class="mt-4">
                 <!-- All automation toggle -->
-                <div v-if="automatorsView.length > 1">
+                <div v-if="automatorsView.length > 1" :class="{ 'text-muted': !settings.automation }">
                     <button @click="toggleAutomation" type="button" class="btn-sm btn-toggle-automator"
                         title="Click to toggle Automation">
                         {{ settings.automation ? 'ON' : 'OFF' }}
@@ -1026,9 +1020,14 @@ export default {
                                     :style="{ width: (a.speed < 5 ? (a.saturation * 100) : 100) + '%' }"></span>
                             </button>
                         </td>
-                        <td :class="{ 'text-muted': !a.enabled }" :title="a.description">
-                            <i v-if="a.noPower" class="fa-solid fa-battery-empty text-danger blink"></i>
-                            {{ a.icon }} {{ a.displayName }}
+                        <td :class="{ 'text-muted': !a.enabled || !settings.automation }">
+                            <i v-if="a.noPower" class="fa-solid fa-battery-empty" :class="{
+                                'blink': a.enabled && settings.automation,
+                                'text-danger': a.enabled && settings.automation
+                            }" title="No power"></i>
+                            <span :title="a.description">
+                                {{ a.icon }} {{ a.displayName }}
+                            </span>
                         </td>
                         <td class="px-3 text-right font-weight-bold" title="Owned">{{ num(boughtUpgrades[a.upgradeName])
                             }}</td>
@@ -1192,7 +1191,11 @@ export default {
         <div v-if="modalObj">
             <h5>Windmill</h5>
             <p v-if="modalObj.tile.product">This Windmill is set to produce <strong>{{
-                modalObj.tile?.product?.name }}</strong></p>
+                modalObj.tile?.product?.name }}</strong>.</p>
+            <p>
+                <small>Neighbor bonus: {{ num(modalObj.tile.neighborBonus * 100) }}%{{ modalObj.tile.neighborBonus ===
+                    modalObj.MAX_NEIGHBOR_BONUS ? ' (max)' : '' }}.</small>
+            </p>
             <div>
                 <button class="btn-full btn-sm" @click="modalObj.tile.working = !modalObj.tile.working"
                     :class="{ 'btn-success': !modalObj.tile.working }">{{ modalObj.tile.working ? 'Stop' :

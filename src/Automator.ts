@@ -30,7 +30,7 @@ export class Automator {
                 return false // Not enough energy
             }
 
-            this.powerUsage = upgrade.energyCost ?? 0
+            this.powerUsage = (upgrade.energyCost ?? 0) * num
 
             const speed = (upgrade.speed ?? 1) * num
             this.saturation += speed * elapsed

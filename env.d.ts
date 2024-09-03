@@ -1,6 +1,7 @@
 /// <reference types="vite/client" />
 
 declare interface IApp {
+    DEBUG: boolean
     UPGRADES_INDEX: Record<string, IUpgrade>
     UPGRADES: IUpgrade[]
 
@@ -47,6 +48,8 @@ declare interface IUpgrade {
 
 declare interface ITile {
     tileType: string
+
+    [key: string]: any
 
     click(manual?: boolean): void
     sell(): void

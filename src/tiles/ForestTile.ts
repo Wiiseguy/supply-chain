@@ -27,47 +27,93 @@ const TREE_TYPES = {
 }
 
 const TREE_TYPE_GAINS: Record<string, [number, number]> = {
-    apple: [10, 30],
-    lemon: [5, 20],
-    pear: [10, 30],
-    orange: [5, 20],
-    cherry: [20, 50],
-    strawberry: [10, 20],
-    mango: [5, 10],
-    banana: [10, 30],
-    pineapple: [3, 8]
+    apple: [2, 12],
+    lemon: [2, 5],
+    pear: [2, 5],
+    orange: [2, 5],
+    cherry: [7, 14],
+    strawberry: [3, 8],
+    mango: [2, 7],
+    banana: [4, 10],
+    pineapple: [2, 6]
 }
 
-const TREE_EVOLUTIONS = [
+interface TreeEvolution {
+    newType: string
+    /**
+     * The tiles that need to be surrounded with to trigger the evolution [tileType, amount, optional key?, optional value?]
+     */
+    surroundedWith: [string, number, string?, string?][]
+    chance: number
+    currentTypes: string[]
+}
+
+const TREE_EVOLUTIONS: TreeEvolution[] = [
     {
-        surroundedWith: TILE_TYPES.forest,
+        newType: TREE_TYPES.apple,
+        surroundedWith: [[TILE_TYPES.forest, 4]],
         chance: 0.1,
-        newType: TREE_TYPES.apple
+        currentTypes: [TREE_TYPES.normal] // Only evolve normal trees
     },
     {
-        surroundedWith: TILE_TYPES.pond,
+        newType: TREE_TYPES.lemon,
+        surroundedWith: [[TILE_TYPES.pond, 4]],
         chance: 0.1,
-        newType: TREE_TYPES.lemon
+        currentTypes: [TREE_TYPES.normal]
     },
     {
-        surroundedWith: TILE_TYPES.forest,
-        chance: 0.1,
-        newType: TREE_TYPES.pear
-    },
-    {
-        surroundedWith: TILE_TYPES.pond,
-        chance: 0.1,
-        newType: TREE_TYPES.orange
-    },
-    {
-        surroundedWith: TILE_TYPES.mine,
+        newType: TREE_TYPES.pear,
+        surroundedWith: [[TILE_TYPES.forest, 4, 'treeType', TREE_TYPES.apple]],
         chance: 0.5,
-        newType: TREE_TYPES.cherry
+        currentTypes: [TREE_TYPES.apple, TREE_TYPES.normal]
     },
     {
-        surroundedWith: TILE_TYPES.windmill,
+        newType: TREE_TYPES.orange,
+        surroundedWith: [
+            [TILE_TYPES.forest, 2, 'treeType', TREE_TYPES.lemon],
+            [TILE_TYPES.forest, 2, 'treeType', TREE_TYPES.apple]
+        ],
         chance: 0.5,
-        newType: TREE_TYPES.mango
+        currentTypes: [TREE_TYPES.lemon, TREE_TYPES.apple]
+    },
+    {
+        newType: TREE_TYPES.cherry,
+        surroundedWith: [[TILE_TYPES.mine, 4]],
+        chance: 0.5,
+        currentTypes: [TREE_TYPES.normal]
+    },
+    {
+        newType: TREE_TYPES.mango,
+        surroundedWith: [[TILE_TYPES.windmill, 4]],
+        chance: 0.5,
+        currentTypes: [TREE_TYPES.normal]
+    },
+    {
+        newType: TREE_TYPES.pineapple,
+        surroundedWith: [
+            [TILE_TYPES.forest, 2, 'treeType', TREE_TYPES.mango],
+            [TILE_TYPES.forest, 2, 'treeType', TREE_TYPES.lemon]
+        ],
+        chance: 1,
+        currentTypes: [TREE_TYPES.mango]
+    },
+    {
+        newType: TREE_TYPES.banana,
+        surroundedWith: [
+            [TILE_TYPES.forest, 2, 'treeType', TREE_TYPES.cherry],
+            [TILE_TYPES.forest, 2, 'treeType', TREE_TYPES.lemon]
+        ],
+        chance: 0.5,
+        currentTypes: [TREE_TYPES.cherry, TREE_TYPES.apple, TREE_TYPES.lemon, TREE_TYPES.normal]
+    },
+    {
+        newType: TREE_TYPES.strawberry,
+        surroundedWith: [
+            [TILE_TYPES.forest, 2, 'treeType', TREE_TYPES.cherry],
+            [TILE_TYPES.forest, 2, 'treeType', TREE_TYPES.apple]
+        ],
+        chance: 0.5,
+        currentTypes: [TREE_TYPES.cherry, TREE_TYPES.apple, TREE_TYPES.normal]
     }
 ]
 
@@ -180,16 +226,24 @@ export class ForestTile extends Tile implements ITile {
     tryEvolve() {
         let msg = ''
 
+        const adjacentTiles = this.adjacentTiles
         for (let evolution of TREE_EVOLUTIONS) {
-            if (
-                this.treeType === TREE_TYPES.normal &&
-                this.adjacentTiles.length === 4 &&
-                this.adjacentTiles.every(tile => tile.tileType === evolution.surroundedWith)
-            ) {
-                if (isLucky(evolution.chance)) {
-                    this.treeType = evolution.newType
-                    msg += `Tree has evolved into ${aOrAn(evolution.newType)} ${evolution.newType} tree! `
+            if (!evolution.currentTypes.includes(this.treeType)) continue
+            const valid = evolution.surroundedWith.every(([tileType, amount, key, value]) => {
+                let tiles = adjacentTiles.filter(tile => tile.tileType === tileType)
+                if (key) {
+                    tiles = tiles.filter(tile => tile[key] === value)
                 }
+                return tiles.length >= amount
+            })
+            const chance = this.app.DEBUG ? 1 : evolution.chance
+            if (valid && isLucky(chance)) {
+                this.treeType = evolution.newType
+                msg += `Tree has evolved into ${aOrAn(evolution.newType)} ${evolution.newType} tree! `
+                if (this.app.DEBUG) {
+                    console.log('Evolved tree:', this.treeType, 'via path:', evolution)
+                }
+                break // Only evolve once
             }
         }
 
@@ -344,13 +398,6 @@ export class ForestTile extends Tile implements ITile {
     }
 
     static readonly resources = [
-        new Resource(RESOURCE_TYPES.wood, {
-            displayNameSingular: 'Wood',
-            displayNamePlural: 'Wood',
-            icon: '🪓',
-            basePrice: 5,
-            storageBaseSize: 100
-        }),
         new Resource(RESOURCE_TYPES.seed, {
             displayNameSingular: 'Seed',
             displayNamePlural: 'Seeds',
@@ -359,6 +406,13 @@ export class ForestTile extends Tile implements ITile {
             storageBaseSize: 10,
             initialOwned: INITIAL_SEEDS,
             minimum: 1
+        }),
+        new Resource(RESOURCE_TYPES.wood, {
+            displayNameSingular: 'Wood',
+            displayNamePlural: 'Wood',
+            icon: '🪓',
+            basePrice: 5,
+            storageBaseSize: 100
         }),
         new Resource(RESOURCE_TYPES.apple, {
             displayNameSingular: 'Apple',

@@ -85,6 +85,9 @@ export class Resource {
             this.owned = this.storageSize
         }
     }
+    flush() {
+        this.owned = 0
+    }
     incur(n: number) {
         if (this.owned < n) {
             return false
