@@ -926,12 +926,12 @@ export default {
                         <button @click="setClickMode('click')" :class="{ 'active': clickMode === 'click' }"
                             title="Click (default)" class="btn btn-sm btn-tool"><i
                                 class="fa-solid fa-arrow-pointer"></i></button>
-                        <button @click="setClickMode('sell')" :class="{ 'active': clickMode === 'sell' }"
-                            title="Make a tile empty" class="btn btn-sm btn-tool"><i
-                                class="fa-solid fa-trash-can"></i></button>
                         <button @click="setClickMode('move')" :class="{ 'active': clickMode === 'move' }"
                             title="Move tile" class="btn btn-sm btn-tool"><i
                                 class="fa-solid fa-up-down-left-right"></i></button>
+                        <button @click="setClickMode('sell')" :class="{ 'active': clickMode === 'sell' }"
+                            title="Make a tile empty" class="btn btn-sm btn-tool"><i
+                                class="fa-solid fa-trash-can"></i></button>
                     </div>
                 </div>
             </div>
@@ -1196,17 +1196,57 @@ export default {
                 <small>Neighbor bonus: {{ num(modalObj.tile.neighborBonus * 100) }}%{{ modalObj.tile.neighborBonus ===
                     modalObj.MAX_NEIGHBOR_BONUS ? ' (max)' : '' }}.</small>
             </p>
-            <div>
+            <div class="mb-3">
                 <button class="btn-full btn-sm" @click="modalObj.tile.working = !modalObj.tile.working"
                     :class="{ 'btn-success': !modalObj.tile.working }">{{ modalObj.tile.working ? 'Stop' :
                         'Start' }} production</button>
             </div>
+            <table class="table">
+                <tr>
+                    <td class="align-middle">Slot:</td>
+                    <td>
+                        <select @change="modalObj.tile.changeSlot(0, ($event.target as HTMLSelectElement).value)"
+                            class="w-100" :value="modalObj.tile.slots[0]" :disabled="modalObj.tile.changingProduct">
+                            <option :value="''">Empty (produce energy)</option>
+                            <option v-for="p in modalObj.RESOURCES" :value="p.name">{{ p.displayNameSingular }}</option>
+                        </select>
+                    </td>
+                </tr>
+
+            </table>
             <!-- <pre>{{ modalObj }}</pre> -->
-            <div v-for="p in modalObj.PRODUCTS">
-                <button class="btn-full btn-sm" :class="{ 'btn-primary': modalObj.tile.productId === p.id }"
-                    @click="modalObj.tile.setProduct(p.id)">
-                    {{ p.name }}<br>
-                    <small>{{ p.description }} <strong>({{ p.gain }} p/s)</strong></small></button>
+            <div v-if="modalObj.tile.changingProduct" class="mt-3 position-relative">
+                <div class="progress-big">
+                    <div class="progress"
+                        :style="{ width: Math.round(modalObj.tile.slotChangeSaturation / modalObj.SLOT_CHANGE_TIME * 100) + '%' }">
+                    </div>
+                </div>
+                <div v-if="modalObj.tile.requestedProductId === 1">Clearing out all resources from the grindstone...
+                </div>
+                <div v-else>Changing resources in the grindstone...</div>
+            </div>
+            <div v-else>
+                <div v-if="modalObj.tile.productId > 0" class="alert btn-primary text-center">
+
+                    <div>{{ modalObj.tile.product.name }}</div>
+                    <small>{{ modalObj.tile.product.description }}<br>
+                        Yields <strong>{{ resources[modalObj.tile.product.resource].icon }} {{
+                            modalObj.tile.product.gain
+                            || 0 }} </strong>
+                        <span v-if="modalObj.tile.product.inputPerGain > 0"> from <strong>{{
+                            resources[modalObj.tile.product.input].icon }} {{
+                                    modalObj.tile.product.inputPerGain }}</strong> </span> per second.
+                    </small>
+                </div>
+                <div v-else class="text-center">
+                    <h3 class="text-danger">No good!</h3>
+                    This is producing ground {{ resources[modalObj.tile.slots[0]].displayNamePlural.toLocaleLowerCase()
+                    }} that nobody
+                    wants. <br>Plus you're not producing any energy!
+                </div>
+            </div>
+            <div v-if="modalObj.tile.productionErrors > 10" class="text-danger">
+                Not enough resources to produce the desired product.
             </div>
             <div class="text-right mt-4">
                 <button class="btn-sm" @click="closeModal(MODALS.windmill)">Close</button>

@@ -15,7 +15,8 @@
 
         <!-- Windmill Blades/Spokes -->
         <g transform="scale(0.8) translate(20 10) ">
-            <g id="blades" :class="{ rotate: tile?.working }" transform="rotate(80)">
+            <g id="blades" :class="{ rotate: tile?.working && !tile?.changingProduct && tile?.productionErrors === 0 }"
+                transform="rotate(80)">
                 <!-- Blade 1 -->
                 <polygon points="75,60 55,0 95,0" fill="#B0C4DE" />
                 <polygon points="75,60 55,0 95,0" fill="#B0C4DE" transform="rotate(90 75 65)" />

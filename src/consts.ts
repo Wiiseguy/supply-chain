@@ -58,6 +58,7 @@ export const RESOURCE_TYPES: Record<string, string> = {
     energy: 'energy',
 
     wood: 'wood',
+    sawdust: 'sawdust',
     seed: 'seed',
     apple: 'apple',
     lemon: 'lemon',

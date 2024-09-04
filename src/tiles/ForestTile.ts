@@ -2,9 +2,9 @@ import { Automator } from '../Automator'
 import { Calculator } from '../Calculator'
 import { CATEGORIES, GROUPS, RESOURCE_TYPES, TILE_TYPES } from '../consts'
 import { Resource } from '../Resource'
-import Tile from './Tile'
 import { Upgrade } from '../Upgrade'
 import { aOrAn, isLucky, randomInt } from '../utils'
+import Tile from './Tile'
 
 const FOREST_TILE_TYPES = {
     empty: 'empty',
@@ -414,6 +414,13 @@ export class ForestTile extends Tile implements ITile {
             basePrice: 5,
             storageBaseSize: 100
         }),
+        new Resource(RESOURCE_TYPES.sawdust, {
+            displayNameSingular: 'Sawdust',
+            displayNamePlural: 'Sawdust',
+            icon: '🟫',
+            basePrice: 1,
+            storageBaseSize: 1000
+        }),
         new Resource(RESOURCE_TYPES.apple, {
             displayNameSingular: 'Apple',
             displayNamePlural: 'Apples',
@@ -504,8 +511,9 @@ export class ForestTile extends Tile implements ITile {
             const fullyGrownTrees = app.land.filter(
                 tile => tile instanceof ForestTile && tile.isFullyGrownTree
             ) as ForestTile[]
-            const maxChopped = Math.max(...fullyGrownTrees.map(tile => tile.progress))
-            const tile = fullyGrownTrees.find(tile => tile.progress === maxChopped)
+            const score = (tile: ForestTile) => tile.age * ((1 + tile.progress) * 100)
+            const sorted = fullyGrownTrees.sort((a, b) => score(b) - score(a))
+            const tile = sorted[0]
             if (tile) {
                 tile.chop()
             }

@@ -7,6 +7,7 @@ declare interface IApp {
 
     stats: IStats
     resources: Record<string, IResource>
+    resourcesView: IResource[]
     calculated: Record<string, number>
     boughtUpgrades: Record<string, number>
 

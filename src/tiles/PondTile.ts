@@ -171,10 +171,10 @@ export class PondTile extends Tile implements ITile {
                 return
             }
             this.app.resources[resource].gain(1)
-            this.showMessage(`Lucky! Found a... ${this.pondFind.icon} ${this.pondFind.name}!`, manual)
+            this.showMessage(`Lucky! Found a ${this.pondFind.icon} ${this.pondFind.name.toLocaleLowerCase()}!`, manual)
         } else {
             this.app.resources.fish.gain(this.pondFind.gain)
-            let message = `Caught a... ${this.pondFind.icon} ${this.pondFind.name}`
+            let message = `Caught a ${this.pondFind.icon} ${this.pondFind.name.toLocaleLowerCase()}`
             if (this.pondFind.gain > 1) {
                 message += `, worth ${this.pondFind.gain} fish`
             }
@@ -182,8 +182,7 @@ export class PondTile extends Tile implements ITile {
             this.showMessage(message, manual)
 
             // Add to fish tank!
-            // @ts-ignore
-            let fishTankRow = this.app.stats.fishTank.find(row => row[0] === this.pondFind.icon)
+            let fishTankRow = this.app.stats.fishTank.find(row => row[0] === this.pondFind?.icon)
             if (!fishTankRow) {
                 fishTankRow = [this.pondFind.icon, 0]
                 this.app.stats.fishTank.push(fishTankRow)

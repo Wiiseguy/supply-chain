@@ -33,6 +33,15 @@ body {
     user-select: none;
 }
 
+select {
+    background-color: var(--button-bg);
+    color: var(--text);
+    border: none;
+    padding: 0.5em;
+    margin: 0.3em;
+    cursor: pointer;
+}
+
 .selectable {
     user-select: text;
 }
@@ -201,6 +210,18 @@ button:disabled {
     .icon {
         transition: filter 1s;
         display: inline-block;
+    }
+}
+
+.progress-big {
+    height: 20px;
+    border-radius: 5px;
+    background-color: var(--button-bg);
+    position: relative;
+    overflow: hidden;
+
+    .progress {
+        height: 100%;
     }
 }
 .progress {
