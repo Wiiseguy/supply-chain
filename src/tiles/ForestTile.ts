@@ -582,7 +582,8 @@ export class ForestTile extends Tile implements ITile {
             baseCost: 100,
             costMultiplier: 1.5,
             category: CATEGORIES.tools,
-            group: GROUPS.forest
+            group: GROUPS.forest,
+            icon: '🪓'
         }),
         new Upgrade({
             name: 'Fertilizer',
@@ -591,7 +592,8 @@ export class ForestTile extends Tile implements ITile {
             baseCost: 100,
             costMultiplier: 2,
             category: CATEGORIES.tools,
-            group: GROUPS.forest
+            group: GROUPS.forest,
+            icon: '🌱'
         }),
         new Upgrade({
             name: 'Wood Storage',
@@ -616,7 +618,8 @@ export class ForestTile extends Tile implements ITile {
             group: GROUPS.forest,
             onBuy(app: IApp) {
                 app.resources.seed.storage += 1
-            }
+            },
+            icon: '🧴'
         }),
         // Automation
         Upgrade.createAutomator({
@@ -625,7 +628,8 @@ export class ForestTile extends Tile implements ITile {
             baseCost: 800,
             costMultiplier: 1.5,
             speed: 2 / 3,
-            group: GROUPS.forest
+            group: GROUPS.forest,
+            icon: '🪓🤖'
         }),
         Upgrade.createAutomator({
             name: 'Auto Seeder',
@@ -633,7 +637,8 @@ export class ForestTile extends Tile implements ITile {
             baseCost: 1000,
             costMultiplier: 1.2,
             speed: 1 / 3,
-            group: GROUPS.forest
+            group: GROUPS.forest,
+            icon: '🌱🤖'
         }),
         Upgrade.createAutomator({
             name: 'Auto Digger',
@@ -641,7 +646,8 @@ export class ForestTile extends Tile implements ITile {
             baseCost: 1250,
             costMultiplier: 1.2,
             speed: 0.75,
-            group: GROUPS.forest
+            group: GROUPS.forest,
+            icon: '🕳️🤖'
         }),
         Upgrade.createAutomator({
             name: 'Wood Seller',

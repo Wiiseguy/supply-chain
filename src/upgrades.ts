@@ -29,7 +29,8 @@ export const UPGRADES: Upgrade[] = [
         max: 1,
         category: CATEGORIES.special,
         group: GROUPS.energy,
-        onBuy: app => app.resources.energy.gain(10000)
+        onBuy: app => app.resources.energy.gain(10000),
+        icon: '🔋'
     }),
     new Upgrade({
         name: 'Ledger',
@@ -46,7 +47,8 @@ export const UPGRADES: Upgrade[] = [
         baseCost: 5000,
         category: CATEGORIES.special,
         max: 1,
-        group: GROUPS.ui
+        group: GROUPS.ui,
+        icon: '🚜'
     }),
     // Final win game upgrade
     new Upgrade({
@@ -55,6 +57,7 @@ export const UPGRADES: Upgrade[] = [
         baseCost: 1_000_000,
         category: CATEGORIES.special,
         group: GROUPS.ui,
-        max: 1
+        max: 1,
+        icon: '🏆'
     })
 ]

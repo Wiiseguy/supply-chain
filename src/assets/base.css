@@ -50,6 +50,7 @@ select {
     position: absolute;
     top: 1em;
     right: 1em;
+    z-index: 10;
 }
 
 pre {
@@ -124,6 +125,41 @@ button:disabled {
     th {
         border-top: none;
     }
+}
+td.min {
+    width: 1em;
+    text-align: center;
+}
+
+.nav-tabs {
+    border-bottom-color: var(--button-bg);
+
+    .nav-link {
+        background-color: var(--button-bg);
+        color: var(--text);
+        border: none;
+        border-radius: 0.5em 0.5em 0 0;
+        margin-right: 0.2em;
+
+        &.active {
+            background-color: var(--land-bg);
+            color: black;
+        }
+
+        &:hover {
+            /* brighten --button-bg a bit */
+            filter: brightness(1.1) saturate(1.21);
+        }
+    }
+}
+
+#tab-menu {
+    margin-top: -2em;
+    margin-bottom: 1em;
+}
+
+.tab-container {
+    padding: 2px;
 }
 
 .num {

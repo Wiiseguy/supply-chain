@@ -12,7 +12,7 @@ import { PondTile } from './tiles/PondTile'
 import { Resource } from './Resource'
 import { GROUP_ICONS, CATEGORY_TITLES, CATEGORIES, CATEGORIES_ORDER, MODALS, RESOURCE_TYPES } from './consts'
 import { UPGRADES } from './upgrades'
-import { bigNum, decode, encode, humanTime, makeIndex } from './utils'
+import { bigNum, decode, encode, humanTime, makeIndex, setBoolPropTimeout } from './utils'
 import { Upgrade } from './Upgrade'
 import { Calculator } from './Calculator'
 import { Automator } from './Automator'
@@ -75,8 +75,31 @@ export default {
             movingTileIdx: -1,
             message: '',
             messageFade: 0,
-            showEarnings: false,
             modalObj: null as any,
+
+            currentTab: 'upgrades',
+            tabs: [
+                {
+                    title: 'Upgrades',
+                    id: 'upgrades',
+                    isVisible: () => true
+                },
+                {
+                    title: 'Statistics',
+                    id: 'stats',
+                    isVisible: () => true
+                },
+                {
+                    title: 'Ledger',
+                    id: 'ledger',
+                    isVisible: () => this.hasUpgrade('Ledger')
+                },
+                {
+                    title: 'Settings',
+                    id: 'settings',
+                    isVisible: () => true
+                }
+            ],
 
             // Vars
             money: INITIAL_MONEY,
@@ -109,7 +132,9 @@ export default {
                 automation: true,
                 dark: true,
                 tileSizeMultiplier: 1
-            }
+            },
+
+            doWiggleClass: true
         }
     },
     created() {
@@ -691,6 +716,11 @@ export default {
                 let saveData = {
                     stats: {
                         restarts: this.stats.restarts + 1
+                    },
+                    settings: {
+                        ...this.settings,
+                        // Except automation, this should be reset
+                        automation: true
                     }
                 }
                 localStorage.setItem('saveData', encode(JSON.stringify(saveData)))
@@ -698,12 +728,16 @@ export default {
             }
         },
 
-        setDebug() {
+        setDebug(e: MouseEvent) {
+            if (!e.ctrlKey) return
             this.DEBUG = !this.DEBUG
             // Give 1 of each resource
             Object.values(this.resources).forEach(resource => {
                 resource.gain(1)
             })
+        },
+        doWiggle() {
+            setBoolPropTimeout(this, 'doWiggleClass', 'doWiggleClassTimeout', 1000)
         }
     },
     computed: {
@@ -772,7 +806,9 @@ export default {
         totalProfit() {
             return this.totalResourceEarnings - this.stats.moneySpent
         },
-
+        visibleTabs() {
+            return this.tabs.filter(tab => tab.isVisible())
+        },
         perS() {
             // Return obj with name, current, delta
             const result = {} as Record<string, number>
@@ -882,7 +918,10 @@ export default {
 </script>
 
 <template>
-    <h5 @dblclick="setDebug"><i class="fa-solid fa-seedling"></i> Supply Chain Prototype</h5>
+    <h5 :class="{ wiggle: doWiggleClass }" @dblclick="setDebug">
+        <i class="wiggle-target fa-solid fa-seedling text-success" @click="doWiggle"></i>
+        Supply Chain Prototype
+    </h5>
 
     <div class="theme-toggle hover-opacity">
         <a @click="toggleDarkMode" class="btn-link" title="Switch between light / dark mode">
@@ -937,7 +976,7 @@ export default {
             </div>
 
             <div v-if="stats.won" class="text-center mb-5">
-                <h1>You Win!</h1>
+                <h1>🏆 You Win!</h1>
                 <p>Time taken: {{ timeTaken }}</p>
                 <p>Total tile clicks: {{ num(stats.winLandClicks) }}</p>
                 <p>
@@ -1043,129 +1082,158 @@ export default {
                 </table>
             </div>
 
-            <div class="mt-5 selectable">
-                <h5>Statistics</h5>
-                <div class="mb-3">
-                    Time played: {{ timeSinceStart }}
-                </div>
-                <div v-if="stats.restarts > 0">
-                    Restarts: {{ num(stats.restarts) }}
-                </div>
-                <div>
-                    Trees chopped: {{ num(stats.treesChopped) }}
-                </div>
-                <div v-if="stats.saplingsKilled > 0" title="You felt the need to kill saplings.">
-                    Saplings killed: {{ num(stats.saplingsKilled) }}
-                </div>
-                <div v-if="stats.luckySeeds > 0" :title="`Lucky seed chance is ${100 * calculated.luckySeedChance}%`">
-                    Lucky seeds: {{ num(stats.luckySeeds) }}
-                </div>
-                <div v-if="stats.luckyTrees > 0">
-                    Lucky trees: {{ num(stats.luckyTrees) }}
-                </div>
-                <div v-if="stats.minesOwned > 0" class="mt-3">
-                    Mines opened: {{ num(stats.minesOwned) }}
-                </div>
-                <div v-if="stats.resourcesMined > 0">
-                    Resources mined: {{ num(stats.resourcesMined) }}
-                </div>
-                <div v-if="stats.tunnelsDug > 0">
-                    Tunnels dug: {{ num(stats.tunnelsDug) }}
-                </div>
-                <div v-if="stats.fishCaught > 0" class="mt-3">
-                    <span :title="`Rare fish chance sequence is ${100 * calculated.rareFishLuck}%`">Fish caught: {{
-                        num(stats.fishCaught) }}</span>
-                    <div v-if="stats.fishTank.length > 0">
-                        <span v-for="i in stats.fishTank" class="mr-3">{{ i[0] }} {{ i[1] }}</span>
-                    </div>
-                </div>
-                <div v-if="stats.fishMissed > 0">
-                    Fish missed: {{ num(stats.fishMissed) }}
-                </div>
-                <div v-if="stats.fishRarities > 0">
-                    Rare pond finds: {{ num(stats.fishRarities) }}
-                </div>
-
-                <div v-if="stats.resourcesBaked > 0" class="mt-3">
-                    Resources baked: {{ num(stats.resourcesBaked) }}
-                </div>
-
-            </div>
-            <!-- Earnings report -->
-            <div class="mt-5">
-                <a v-if="hasUpgrade('Ledger')" @click="showEarnings = !showEarnings" class="btn btn-sm btn-secondary">
-                    {{ showEarnings ? 'Close' : 'Open' }} ledger</a>
-                <table class="table table-sm table-striped" v-if="showEarnings">
-                    <tr>
-                        <th>Resource</th>
-                        <th class="text-right">Owned</th>
-                        <th class="text-right">Sold</th>
-                        <th class="text-right">Used</th>
-                        <th class="text-right">Price</th>
-                        <th class="text-right">Earnings</th>
-                    </tr>
-                    <tr v-for="r in resourcesViewSortedByEarnings">
-                        <td>{{ r.displayNamePlural }}</td>
-                        <td class="text-right num">{{ numf(r.totalOwned) }}</td>
-                        <td class="text-right num">{{ numf(r.sold) }}</td>
-                        <td class="text-right num">{{ numf(r.incurred) }}</td>
-                        <td class="text-right num">{{ numf(r.price) }}</td>
-                        <td class="text-right num">{{ numf(r.earnings) }}</td>
-                    </tr>
-                    <tr>
-                        <td><strong>Total earnings</strong></td>
-                        <td class="text-right num"><strong>{{ numf(totalResourcesOwned) }}</strong></td>
-                        <td class="text-right num"><strong>{{ numf(totalResourcesSold) }}</strong></td>
-                        <td class="text-right num"><strong>{{ numf(totalResourcesIncurred) }}</strong></td>
-                        <td class="text-right num"><strong> </strong></td>
-                        <td class="text-right num"><strong>{{ numf(totalResourceEarnings) }}</strong></td>
-                    </tr>
-                    <tr>
-                        <td colspan="5"><strong>Money spent</strong></td>
-                        <td class="text-right num"><strong>{{ numf(stats.moneySpent) }}</strong></td>
-                    </tr>
-                    <tr>
-                        <td colspan="5"><strong>Total profit</strong></td>
-                        <td class="text-right num" :class="{
-                            'text-success': totalProfit > 0,
-                            'text-danger': totalProfit < 0
-                        }"><strong>$ {{ num(totalProfit) }}</strong></td>
-                    </tr>
-                </table>
-            </div>
-            <div class="mt-3">
-                <a @click="toggleTileSize" class="btn btn-sm btn-secondary">Toggle tile size
-                    ({{ settings.tileSizeMultiplier
-                        === 1 ? 'Normal' : 'Big' }})</a>
-            </div>
-            <div class="hover-opacity" style="margin-top:200px">
-                <button @click="resetGame" class="btn btn-sm btn-danger">Reset game</button>
-            </div>
         </div>
+
+        <!-- Right side of the screen -->
         <div class="col-6">
-            <transition-group name="fade">
-                <div v-for="category in upgradesByCategoryView" class="mb-4" :key="category.groupTitle">
-                    <h5>{{ category.groupTitle }}</h5>
+            <!-- Tab selector -->
+            <ul class="nav nav-tabs" id="tab-menu">
+                <li class="nav-item" v-for="t in visibleTabs">
+                    <a class="nav-link" :class="{ 'active': t.id === currentTab }" @click="currentTab = t.id">{{ t.title
+                        }}</a>
+                </li>
+            </ul>
+            <!-- Upgrades tab -->
+            <div class="tab-container">
+                <div v-if="currentTab === 'upgrades'">
                     <transition-group name="fade">
-                        <button v-for="item in category.items" class="btn-upgrade" :key="item.name"
-                            @click="buyUpgrade(item)" :disabled="!item.canBuy"
-                            :title="item.blurred ? '?' : item.description">
-                            <span class="can-blur font-weight-bold" :class="{ blur: item.blurred }">{{
-                                item.displayName ??
-                                item.name
-                                }}</span>
-                            <sup v-if="item.max !== 1 && item.owned > 0"></sup><br>
-                            <small>
-                                $ {{ num(item.cost) }}
-                                <span v-for="r in item.resourcesNeeded" class="ml-1">{{ r.icon }}{{ num(r.amount)
-                                    }}</span>
-                            </small>
-                            <span class="num" v-if="item.owned > 0">{{ num(item.owned) }}</span>
-                            <span class="group-icon">{{ item.blurred ? '❔' : item.groupIcon }}</span>
-                        </button>
+                        <div v-for="category in upgradesByCategoryView" class="mb-4" :key="category.groupTitle">
+                            <h5>{{ category.groupTitle }}</h5>
+                            <transition-group name="fade">
+                                <button v-for="item in category.items" class="btn-upgrade" :key="item.name"
+                                    @click="buyUpgrade(item)" :disabled="!item.canBuy"
+                                    :title="item.blurred ? '?' : item.description">
+                                    <span class="can-blur font-weight-bold" :class="{ blur: item.blurred }">
+                                        {{ item.icon || item.groupIcon }}
+                                        {{
+                                            item.displayName ??
+                                            item.name
+                                        }}</span>
+                                    <sup v-if="item.max !== 1 && item.owned > 0"></sup><br>
+                                    <small>
+                                        $ {{ num(item.cost) }}
+                                        <span v-for="r in item.resourcesNeeded" class="ml-1">{{ r.icon }}{{
+                                            num(r.amount)
+                                        }}</span>
+                                    </small>
+                                    <span class="num" v-if="item.owned > 0">{{ num(item.owned) }}</span>
+                                    <!-- <span class="group-icon">{{ item.blurred ? '❔' : item.groupIcon }}</span> -->
+                                </button>
+                            </transition-group>
+                        </div>
                     </transition-group>
                 </div>
-            </transition-group>
+                <!-- Statistics tab -->
+                <div v-else-if="currentTab === 'stats'">
+                    <div class="selectable">
+                        <div class="mb-3">
+                            Time played: {{ timeSinceStart }}
+                        </div>
+                        <div v-if="stats.restarts > 0">
+                            Restarts: {{ num(stats.restarts) }}
+                        </div>
+                        <div>
+                            Trees chopped: {{ num(stats.treesChopped) }}
+                        </div>
+                        <div v-if="stats.saplingsKilled > 0" title="You felt the need to kill saplings.">
+                            Saplings killed: {{ num(stats.saplingsKilled) }}
+                        </div>
+                        <div v-if="stats.luckySeeds > 0"
+                            :title="`Lucky seed chance is ${100 * calculated.luckySeedChance}%`">
+                            Lucky seeds: {{ num(stats.luckySeeds) }}
+                        </div>
+                        <div v-if="stats.luckyTrees > 0">
+                            Lucky trees: {{ num(stats.luckyTrees) }}
+                        </div>
+                        <div v-if="stats.minesOwned > 0" class="mt-3">
+                            Mines opened: {{ num(stats.minesOwned) }}
+                        </div>
+                        <div v-if="stats.resourcesMined > 0">
+                            Resources mined: {{ num(stats.resourcesMined) }}
+                        </div>
+                        <div v-if="stats.tunnelsDug > 0">
+                            Tunnels dug: {{ num(stats.tunnelsDug) }}
+                        </div>
+                        <div v-if="stats.fishCaught > 0" class="mt-3">
+                            <span :title="`Rare fish chance sequence is ${100 * calculated.rareFishLuck}%`">Fish caught:
+                                {{
+                                    num(stats.fishCaught) }}</span>
+                            <div v-if="stats.fishTank.length > 0">
+                                <span v-for="i in stats.fishTank" class="mr-3">{{ i[0] }} {{ i[1] }}</span>
+                            </div>
+                        </div>
+                        <div v-if="stats.fishMissed > 0">
+                            Fish missed: {{ num(stats.fishMissed) }}
+                        </div>
+                        <div v-if="stats.fishRarities > 0">
+                            Rare pond finds: {{ num(stats.fishRarities) }}
+                        </div>
+
+                        <div v-if="stats.resourcesBaked > 0" class="mt-3">
+                            Resources baked: {{ num(stats.resourcesBaked) }}
+                        </div>
+                    </div>
+                </div>
+                <!-- Ledger tab  -->
+                <div v-else-if="currentTab === 'ledger'">
+                    <table class="table table-sm table-striped">
+                        <tr>
+                            <th colspan="2">Resource</th>
+                            <th class="text-right">Owned</th>
+                            <th class="text-right">Sold</th>
+                            <th class="text-right">Used</th>
+                            <th class="text-right">Price</th>
+                            <th class="text-right">Earnings</th>
+                        </tr>
+                        <tr v-for="r in resourcesViewSortedByEarnings">
+                            <td class="min">{{ r.icon }}</td>
+                            <td>{{ r.displayNamePlural }}</td>
+                            <td class="text-right num">{{ numf(r.totalOwned) }}</td>
+                            <td class="text-right num">{{ numf(r.sold) }}</td>
+                            <td class="text-right num">{{ numf(r.incurred) }}</td>
+                            <td class="text-right num">{{ numf(r.price) }}</td>
+                            <td class="text-right num">{{ numf(r.earnings) }}</td>
+                        </tr>
+                        <tr>
+                            <th colspan="2">Total earnings</th>
+                            <td class="text-right num"><strong>{{ numf(totalResourcesOwned) }}</strong></td>
+                            <td class="text-right num"><strong>{{ numf(totalResourcesSold) }}</strong></td>
+                            <td class="text-right num"><strong>{{ numf(totalResourcesIncurred) }}</strong></td>
+                            <td class="text-right num"><strong> </strong></td>
+                            <td class="text-right num"><strong>{{ numf(totalResourceEarnings) }}</strong></td>
+                        </tr>
+                        <tr>
+                            <th colspan="6">Money spent</th>
+                            <td class="text-right num"><strong>{{ numf(stats.moneySpent) }}</strong></td>
+                        </tr>
+                        <tr>
+                            <th colspan="6">Total profit</th>
+                            <td class="text-right num" :class="{
+                                'text-success': totalProfit > 0,
+                                'text-danger': totalProfit < 0
+                            }"><strong>$ {{ num(totalProfit) }}</strong></td>
+                        </tr>
+                    </table>
+                </div>
+                <!-- Settings tab -->
+                <div v-else-if="currentTab === 'settings'">
+                    <div>
+                        <a @click="toggleTileSize" class="btn btn-sm btn-secondary">Tile size
+                            ({{ settings.tileSizeMultiplier
+                                === 1 ? 'Normal' : 'Big' }})</a>
+                    </div>
+                    <!-- Toggle dark mode button  -->
+                    <div class="mt-3">
+                        <a @click="toggleDarkMode" class="btn btn-sm btn-secondary">Dark mode ({{ settings.dark
+                            ? 'On' : 'Off' }})
+                        </a>
+                    </div>
+                    <div class="hover-opacity" style="margin-top:200px">
+                        <button @click="resetGame" class="btn btn-sm btn-danger">Reset game</button>
+                    </div>
+                </div>
+            </div>
+
         </div>
     </div>
 

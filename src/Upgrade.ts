@@ -2,6 +2,7 @@ import { CATEGORIES } from './consts'
 
 interface IUpgradeSettings {
     name: string
+    icon?: string
     displayName?: string
     description: string
     baseCost: number
@@ -21,6 +22,7 @@ interface IUpgradeSettings {
 
 export class Upgrade {
     name: string
+    icon?: string
     displayName?: string
     description: string
     baseCost: number
@@ -59,6 +61,7 @@ export class Upgrade {
         this.speed = upgrade.speed ?? 1
         this.automator = upgrade.automator || false
         this.energyCost = upgrade.energyCost ?? 1
+        this.icon = upgrade.icon
     }
 
     static createAutomator(opts: IUpgradeSettings) {

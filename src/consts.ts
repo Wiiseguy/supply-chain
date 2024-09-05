@@ -27,6 +27,21 @@ export const GROUPS: Record<string, string> = {
     ui: 'ui'
 }
 
+export const GROUP_ICONS: Record<string, string> = {
+    land: '🔲',
+    forest: '🌲',
+    mine: '⛏️',
+    pond: '🎣',
+    donut: '🍩',
+    monster: '👾',
+    farm: '🌾',
+    desert: '🏜️',
+    kiln: '🏭',
+    energy: '⚡',
+    windmill: '🌬️',
+    ui: '🖥️'
+}
+
 export const CATEGORIES: Record<string, string> = {
     tools: 'tools',
     tiles: 'tiles',
@@ -105,20 +120,6 @@ const RESOURCE_TIERS = {
 const FARM_TILE_TYPES = {
     empty: 'empty',
     crop: 'crop'
-}
-
-export const GROUP_ICONS: Record<string, string> = {
-    land: '🔲',
-    forest: '🌲',
-    mine: '⛏️',
-    pond: '🎣',
-    donut: '🍩',
-    monster: '👾',
-    farm: '🌾',
-    desert: '🏜️',
-    kiln: '🏭',
-    energy: '⚡',
-    ui: '🖥️'
 }
 
 export const MODALS: Record<string, string> = {
