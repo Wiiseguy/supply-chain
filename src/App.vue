@@ -29,7 +29,7 @@ const FPS = 30
 const FRAME_TIME = 1 / FPS
 const MIN_CATCHUP_STEPS = 2
 const MAX_CATCHUP_STEPS = (60 * 5) / FRAME_TIME // 5 minutes = 9000 steps
-const SAVE_INTERVAL = 30 // Save every 60 seconds
+const SAVE_INTERVAL = 60 // seconds
 
 const TILE_SIZE = 64
 
@@ -46,6 +46,11 @@ interface UpgradeView extends Upgrade {
     owned: number
     resourcesNeeded: { type: string; amount: number; icon: string }[]
     groupIcon: string
+}
+
+interface ILogMessage {
+    time: Date
+    message: string
 }
 
 export default {
@@ -83,8 +88,10 @@ export default {
             clickMode: 'click',
             movingTileIdx: -1,
             message: '',
+            messages: [] as ILogMessage[],
             messageFade: 0,
             modalObj: null as any,
+            modal: null as string | null,
 
             currentTab: 'upgrades',
             tabs: [
@@ -257,14 +264,18 @@ export default {
             console.log('Message:', message)
             this.message = message
             this.messageFade = 1
+            this.messages.unshift({ time: new Date, message })
         },
         showModal(modal: string, obj: any) {
-            //this.$refs[modal].showModal()
-            (this.$refs[modal] as HTMLDialogElement).showModal()
+            this.modal = modal
             this.modalObj = obj
+            this.$nextTick(() => {
+                (this.$refs[modal] as HTMLDialogElement).showModal()
+            })
         },
         closeModal(modal: string) {
             (this.$refs[modal] as HTMLDialogElement).close()
+            this.modal = null;
         },
         startGameLoop() {
             this.gameLoopInterval = setInterval(this.gameLoop, 1000 / FPS)
@@ -815,6 +826,7 @@ export default {
         resetGame() {
             if (confirm('Are you sure you want to reset the game?')) {
                 let saveData = {
+                    v: SAVE_VERSION,
                     stats: {
                         restarts: this.stats.restarts + 1
                     },
@@ -1214,7 +1226,7 @@ export default {
                                         $ {{ num(item.cost) }}
                                         <span v-for="r in item.resourcesNeeded" class="ml-1">{{ r.icon }}{{
                                             num(r.amount)
-                                            }}</span>
+                                        }}</span>
                                     </small>
                                     <span class="num" v-if="item.owned > 0">{{ num(item.owned) }}</span>
                                     <!-- <span class="group-icon">{{ item.blurred ? '❔' : item.groupIcon }}</span> -->
@@ -1272,6 +1284,17 @@ export default {
                         <div v-if="stats.resourcesBaked > 0" class="mt-3">
                             Resources baked: {{ num(stats.resourcesBaked) }}
                         </div>
+
+                        <h5 class="mt-5">Messages</h5>
+                        <small v-if="messages.length === 0">
+                            No messages yet.
+                        </small>
+                        <table>
+                            <tr v-for="msg in messages">
+                                <td class="num text-muted">{{ msg.time.toLocaleTimeString() }}</td>
+                                <td class="pl-2">{{ msg.message }}</td>
+                            </tr>
+                        </table>
                     </div>
                 </div>
                 <!-- Ledger tab  -->
@@ -1338,8 +1361,8 @@ export default {
     </div>
 
     <!-- Modals -->
-    <dialog :ref="MODALS.kilnBake">
-        <div v-if="modalObj">
+    <dialog :ref="MODALS.kilnBake" v-if="modal === MODALS.kilnBake">
+        <div>
             <h5>Select a recipe to bake</h5>
             <button class="btn-full btn-sm btn-bake-resource" v-for="recipe in modalObj.recipes"
                 @click="modalObj.recipeId = recipe.id" :class="{ 'btn-primary': modalObj.recipeId === recipe.id }">
@@ -1355,8 +1378,8 @@ export default {
             </div>
         </div>
     </dialog>
-    <dialog :ref="MODALS.windmill">
-        <div v-if="modalObj">
+    <dialog :ref="MODALS.windmill" v-if="modal === MODALS.windmill">
+        <div>
             <h5>Windmill</h5>
             <p v-if="modalObj.tile.product">This Windmill is set to produce <strong>{{
                 modalObj.tile?.product?.name }}</strong>.</p>

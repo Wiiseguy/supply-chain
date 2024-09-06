@@ -756,7 +756,8 @@ export class ForestTile extends Tile implements ITile {
             baseCost: 2000,
             category: CATEGORIES.special,
             max: 1,
-            group: GROUPS.forest
+            group: GROUPS.forest,
+            icon: '🍀'
         }),
         new Upgrade({
             name: 'Seed Marketing 1',

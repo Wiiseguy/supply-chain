@@ -214,7 +214,7 @@ td.min {
 .land {
     user-select: none;
     background-color: var(--land-bg);
-    margin: 90px;
+    margin: 90px auto;
 }
 
 .land-tile {

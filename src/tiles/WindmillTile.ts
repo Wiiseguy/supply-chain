@@ -111,7 +111,7 @@ export class WindmillTile extends Tile implements ITile {
             }
             if (canProduce) {
                 this.productionErrors = 0
-                this.app.resources[this.product.resource].gain(this.product.gain * elapsed * (1 + this.neighborBonus))
+                this.app.resources[this.product.resource].gain(this.productGain * elapsed)
             } else {
                 this.productionErrors++
             }
@@ -165,12 +165,17 @@ export class WindmillTile extends Tile implements ITile {
         this.product = product
     }
 
+    get productGain() {
+        if (!this.product) return 0
+        return this.product.gain * (1 + this.neighborBonus)
+    }
+
     get gains() {
         if (!this.product?.resource) return []
         return [
             {
                 resource: this.product.resource,
-                amount: this.product.gain
+                amount: this.productGain
             }
         ] as IGain[]
     }
