@@ -2,14 +2,24 @@ import Windmill from '@/components/Windmill.vue'
 import { markRaw } from 'vue'
 import { CATEGORIES, GROUPS, MODALS, RESOURCE_TYPES, TILE_TYPES } from '../consts'
 import { Upgrade } from '../Upgrade'
-import Tile from './Tile'
+import Tile, { type IGain } from './Tile'
 
 const ENERGY_GAIN = 10 // 1 energy per 10 seconds
 
 const NEIGHBOR_BONUS = 0.1 // 10% bonus per neighbor
 
+interface IProduct {
+    id: number
+    name: string
+    description: string
+    resource: string
+    gain: number
+    input?: string
+    inputPerGain?: number
+}
+
 // Mills can produce energy or grind resources
-const PRODUCTS = [
+const PRODUCTS: IProduct[] = [
     {
         id: 0,
         name: 'Refuse',
@@ -35,6 +45,8 @@ const PRODUCTS = [
     }
 ]
 
+const DEFAULT_PRODUCT_ID = 1
+
 // A windmill has one or more slots that will result in a product ground from the input
 // E.g. putting wheat in the slot will result in flour, wood will result in sawdust
 interface ISlotResult {
@@ -59,7 +71,7 @@ export class WindmillTile extends Tile implements ITile {
     static readonly type = TILE_TYPES.windmill
 
     working: boolean
-    productId: number
+    product?: IProduct
     neighborBonus: number
     numberOfSlots: number
     slots: string[]
@@ -71,7 +83,7 @@ export class WindmillTile extends Tile implements ITile {
     constructor(app: IApp) {
         super(app, WindmillTile.type)
         this.working = true
-        this.productId = 1
+        this.product = PRODUCTS.find(p => p.id === DEFAULT_PRODUCT_ID)
         this.neighborBonus = 0
         this.numberOfSlots = 1
         this.slots = ['']
@@ -92,8 +104,8 @@ export class WindmillTile extends Tile implements ITile {
             }
         } else if (this.working && this.product?.resource) {
             let canProduce = true
-            if (this.product.inputPerGain) {
-                // we need to incur input resource per inputPerGain, if false, we can't produce
+            if (this.product.inputPerGain && this.product.input) {
+                // We need to incur input resource per inputPerGain, if false, we can't produce
                 const input = this.app.resources[this.product.input]
                 canProduce = input.incur(this.product.inputPerGain * elapsed)
             }
@@ -147,16 +159,20 @@ export class WindmillTile extends Tile implements ITile {
     }
 
     setProduct(productId: number) {
-        // Find it first
         const product = PRODUCTS.find(p => p.id === productId)
         if (!product) return
 
-        this.productId = productId
+        this.product = product
     }
 
-    // TODO: make property instead of getter, for performance
-    get product() {
-        return PRODUCTS.find(p => p.id === this.productId)
+    get gains() {
+        if (!this.product?.resource) return []
+        return [
+            {
+                resource: this.product.resource,
+                amount: this.product.gain
+            }
+        ] as IGain[]
     }
 
     get component() {
@@ -169,6 +185,25 @@ export class WindmillTile extends Tile implements ITile {
 
     get iconTopLeft() {
         return this.productionErrors > 10 ? '⚠️' : ''
+    }
+
+    getSaveData() {
+        return {
+            ...super.getSaveData(),
+            productId: this.product?.id,
+            product: undefined,
+            slots: this.slots?.join(',')
+        }
+    }
+
+    loadSaveData(data: Record<string, any>): void {
+        super.loadSaveData(data)
+        this.setProduct(data.productId)
+        /** @ts-ignore */
+        delete this.productId
+        if (data.slots != null) {
+            this.slots = data.slots.split(',')
+        }
     }
 
     static readonly resources = []

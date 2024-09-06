@@ -64,14 +64,6 @@ declare interface IMineTile extends ITile {
     mine(): void
 }
 
-declare interface IPondFind {
-    name: string
-    icon: string
-    gain: number
-    nonFish: boolean
-    resource?: string
-}
-
 declare interface IResource {
     name: string
     displayNameSingular: string

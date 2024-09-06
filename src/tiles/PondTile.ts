@@ -18,29 +18,38 @@ const FISHING_WIGGLE_TIME = 30 // seconds
 const FISHING_WIGGLE_VARIANCE = 5 // seconds
 const RARE_FISH_LUCK_BASE = 0.4 // Base chance of catching a rare fish (0.4 means 0.6 chance of catching a normal fish)
 
+interface IPondFind {
+    id: number
+    name: string
+    icon: string
+    gain: number
+    nonFish: boolean
+    resource?: string
+}
+
 const SEALIFE = [
-    { name: 'Common fish', icon: '🐟', gain: 1, nonFish: false },
-    { name: 'Clownfish', icon: '🐠', gain: 2, nonFish: false },
-    { name: 'Shrimp', icon: '🦐', gain: 5, nonFish: true },
-    { name: 'Lobster', icon: '🦞', gain: 10, nonFish: true },
-    { name: 'Crab', icon: '🦀', gain: 20, nonFish: true },
-    { name: 'Pufferfish', icon: '🐡', gain: 30, nonFish: false },
-    { name: 'Frog', icon: '🐸', gain: 40, nonFish: true },
-    { name: 'Squid', icon: '🦑', gain: 50, nonFish: true },
-    { name: 'Octopus', icon: '🐙', gain: 75, nonFish: true },
-    { name: 'Shark', icon: '🦈', gain: 100, nonFish: false },
-    { name: 'Dolphin', icon: '🐬', gain: 150, nonFish: true },
-    { name: 'Penguin', icon: '🐧', gain: 200, nonFish: true },
-    { name: 'Whale', icon: '🐳', gain: 500, nonFish: true },
-    { name: 'Blue Whale', icon: '🐋', gain: 1000, nonFish: true }
+    { id: 1, name: 'Common fish', icon: '🐟', gain: 1, nonFish: false },
+    { id: 2, name: 'Clownfish', icon: '🐠', gain: 2, nonFish: false },
+    { id: 3, name: 'Shrimp', icon: '🦐', gain: 5, nonFish: true },
+    { id: 4, name: 'Lobster', icon: '🦞', gain: 10, nonFish: true },
+    { id: 5, name: 'Crab', icon: '🦀', gain: 20, nonFish: true },
+    { id: 6, name: 'Pufferfish', icon: '🐡', gain: 30, nonFish: false },
+    { id: 7, name: 'Frog', icon: '🐸', gain: 40, nonFish: true },
+    { id: 8, name: 'Squid', icon: '🦑', gain: 50, nonFish: true },
+    { id: 9, name: 'Octopus', icon: '🐙', gain: 75, nonFish: true },
+    { id: 10, name: 'Shark', icon: '🦈', gain: 100, nonFish: false },
+    { id: 11, name: 'Dolphin', icon: '🐬', gain: 150, nonFish: true },
+    { id: 12, name: 'Penguin', icon: '🐧', gain: 200, nonFish: true },
+    { id: 13, name: 'Whale', icon: '🐳', gain: 500, nonFish: true },
+    { id: 14, name: 'Blue Whale', icon: '🐋', gain: 1000, nonFish: true }
 ]
 
 // To make it more interesting, there should be a small chance of catching a wood, seed, metal, diamond, or clay
 const RARITY_CHANCE = 1 / 100
 const RARITIES = [
-    { name: 'Clay pot', icon: '🏺', resource: RESOURCE_TYPES.clay, gain: 1 },
-    { name: 'Piece of metal', icon: '🔧', resource: RESOURCE_TYPES.metal, gain: 1 },
-    { name: 'Diamond', icon: '💎', resource: RESOURCE_TYPES.diamond, gain: 1 }
+    { id: 1, name: 'Clay pot', icon: '🏺', resource: RESOURCE_TYPES.clay, gain: 1 },
+    { id: 2, name: 'Piece of metal', icon: '🔧', resource: RESOURCE_TYPES.metal, gain: 1 },
+    { id: 3, name: 'Diamond', icon: '💎', resource: RESOURCE_TYPES.diamond, gain: 1 }
 ]
 
 const FISH_PRICE_BASE = 50
@@ -243,6 +252,24 @@ export class PondTile extends Tile implements ITile {
     //     }
     // }
 
+    getSaveData(): Record<string, any> {
+        return {
+            ...super.getSaveData(),
+            pondFindId: this.pondFind?.id,
+            pondFind: undefined
+        }
+    }
+    loadSaveData(data: Record<string, any>): void {
+        super.loadSaveData(data)
+        if (data.pondFindId) {
+            if (this.isRare) {
+                this.pondFind = RARITIES.find(f => f.id === data.pondFindId) as IPondFind
+            } else {
+                this.pondFind = SEALIFE.find(f => f.id === data.pondFindId) as IPondFind
+            }
+        }
+    }
+
     static readonly resources = [
         new Resource(RESOURCE_TYPES.fish, {
             displayNameSingular: 'Fish',
@@ -274,9 +301,7 @@ export class PondTile extends Tile implements ITile {
         new Automator('Fish Reclaimer', app => {
             app.resources.fish.reclaim(1)
         }),
-        new Automator('Fish Seller', app => {
-            app.sellResource(app.resources.fish, 1)
-        })
+        Automator.createSeller('Fish Seller')
     ]
 
     static hasTile(app: IApp) {
@@ -313,14 +338,15 @@ export class PondTile extends Tile implements ITile {
             },
             isVisible: PondTile.hasTile
         }),
-        Upgrade.createAutomator({
+        Upgrade.createSellerAutomator({
             name: 'Fish Seller',
             description: 'Automatically sell fish. Selfish. Shellfish?',
             baseCost: 4500,
             costMultiplier: 1.5,
             speed: 1 / 4,
             group: GROUPS.pond,
-            isVisible: PondTile.hasTile
+            isVisible: PondTile.hasTile,
+            resourcesSold: [RESOURCE_TYPES.fish]
         }),
         Upgrade.createAutomator({
             name: 'Fish Reclaimer',

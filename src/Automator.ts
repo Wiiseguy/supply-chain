@@ -1,3 +1,5 @@
+import type { Upgrade } from './Upgrade'
+
 export class Automator {
     enabled: boolean
     saturation: number
@@ -6,18 +8,25 @@ export class Automator {
     speed: number
     noPower: boolean
     powerUsage: number
+    upgrade?: Upgrade
     constructor(upgradeName: string, logic: (app: IApp) => void) {
         this.enabled = true
         this.saturation = 0
         this.upgradeName = upgradeName // To determine the amount via boughtUpgrades
         this.logic = logic
         this.speed = 0 // Calculated
-        this.noPower = false
-        this.powerUsage = 0
+        this.noPower = false // Calculated
+        this.powerUsage = 0 // Calculated
+    }
+    initialize(app: IApp) {
+        this.upgrade = app.UPGRADES_INDEX[this.upgradeName] as Upgrade
+        if (!this.upgrade) {
+            console.error(`Upgrade ${this.upgradeName} not found for automator ${this.constructor.name}`)
+        }
     }
     run(app: IApp, elapsed: number): boolean {
         if (!this.enabled) return true
-        const upgrade = app.UPGRADES_INDEX[this.upgradeName]
+        const upgrade = this.upgrade
         if (!upgrade) return true
         const num = app.boughtUpgrades[this.upgradeName]
         this.noPower = false
@@ -42,5 +51,31 @@ export class Automator {
             }
         }
         return true
+    }
+    getSaveData(): Record<string, any> {
+        return {
+            upgradeName: this.upgradeName,
+            enabled: this.enabled,
+            saturation: this.saturation
+        }
+    }
+    loadSaveData(data: Record<string, any>) {
+        // No need for upgradeName
+        this.enabled = data.enabled
+        this.saturation = data.saturation
+    }
+
+    static createSeller(upgradeName: string) {
+        const seller = new Automator(upgradeName, app => {
+            if (!seller.upgrade?.resourcesSold) return
+            for (const resourceName of seller.upgrade?.resourcesSold) {
+                const resource = app.resources[resourceName]
+                if (!resource) {
+                    console.error(`Resource ${resourceName} not found for seller automator ${upgradeName}`)
+                }
+                app.sellResource(resource, 1)
+            }
+        })
+        return seller
     }
 }

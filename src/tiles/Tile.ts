@@ -4,6 +4,14 @@ import { Resource } from '../Resource'
 import { Upgrade } from '../Upgrade'
 import { setBoolPropTimeout } from '../utils'
 
+export interface IGain {
+    resource: string
+    /**
+     * The amount of resource gained per second
+     */
+    amount: number
+}
+
 class Tile {
     static readonly type: string = 'none'
     app: IApp
@@ -115,6 +123,28 @@ class Tile {
 
     get component(): any {
         return null
+    }
+
+    get gains(): IGain[] {
+        return []
+    }
+
+    getSaveData(): Record<string, any> {
+        return {
+            ...this,
+            // But set stuff that shouldn't be saved like wiggle and the timeouts to undefined
+            wiggle: undefined,
+            fail: undefined,
+            grow: undefined,
+            bounceDown: undefined,
+            wiggleTimeout: undefined,
+            failTimeout: undefined,
+            growTimeout: undefined,
+            bounceDownTimeout: undefined
+        }
+    }
+    loadSaveData(data: Record<string, any>): void {
+        Object.assign(this, data)
     }
 
     static readonly automators: Automator[] = []

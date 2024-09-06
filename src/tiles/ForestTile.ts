@@ -518,9 +518,7 @@ export class ForestTile extends Tile implements ITile {
                 tile.chop()
             }
         }),
-        new Automator('Wood Seller', app => {
-            app.sellResource(app.resources.wood, 1)
-        }),
+        Automator.createSeller('Wood Seller'),
         new Automator('Wood Reclaimer', app => {
             app.resources.wood.reclaim(1)
         }),
@@ -537,17 +535,7 @@ export class ForestTile extends Tile implements ITile {
         new Automator('Seed Reclaimer', app => {
             app.resources.seed.reclaim(1)
         }),
-        new Automator('Fruit Seller', app => {
-            app.sellResource(app.resources.apple, 1)
-            app.sellResource(app.resources.lemon, 1)
-            app.sellResource(app.resources.pear, 1)
-            app.sellResource(app.resources.orange, 1)
-            app.sellResource(app.resources.cherry, 1)
-            app.sellResource(app.resources.strawberry, 1)
-            app.sellResource(app.resources.mango, 1)
-            app.sellResource(app.resources.banana, 1)
-            app.sellResource(app.resources.pineapple, 1)
-        }),
+        Automator.createSeller('Fruit Seller'),
         new Automator('Fruit Reclaimer', app => {
             app.resources.apple.reclaim(1)
             app.resources.lemon.reclaim(1)
@@ -629,41 +617,43 @@ export class ForestTile extends Tile implements ITile {
             costMultiplier: 1.5,
             speed: 2 / 3,
             group: GROUPS.forest,
-            icon: '🪓🤖'
+            icon: '🪓'
         }),
         Upgrade.createAutomator({
             name: 'Auto Seeder',
             description: 'Automatically plant seeds in dug holes',
-            baseCost: 1000,
+            baseCost: 1500,
             costMultiplier: 1.2,
             speed: 1 / 3,
             group: GROUPS.forest,
-            icon: '🌱🤖'
+            icon: '🌱'
         }),
         Upgrade.createAutomator({
             name: 'Auto Digger',
             description: 'Automatically dig holes on empty land',
-            baseCost: 1250,
+            baseCost: 1500,
             costMultiplier: 1.2,
             speed: 0.75,
             group: GROUPS.forest,
-            icon: '🕳️🤖'
+            icon: '🕳️'
         }),
-        Upgrade.createAutomator({
+        Upgrade.createSellerAutomator({
             name: 'Wood Seller',
             description: 'Automatically sell wood',
-            baseCost: 1500,
+            baseCost: 1000,
             costMultiplier: 1.2,
             speed: 1 / 2,
-            group: GROUPS.forest
+            group: GROUPS.forest,
+            resourcesSold: [RESOURCE_TYPES.wood]
         }),
-        Upgrade.createAutomator({
+        Upgrade.createSellerAutomator({
             name: 'Seed Seller',
             description: 'Automatically sell excess seeds',
-            baseCost: 2000,
+            baseCost: 1200,
             costMultiplier: 1.2,
             speed: 1 / 8,
-            group: GROUPS.forest
+            group: GROUPS.forest,
+            resourcesSold: [RESOURCE_TYPES.seed]
         }),
         Upgrade.createAutomator({
             name: 'Wood Reclaimer',
@@ -677,13 +667,12 @@ export class ForestTile extends Tile implements ITile {
             name: 'Seed Reclaimer',
             displayName: 'Seed Scouter',
             description: 'Send out a scout to find lost seeds all over your forest land',
-            baseCost: 3000,
+            baseCost: 2500,
             costMultiplier: 1.2,
             speed: 1 / 30,
             group: GROUPS.forest
         }),
-        // Fruit seller, sells apples and lemons, only visible has non-zero amount of apples or lemons
-        Upgrade.createAutomator({
+        Upgrade.createSellerAutomator({
             name: 'Fruit Seller',
             description: 'Automatically sell tree fruits',
             baseCost: 9000,
@@ -702,7 +691,18 @@ export class ForestTile extends Tile implements ITile {
                     app.resources.banana.totalOwned > 0 ||
                     app.resources.pineapple.totalOwned > 0
                 )
-            }
+            },
+            resourcesSold: [
+                RESOURCE_TYPES.apple,
+                RESOURCE_TYPES.lemon,
+                RESOURCE_TYPES.pear,
+                RESOURCE_TYPES.orange,
+                RESOURCE_TYPES.cherry,
+                RESOURCE_TYPES.strawberry,
+                RESOURCE_TYPES.mango,
+                RESOURCE_TYPES.banana,
+                RESOURCE_TYPES.pineapple
+            ]
         }),
         // Fruit reclaimer
         Upgrade.createAutomator({

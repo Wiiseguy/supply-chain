@@ -16,8 +16,10 @@ interface IUpgradeSettings {
     initialOwned?: number
     group: string
     speed?: number // Used by automator upgrades
-    automator?: boolean
     energyCost?: number
+    automator?: boolean
+    sellerAutomator?: boolean
+    resourcesSold?: string[]
 }
 
 export class Upgrade {
@@ -36,8 +38,10 @@ export class Upgrade {
     initialOwned: number
     group: string
     speed?: number
-    automator?: boolean
     energyCost?: number
+    automator?: boolean
+    sellerAutomator?: boolean
+    resourcesSold?: string[]
 
     constructor(upgrade: IUpgradeSettings) {
         if (!upgrade.name) console.error('Upgrade name is required')
@@ -59,9 +63,11 @@ export class Upgrade {
         this.initialOwned = upgrade.initialOwned ?? 0
         this.group = upgrade.group
         this.speed = upgrade.speed ?? 1
-        this.automator = upgrade.automator || false
         this.energyCost = upgrade.energyCost ?? 1
         this.icon = upgrade.icon
+        this.automator = upgrade.automator || false
+        this.sellerAutomator = upgrade.sellerAutomator || false
+        this.resourcesSold = upgrade.resourcesSold || []
     }
 
     static createAutomator(opts: IUpgradeSettings) {
@@ -74,6 +80,14 @@ export class Upgrade {
             isVisible: (app: IApp) =>
                 (opts.isVisible ? opts.isVisible(app) : true) && app.boughtUpgrades[opts.name] == 0,
             automator: true
+        })
+    }
+
+    static createSellerAutomator(opts: IUpgradeSettings) {
+        if (!opts.resourcesSold) console.error('Seller automator upgrades should have a resourcesSold property')
+        return this.createAutomator({
+            ...opts,
+            sellerAutomator: true
         })
     }
 }

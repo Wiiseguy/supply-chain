@@ -22,6 +22,8 @@ import { markRaw } from 'vue'
 /** @ts-ignore */
 globalThis.haltAnimation = false
 
+const SAVE_VERSION = 1
+
 const DEBUG = false
 const FPS = 30
 const FRAME_TIME = 1 / FPS
@@ -35,6 +37,7 @@ const DEFAULT_UPGRADE_VISIBILITY_THRESHOLD = 0.25
 const DEFAULT_UPGRADE_BLUR_THRESHOLD = 0.5
 
 const INITIAL_MONEY = 0
+const AUTOMATOR_STARTER_ENERGY = 5 * 60
 
 interface UpgradeView extends Upgrade {
     cost: number
@@ -60,14 +63,20 @@ export default {
             now: Date.now(),
             startTime: Date.now(),
             lastUpdate: Date.now(),
+            gameLoopInterval: 0,
+            perSecondInterval: 0,
+            saveGameInterval: 0,
 
             land: [] as Tile[],
+            boughtUpgrades: {} as Record<string, number>,
+
             resources: {} as Record<string, Resource>,
             automators: [] as Automator[],
             calculators: [] as Calculator[],
             calculated: {} as Record<string, any>,
             counters: [] as Counter[],
-            boughtUpgrades: {} as Record<string, number>,
+            perS: {} as Record<string, number>,
+            isProducingEnergy: false,
             visibleUpgrades: [] as string[],
             unblurredUpgrades: [] as string[],
             adjacentTileCache: new WeakMap(),
@@ -177,8 +186,8 @@ export default {
         }
 
         this.counters = [
-            new Counter('money', () => this.money),
-            new Counter('energy', () => this.resources.energy.owned)
+            //new Counter('money', () => this.money),
+            //new Counter('energy', () => this.resources.energy.owned)
         ]
 
         // Check if all UPGRADES of type automation have a corresponding automator programmed in
@@ -189,6 +198,11 @@ export default {
             ) {
                 console.error(`Automator for upgrade ${upgrade.name} is missing!`)
             }
+        })
+
+        // Initialize automators
+        this.automators.forEach(automator => {
+            automator.initialize(this as any)
         })
 
         // Load save data
@@ -233,6 +247,7 @@ export default {
             return bigNum(n)
         },
         numf(n: number, numDecimals = 0) {
+            if (typeof n !== 'number') return n
             return n.toLocaleString(undefined, {
                 minimumFractionDigits: numDecimals,
                 maximumFractionDigits: numDecimals
@@ -252,9 +267,9 @@ export default {
             (this.$refs[modal] as HTMLDialogElement).close()
         },
         startGameLoop() {
-            setInterval(this.gameLoop, 1000 / FPS)
-            setInterval(this.perSecond, 1000)
-            setInterval(this.saveGame, SAVE_INTERVAL * 1000)
+            this.gameLoopInterval = setInterval(this.gameLoop, 1000 / FPS)
+            this.perSecondInterval = setInterval(this.perSecond, 1000)
+            this.saveGameInterval = setInterval(this.saveGame, SAVE_INTERVAL * 1000)
         },
         megaElapse(mins = 1) {
             // Elapse time by 1 min
@@ -272,6 +287,56 @@ export default {
         perSecond() {
             // Calculate money per second, etc.
             this.counters.forEach(counter => counter.update())
+
+            // Get gains from tiles
+            const gains = this.land.map(tile => tile.gains).flat()
+            const groupedGains = gains.reduce((acc, gain) => {
+                if (!acc[gain.resource]) {
+                    acc[gain.resource] = 0
+                }
+                acc[gain.resource] += gain.amount
+                return acc
+            }, {} as Record<string, number>)
+
+            const enabledAutomators = this.automators.filter(automator => automator.enabled && this.boughtUpgrades[automator.upgradeName] > 0)
+
+            // Calculate automator sellers money per second
+            const resourcesSoldPerS = {} as Record<string, number>
+            const resourcesSoldPricePerS = {} as Record<string, number>
+            let resourcesSoldPriceTotal = 0
+            const sellerAutomators = enabledAutomators.filter(automator => automator.upgrade?.sellerAutomator === true)
+            sellerAutomators.forEach(automator => {
+                const upgrade = automator.upgrade
+                if (!upgrade) return;
+                upgrade.resourcesSold?.forEach(r => {
+                    const resource = this.resources[r]
+                    if (!resourcesSoldPerS[r]) {
+                        resourcesSoldPerS[r] = 0
+                    }
+                    if (!resourcesSoldPricePerS[r]) {
+                        resourcesSoldPricePerS[r] = 0
+                    }
+                    resourcesSoldPerS[r] += automator.speed
+                    const soldPricePerS = automator.speed * resource.sellPrice(1)
+                    resourcesSoldPricePerS[r] += soldPricePerS
+                    resourcesSoldPriceTotal += soldPricePerS
+                })
+            })
+            this.perS.money = resourcesSoldPriceTotal
+
+            // Get automator power usage
+            const automatorPowerUsage = enabledAutomators
+                .reduce((acc, automator) => acc + automator.powerUsage, 0)
+
+            const energyProduced = groupedGains.energy || 0
+            this.isProducingEnergy = energyProduced > 0
+
+            this.perS.energy = energyProduced - automatorPowerUsage
+
+            // Run other counters            
+            this.counters.forEach(counter => {
+                this.perS[counter.name] = counter.delta
+            })
         },
         updateGame(elapsed: number) {
             /** @ts-ignore */
@@ -381,7 +446,11 @@ export default {
         },
         sellAutomator(automator: Automator) {
             // Get the cost of the current automator
-            let upgrade = this.UPGRADES_INDEX[automator.upgradeName]
+            const upgrade = automator.upgrade
+            if (!upgrade) {
+                console.error('No upgrade associated for automator:', automator)
+                return
+            }
             let owned = this.boughtUpgrades[automator.upgradeName]
             const price = this.getUpgradeCostNum(upgrade, owned - 1)
             this.money += price
@@ -390,7 +459,11 @@ export default {
         },
         buyAutomator(automator: Automator) {
             // Get the cost of the next automator
-            let upgrade = this.UPGRADES_INDEX[automator.upgradeName]
+            const upgrade = automator.upgrade
+            if (!upgrade) {
+                console.error('No upgrade associated for automator:', automator)
+                return
+            }
             let owned = this.boughtUpgrades[automator.upgradeName]
             const price = this.getUpgradeCostNum(upgrade, owned)
             if (!this.incur(price)) return
@@ -546,10 +619,12 @@ export default {
             return result
         },
 
-        getUpgradeCost(upgrade: Upgrade) {
+        getUpgradeCost(upgrade?: Upgrade) {
+            if (!upgrade) return 0
             return this.getUpgradeCostNum(upgrade, this.boughtUpgrades[upgrade.name])
         },
-        getUpgradeCostNum(upgrade: Upgrade, num = 1) {
+        getUpgradeCostNum(upgrade?: Upgrade, num = 1) {
+            if (!upgrade) return 0
             return upgrade.baseCost * Math.pow(upgrade.costMultiplier, num - upgrade.initialOwned)
         },
         buyUpgrade(upgrade: Upgrade) {
@@ -607,6 +682,11 @@ export default {
             if (upgrade.onBuy) {
                 upgrade.onBuy(this as any)
             }
+
+            // If the upgrade is an automator, add a little energy to start out with
+            if (upgrade.automator) {
+                this.resources.energy.gain(AUTOMATOR_STARTER_ENERGY)
+            }
         },
         hasUpgrade(upgradeName: string) {
             return this.boughtUpgrades[upgradeName] > 0
@@ -614,7 +694,8 @@ export default {
         hasRoomForTile() {
             return this.land.some(tile => tile instanceof EmptyTile)
         },
-        canBuyUpgrade(upgrade: Upgrade) {
+        canBuyUpgrade(upgrade?: Upgrade) {
+            if (!upgrade) return false
             if (upgrade.tile && !this.hasRoomForTile()) {
                 return false
             }
@@ -638,22 +719,36 @@ export default {
         saveGame() {
             try {
                 const saveData = {
+                    v: SAVE_VERSION,
                     money: this.money,
                     resources: {} as Record<string, any>,
                     boughtUpgrades: this.boughtUpgrades,
-                    land: this.land,
+                    land: this.land.map(tile => tile.getSaveData()),
                     startTime: this.startTime,
                     stats: this.stats,
                     settings: this.settings,
-                    automators: this.automators
+                    automators: [] as Record<string, any>[]
                 }
                 Object.values(this.resources).forEach(resource => {
                     saveData.resources[resource.name] = resource.getSaveData()
                 })
-                if (this.DEBUG) {
-                    console.log('Saving game:', saveData)
-                }
+                this.automators.forEach(automator => {
+                    saveData.automators.push(automator.getSaveData())
+                })
+
+                saveData.land.forEach(tile => {
+                    // Get all properties, if any is typeof object, console.warning asking if it should be saved
+                    for (const key in tile) {
+                        if (typeof tile[key] === 'object' && tile[key] != null) {
+                            console.warn(`${tile.tileType}: Property ${key} is an object, should it be saved for?`, tile)
+                        }
+                    }
+                })
+
                 localStorage.setItem('saveData', encode(JSON.stringify(saveData)))
+                //if (this.DEBUG) {
+                console.log('Saving game length:', localStorage['saveData'].length, JSON.parse(JSON.stringify(saveData)))
+                //}
             } catch (e) {
                 console.error('Error saving game:', e)
                 this.showMessage('Error saving game. Please try again.')
@@ -665,10 +760,16 @@ export default {
                 if (!saveDataStr) {
                     return
                 }
-                console.log('Loading save data')
                 const isOld = saveDataStr?.startsWith('{')
                 const saveData = JSON.parse(isOld ? saveDataStr : decode(saveDataStr))
                 if (!saveData) {
+                    return
+                }
+                if (saveData.v !== SAVE_VERSION) {
+                    setTimeout(() => {
+                        this.showMessage(`Save data version mismatch. Save data cleared. Sorry! Here's a diamond to lessen the pain.`)
+                        this.resources.diamond.gain(1)
+                    }, 1)
                     return
                 }
                 this.money = saveData.money ?? this.money
@@ -688,7 +789,7 @@ export default {
                     }
                     const tileInstance = new tileClass(this as any, tileData.tileType) // Note: 2nd param is not actually used for derived classes of Tile, but this keeps TS happy
                     // Set properties from tileData into tileInstance
-                    Object.assign(tileInstance, tileData)
+                    tileInstance.loadSaveData(tileData)
                     this.land.push(tileInstance)
                 })
                 Object.assign(this.boughtUpgrades, saveData.boughtUpgrades)
@@ -700,7 +801,7 @@ export default {
                         (savedAutomator: Automator) => savedAutomator.upgradeName === automator.upgradeName
                     )
                     if (savedAutomator) {
-                        Object.assign(automator, savedAutomator)
+                        automator.loadSaveData(savedAutomator)
                     }
                 })
                 this.startTime = saveData.startTime ? saveData.startTime : this.startTime
@@ -809,15 +910,6 @@ export default {
         visibleTabs() {
             return this.tabs.filter(tab => tab.isVisible())
         },
-        perS() {
-            // Return obj with name, current, delta
-            const result = {} as Record<string, number>
-            this.counters.forEach(counter => {
-                result[counter.name] = counter.delta
-            })
-            return result
-        },
-
         resourcesView() {
             const result = [] as Resource[]
 
@@ -836,9 +928,9 @@ export default {
         automatorsView() {
             // Filter out automators that are not yet bought
             return this.automators
-                .filter(automator => this.boughtUpgrades[automator.upgradeName] > 0)
+                .filter(automator => this.boughtUpgrades[automator.upgradeName] > 0 && automator.upgrade)
                 .map(automator => {
-                    const upgrade = this.UPGRADES_INDEX[automator.upgradeName]
+                    const upgrade = automator.upgrade
                     return {
                         ...automator,
                         automator,
@@ -848,9 +940,9 @@ export default {
                         sellPrice: Math.ceil(
                             this.getUpgradeCostNum(upgrade, this.boughtUpgrades[automator.upgradeName] - 1)
                         ),
-                        displayName: upgrade.displayName ?? automator.upgradeName,
-                        description: upgrade.description ?? '',
-                        icon: GROUP_ICONS[upgrade.group]
+                        displayName: upgrade?.displayName ?? automator.upgradeName,
+                        description: upgrade?.description ?? '',
+                        icon: upgrade ? GROUP_ICONS[upgrade.group] : '',
                     }
                 })
         },
@@ -909,10 +1001,15 @@ export default {
                 opacity: this.messageFade
             }
         },
-
         tileSize() {
             return this.settings.tileSizeMultiplier * TILE_SIZE
         }
+    },
+    unmounted() {
+        clearInterval(this.gameLoopInterval)
+        clearInterval(this.perSecondInterval)
+        clearInterval(this.saveGameInterval)
+        this.saveGame()
     }
 }
 </script>
@@ -992,8 +1089,10 @@ export default {
                 <div v-if="resources.energy.totalOwned > 0" class="small" @click="DEBUG && resources.energy.incur(10)"
                     :title="perS.energy < 0.001 ? `You are using more energy than you're producing!` : ''"
                     :class="{ 'text-muted': true }">
-                    Energy p/s: {{ numf(perS.energy, 2) }}
+                    Energy p/s: {{ perS.energy > 0 ? '+' : '' }}{{ numf(perS.energy, 2) }} J
                     <i v-if="anyAutomatorNoPower" class="fa-solid fa-battery-empty text-danger blink"></i>
+                    <i v-else-if="perS.energy < 0 && isProducingEnergy"
+                        class="fa-solid fa-warning text-warning small"></i>
                 </div>
             </h5>
 
@@ -1003,7 +1102,8 @@ export default {
                     <td class="text-center">{{ r.icon }}</td>
                     <td @click="e => DEBUG && (e.shiftKey ? r.flush() : r.gain(e.ctrlKey ? 1 : r.storageSize))">
                         <span :class="{ 'text-warning': r.owned == r.storageSize }">
-                            <span>{{ r.displayNamePlural }}: {{ num(r.owned) }} / {{ num(r.storageSize) }}</span>
+                            <span>{{ r.displayNamePlural }}: {{ num(r.owned) }} / {{ num(r.storageSize) }} {{ r.unit
+                                }}</span>
                             <span v-if="r.canOverflow && r.lost > 0" class="ml-3 text-danger"
                                 :title="`Lost ${r.displayNamePlural.toLowerCase()}: caused by not having enough storage`">
                                 {{ num(-r.lost) }}</span>
@@ -1114,7 +1214,7 @@ export default {
                                         $ {{ num(item.cost) }}
                                         <span v-for="r in item.resourcesNeeded" class="ml-1">{{ r.icon }}{{
                                             num(r.amount)
-                                        }}</span>
+                                            }}</span>
                                     </small>
                                     <span class="num" v-if="item.owned > 0">{{ num(item.owned) }}</span>
                                     <!-- <span class="group-icon">{{ item.blurred ? '❔' : item.groupIcon }}</span> -->
@@ -1294,7 +1394,7 @@ export default {
                 <div v-else>Changing resources in the grindstone...</div>
             </div>
             <div v-else>
-                <div v-if="modalObj.tile.productId > 0" class="alert btn-primary text-center">
+                <div v-if="modalObj.tile.product?.id > 0" class="alert btn-primary text-center">
 
                     <div>{{ modalObj.tile.product.name }}</div>
                     <small>{{ modalObj.tile.product.description }}<br>

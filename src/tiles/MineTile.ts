@@ -310,21 +310,15 @@ export class MineTile extends Tile implements ITile {
                 }
             })
         }),
-        new Automator('Metal Seller', app => {
-            app.sellResource(app.resources.metal, 1)
-        }),
+        Automator.createSeller('Metal Seller'),
         new Automator('Metal Reclaimer', app => {
             app.resources.metal.reclaim(1)
         }),
-        new Automator('Diamond Seller', app => {
-            app.sellResource(app.resources.diamond, 1)
-        }),
+        Automator.createSeller('Diamond Seller'),
         new Automator('Diamond Reclaimer', app => {
             app.resources.diamond.reclaim(1)
         }),
-        new Automator('Clay Seller', app => {
-            app.sellResource(app.resources.clay, 1)
-        }),
+        Automator.createSeller('Clay Seller'),
         new Automator('Clay Reclaimer', app => {
             app.resources.clay.reclaim(1)
         })
@@ -481,14 +475,15 @@ export class MineTile extends Tile implements ITile {
             group: GROUPS.mine,
             isVisible: MineTile.hasTile
         }),
-        Upgrade.createAutomator({
+        Upgrade.createSellerAutomator({
             name: 'Metal Seller',
             description: 'Automatically sell metal',
             baseCost: 15_000,
             costMultiplier: 1.2,
             speed: 1 / 30,
             group: GROUPS.mine,
-            isVisible: MineTile.hasMetalMineTile
+            isVisible: MineTile.hasMetalMineTile,
+            resourcesSold: [RESOURCE_TYPES.metal]
         }),
         Upgrade.createAutomator({
             name: 'Metal Reclaimer',
@@ -500,14 +495,15 @@ export class MineTile extends Tile implements ITile {
             group: GROUPS.mine,
             isVisible: MineTile.hasMetalMineTile
         }),
-        Upgrade.createAutomator({
+        Upgrade.createSellerAutomator({
             name: 'Clay Seller',
             description: 'Automatically sell clay',
             baseCost: 12_000,
             costMultiplier: 1.2,
             speed: 1 / 10,
             group: GROUPS.mine,
-            isVisible: MineTile.hasClayMineTile
+            isVisible: MineTile.hasClayMineTile,
+            resourcesSold: [RESOURCE_TYPES.clay]
         }),
         Upgrade.createAutomator({
             name: 'Clay Reclaimer',
@@ -519,14 +515,15 @@ export class MineTile extends Tile implements ITile {
             group: GROUPS.mine,
             isVisible: MineTile.hasClayMineTile
         }),
-        Upgrade.createAutomator({
+        Upgrade.createSellerAutomator({
             name: 'Diamond Seller',
             description: 'Automatically sell diamonds',
             baseCost: 20_000,
             costMultiplier: 1.2,
             speed: 1 / 60,
             group: GROUPS.mine,
-            isVisible: MineTile.hasDiamondMineTile
+            isVisible: MineTile.hasDiamondMineTile,
+            resourcesSold: [RESOURCE_TYPES.diamond]
         }),
         Upgrade.createAutomator({
             name: 'Diamond Reclaimer',

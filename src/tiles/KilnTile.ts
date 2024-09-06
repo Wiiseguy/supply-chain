@@ -194,9 +194,7 @@ export class KilnTile extends Tile implements ITile {
                 kiln.bake()
             }
         }),
-        new Automator('Brick Seller', app => {
-            app.resources.brick.sell(1)
-        })
+        Automator.createSeller('Brick Seller')
     ]
 
     static readonly upgrades: Upgrade[] = [
@@ -216,14 +214,15 @@ export class KilnTile extends Tile implements ITile {
                 app.addTile(new KilnTile(app))
             }
         }),
-        Upgrade.createAutomator({
+        Upgrade.createSellerAutomator({
             name: 'Brick Seller',
             description: 'Automatically sell bricks',
             baseCost: 20_000,
             costMultiplier: 1.2,
             speed: 1 / 10,
             group: GROUPS.kiln,
-            isVisible: (app: IApp) => app.resources[RESOURCE_TYPES.brick].totalOwned > 0
+            isVisible: (app: IApp) => app.resources[RESOURCE_TYPES.brick].totalOwned > 0,
+            resourcesSold: [RESOURCE_TYPES.brick]
         }),
         Upgrade.createAutomator({
             name: 'Kiln Baker',
@@ -231,7 +230,8 @@ export class KilnTile extends Tile implements ITile {
             baseCost: 22_000,
             costMultiplier: 1.5,
             speed: 1 / 30,
-            group: GROUPS.kiln
+            group: GROUPS.kiln,
+            isVisible: (app: IApp) => app.land.some(t => t instanceof KilnTile)
         })
     ]
 }
