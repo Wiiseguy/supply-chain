@@ -40,9 +40,9 @@ const MINE_MAX_RESOURCES_PER_LEVEL: Record<string, number> = {
     clay: 25
 }
 const MINE_RESOURCE_CLICKS: Record<string, number> = {
-    diamond: 200,
-    metal: 100,
-    clay: 50
+    diamond: 100,
+    metal: 50,
+    clay: 25
 }
 
 const DIAMOND_PRICE_BASE = 5_000

@@ -12,6 +12,8 @@ const FOREST_TILE_TYPES = {
     tree: 'tree'
 }
 
+const FRUIT_LIST = ['apple', 'lemon', 'pear', 'orange', 'cherry', 'strawberry', 'mango', 'banana', 'pineapple']
+
 const TREE_TYPES = {
     normal: 'normal', // Wood-only tree
     apple: 'apple', // Apple tree, gives apples and wood
@@ -49,12 +51,6 @@ interface TreeEvolution {
 }
 
 const TREE_EVOLUTIONS: TreeEvolution[] = [
-    {
-        newType: TREE_TYPES.apple,
-        surroundedWith: [[TILE_TYPES.forest, 4]],
-        chance: 0.1,
-        currentTypes: [TREE_TYPES.normal] // Only evolve normal trees
-    },
     {
         newType: TREE_TYPES.lemon,
         surroundedWith: [[TILE_TYPES.pond, 4]],
@@ -114,6 +110,12 @@ const TREE_EVOLUTIONS: TreeEvolution[] = [
         ],
         chance: 0.5,
         currentTypes: [TREE_TYPES.cherry, TREE_TYPES.apple, TREE_TYPES.normal]
+    },
+    {
+        newType: TREE_TYPES.apple,
+        surroundedWith: [[TILE_TYPES.forest, 4]],
+        chance: 0.1,
+        currentTypes: [TREE_TYPES.normal] // Only evolve normal trees
     }
 ]
 
@@ -403,7 +405,7 @@ export class ForestTile extends Tile implements ITile {
             displayNamePlural: 'Seeds',
             icon: '🌱',
             basePrice: 50,
-            storageBaseSize: 10,
+            storageBaseSize: 25,
             initialOwned: INITIAL_SEEDS,
             minimum: 1
         }),
@@ -537,15 +539,9 @@ export class ForestTile extends Tile implements ITile {
         }),
         Automator.createSeller('Fruit Seller'),
         new Automator('Fruit Reclaimer', app => {
-            app.resources.apple.reclaim(1)
-            app.resources.lemon.reclaim(1)
-            app.resources.pear.reclaim(1)
-            app.resources.orange.reclaim(1)
-            app.resources.cherry.reclaim(1)
-            app.resources.strawberry.reclaim(1)
-            app.resources.mango.reclaim(1)
-            app.resources.banana.reclaim(1)
-            app.resources.pineapple.reclaim(1)
+            FRUIT_LIST.forEach(fruit => {
+                app.resources[fruit].reclaim(1)
+            })
         })
     ]
 
@@ -680,31 +676,10 @@ export class ForestTile extends Tile implements ITile {
             speed: 1,
             group: GROUPS.forest,
             isVisible(app: IApp) {
-                return (
-                    app.resources.apple.totalOwned > 0 ||
-                    app.resources.lemon.totalOwned > 0 ||
-                    app.resources.pear.totalOwned > 0 ||
-                    app.resources.orange.totalOwned > 0 ||
-                    app.resources.cherry.totalOwned > 0 ||
-                    app.resources.strawberry.totalOwned > 0 ||
-                    app.resources.mango.totalOwned > 0 ||
-                    app.resources.banana.totalOwned > 0 ||
-                    app.resources.pineapple.totalOwned > 0
-                )
+                return FRUIT_LIST.some(fruit => app.resources[fruit].totalOwned > 0)
             },
-            resourcesSold: [
-                RESOURCE_TYPES.apple,
-                RESOURCE_TYPES.lemon,
-                RESOURCE_TYPES.pear,
-                RESOURCE_TYPES.orange,
-                RESOURCE_TYPES.cherry,
-                RESOURCE_TYPES.strawberry,
-                RESOURCE_TYPES.mango,
-                RESOURCE_TYPES.banana,
-                RESOURCE_TYPES.pineapple
-            ]
+            resourcesSold: FRUIT_LIST
         }),
-        // Fruit reclaimer
         Upgrade.createAutomator({
             name: 'Fruit Reclaimer',
             description: 'Collect lost fruits',
@@ -713,17 +688,7 @@ export class ForestTile extends Tile implements ITile {
             speed: 1 / 2,
             group: GROUPS.forest,
             isVisible(app: IApp) {
-                return (
-                    app.resources.apple.totalOwned > 0 ||
-                    app.resources.lemon.totalOwned > 0 ||
-                    app.resources.pear.totalOwned > 0 ||
-                    app.resources.orange.totalOwned > 0 ||
-                    app.resources.cherry.totalOwned > 0 ||
-                    app.resources.strawberry.totalOwned > 0 ||
-                    app.resources.mango.totalOwned > 0 ||
-                    app.resources.banana.totalOwned > 0 ||
-                    app.resources.pineapple.totalOwned > 0
-                )
+                return FRUIT_LIST.some(fruit => app.resources[fruit].totalOwned > 0)
             }
         }),
         // Special upgrades
@@ -805,6 +770,24 @@ export class ForestTile extends Tile implements ITile {
             group: GROUPS.forest,
             onBuy(app: IApp) {
                 app.resources.wood.priceMultiplier *= 2
+            }
+        }),
+        // Fruit Marketing
+        new Upgrade({
+            name: 'Fruit Marketing',
+            displayName: 'Fruit Marketing',
+            description: 'Increase all fruit prices by 2x',
+            baseCost: 9000,
+            category: CATEGORIES.special,
+            max: 1,
+            group: GROUPS.forest,
+            onBuy(app: IApp) {
+                FRUIT_LIST.forEach(fruit => {
+                    app.resources[fruit].priceMultiplier *= 2
+                })
+            },
+            isVisible(app: IApp) {
+                return FRUIT_LIST.some(fruit => app.resources[fruit].totalOwned > 0)
             }
         })
     ]

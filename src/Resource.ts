@@ -133,9 +133,8 @@ export class Resource {
         if (!data) {
             return
         }
-        // TODO: nullish coalescing operator can be removed when all players have updated to a version that includes it
-        this.priceMultiplier = data.priceMultiplier ?? this.priceMultiplier
-        this.storageMultiplier = data.storageMultiplier ?? this.storageMultiplier
+        this.priceMultiplier = data.priceMultiplier
+        this.storageMultiplier = data.storageMultiplier
         this.storage = data.storage
         this.sellNum = data.sellNum
         this.owned = data.owned
