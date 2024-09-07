@@ -11,7 +11,7 @@
     "build-only": "vite build",
     "type-check": "vue-tsc --build --force",
     "format": "prettier --write src/",
-    "predeploy": "npm run build && npm version patch",
+    "predeploy": "npm version patch && npm run build",
     "deploy": "gh-pages -d dist"
   },
   "dependencies": {
