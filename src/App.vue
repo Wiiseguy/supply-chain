@@ -866,7 +866,7 @@ export default {
                     settings: {
                         ...this.settings,
                         automation: true,
-                        sellResourcesPerClick: 1
+                        sellResourcesPerClick: 10
                     }
                 }
                 localStorage.setItem('saveData', encode(JSON.stringify(saveData)))
@@ -946,16 +946,16 @@ export default {
             })
         },
         totalResourceEarnings() {
-            return this.resourcesView.reduce((acc, resource) => acc + resource.earnings, 0)
+            return this.resourcesViewSortedByEarnings.reduce((acc, resource) => acc + resource.earnings, 0)
         },
         totalResourcesOwned() {
-            return this.resourcesView.reduce((acc, resource) => acc + resource.totalOwned, 0)
+            return this.resourcesViewSortedByEarnings.reduce((acc, resource) => acc + resource.totalOwned, 0)
         },
         totalResourcesSold() {
-            return this.resourcesView.reduce((acc, resource) => acc + resource.sold, 0)
+            return this.resourcesViewSortedByEarnings.reduce((acc, resource) => acc + resource.sold, 0)
         },
         totalResourcesIncurred() {
-            return this.resourcesView.reduce((acc, resource) => acc + resource.incurred, 0)
+            return this.resourcesViewSortedByEarnings.reduce((acc, resource) => acc + resource.incurred, 0)
         },
         totalProfit() {
             return this.totalResourceEarnings - this.stats.moneySpent
@@ -1136,14 +1136,15 @@ export default {
             </div>
 
             <h5 class="pl-1">
-                <div @click="DEBUG && (money += 1, money *= 10)"><strong>$</strong>&nbsp; {{ num(money) }}</div>
+                <div @click="DEBUG && (money += 1, money *= 10)"><strong>$</strong>&nbsp;<span class="num">{{ num(money)
+                        }}</span></div>
                 <div v-if="automatorsView.length > 0" class="small text-muted">
-                    Money p/s: $ {{ num(perS.money) }}
+                    Money p/s: $ <span class="num">{{ num(perS.money) }}</span>
                 </div>
                 <div v-if="resources.energy.totalOwned > 0" class="small" @click="DEBUG && resources.energy.incur(10)"
                     :title="perS.energy < 0.001 ? `You are using more energy than you're producing!` : ''"
                     :class="{ 'text-muted': true }">
-                    Energy p/s: {{ perS.energy > 0 ? '+' : '' }}{{ numf(perS.energy, 2) }} J
+                    Energy p/s: <span class="num">{{ perS.energy > 0 ? '+' : '' }}{{ numf(perS.energy, 2) }}</span> J
                     <i v-if="anyAutomatorNoPower" class="fa-solid fa-battery-empty text-danger blink"></i>
                     <i v-else-if="perS.energy < 0 && isProducingEnergy"
                         class="fa-solid fa-warning text-warning small"></i>
@@ -1151,13 +1152,9 @@ export default {
             </h5>
 
             <!-- Resource stats -->
-            <!-- a toolbar, but for selecting the amount sellResourcesPerClick (1, 10, 100, all)-->
-            <div class="toolbar mt-3 mb-2" v-if="sellLevel > 0">
+            <div class="toolbar mt-3 mb-2" v-if="sellLevel > 1">
                 <span class="text-muted ml-3">Sell amount:</span>
                 <div class="btn-group">
-                    <button @click="setSellResourcesPerClick(1)"
-                        :class="{ 'active': settings.sellResourcesPerClick === 1 }" class="btn btn-xs btn-tool"
-                        title="Sell 1 resource per click">1</button>
                     <button @click="setSellResourcesPerClick(10)" v-if="sellLevel > 0"
                         :class="{ 'active': settings.sellResourcesPerClick === 10 }" class="btn btn-xs btn-tool"
                         title="Sell 10 resources per click">10</button>
@@ -1173,26 +1170,36 @@ export default {
             <table>
                 <tr v-for="r in resourcesView">
                     <td class="text-center">{{ r.icon }}</td>
-                    <td @click="e => DEBUG && (e.shiftKey ? r.flush() : r.gain(e.ctrlKey ? 1 : r.storageSize))">
+                    <td @click="e => DEBUG && (e.shiftKey ? r.flush() : r.gain(e.ctrlKey ? 1 : r.storageSize))"
+                        class="pr-3">
                         <span :class="{ 'text-warning': r.owned == r.storageSize }">
                             <span>{{ r.displayNamePlural }}: </span>
 
                         </span>
                     </td>
-                    <td class="text-right">
+                    <td class="text-right num">
                         {{ num(r.owned) }} / {{ num(r.storageSize) }} {{ r.unit
                         }}
                     </td>
-                    <td class="w-10">
+                    <td class="w-10 num">
                         <span v-if="r.canOverflow && r.lost > 0" class="ml-3 text-danger"
                             :title="`Lost ${r.displayNamePlural.toLowerCase()}: caused by not having enough storage. Buy a ${r.displayNameSingular.toLowerCase()} reclaimer to get it back.`">
                             {{ num(-r.lost) }}</span>
                     </td>
                     <td class="w-25">
                         <div v-if="r.canTrade">
-                            <button @click="sellResource(r, settings.sellResourcesPerClick)" :disabled="!r.any"
+                            <button @click="sellResource(r, 1)" :disabled="!r.any"
                                 class="btn-xs btn-sell-resource btn-full">
-                                Sell {{ num(settings.sellResourcesPerClick) }}
+                                Sell 1 <span class="text-success">+ $ {{ num(r.price) }}</span>
+                            </button>
+                        </div>
+                    </td>
+                    <td class="w-25">
+                        <div v-if="r.canTrade">
+                            <button @click="sellResource(r, settings.sellResourcesPerClick)" :disabled="!r.any"
+                                v-if="sellLevel > 0" class="btn-xs btn-sell-resource btn-full">
+                                Sell {{ num(settings.sellResourcesPerClick) }} <span class="text-success">+ $ {{
+                                    num(r.sellPrice(settings.sellResourcesPerClick)) }}</span>
                             </button>
                             <!-- <button @click="sellResource(r, 1)" :disabled="!r.any" class="btn-xs btn-sell-resource">
                                 Sell 1 <span class="text-success">+ $ {{ num(r.price) }}</span>
@@ -1209,11 +1216,6 @@ export default {
                                 class="btn-xs btn-sell-resource" v-if="sellLevel > 2">
                                 Sell all <span class="text-success">+ $ {{ num(r.sellPrice(r.owned)) }}</span>
                             </button> -->
-                        </div>
-                    </td>
-                    <td class="pl-2 text-right">
-                        <div v-if="r.canTrade">
-                            <span class="text-success">+ $ {{ num(r.sellNumPrice) }}</span>
                         </div>
                     </td>
                 </tr>
@@ -1401,7 +1403,7 @@ export default {
                             <td class="text-right num"><strong>{{ numf(totalResourcesOwned) }}</strong></td>
                             <td class="text-right num"><strong>{{ numf(totalResourcesSold) }}</strong></td>
                             <td class="text-right num"><strong>{{ numf(totalResourcesIncurred) }}</strong></td>
-                            <td class="text-right num"><strong> </strong></td>
+                            <td class="text-right num"><strong>-</strong></td>
                             <td class="text-right num"><strong>{{ numf(totalResourceEarnings) }}</strong></td>
                         </tr>
                         <tr>

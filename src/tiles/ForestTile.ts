@@ -31,13 +31,13 @@ const TREE_TYPES = {
 const TREE_TYPE_GAINS: Record<string, [number, number]> = {
     apple: [2, 12],
     lemon: [2, 5],
-    pear: [2, 5],
-    orange: [2, 5],
+    pear: [2, 8],
+    orange: [2, 9],
     cherry: [7, 14],
-    strawberry: [3, 8],
-    mango: [2, 7],
-    banana: [4, 10],
-    pineapple: [2, 6]
+    strawberry: [4, 8],
+    mango: [4, 7],
+    banana: [6, 10],
+    pineapple: [4, 6]
 }
 
 interface TreeEvolution {
@@ -54,12 +54,18 @@ const TREE_EVOLUTIONS: TreeEvolution[] = [
     {
         newType: TREE_TYPES.lemon,
         surroundedWith: [[TILE_TYPES.pond, 4]],
-        chance: 0.1,
+        chance: 1,
         currentTypes: [TREE_TYPES.normal]
     },
     {
         newType: TREE_TYPES.pear,
         surroundedWith: [[TILE_TYPES.forest, 4, 'treeType', TREE_TYPES.apple]],
+        chance: 0.5,
+        currentTypes: [TREE_TYPES.apple, TREE_TYPES.normal]
+    },
+    {
+        newType: TREE_TYPES.pear,
+        surroundedWith: [[TILE_TYPES.forest, 4, 'treeType', TREE_TYPES.pear]],
         chance: 0.5,
         currentTypes: [TREE_TYPES.apple, TREE_TYPES.normal]
     },
@@ -73,6 +79,18 @@ const TREE_EVOLUTIONS: TreeEvolution[] = [
         currentTypes: [TREE_TYPES.lemon, TREE_TYPES.apple]
     },
     {
+        newType: TREE_TYPES.orange,
+        surroundedWith: [[TILE_TYPES.forest, 4, 'treeType', TREE_TYPES.pear]],
+        chance: 0.5,
+        currentTypes: [TREE_TYPES.pear]
+    },
+    {
+        newType: TREE_TYPES.orange,
+        surroundedWith: [[TILE_TYPES.forest, 4, 'treeType', TREE_TYPES.orange]],
+        chance: 0.5,
+        currentTypes: [TREE_TYPES.pear, TREE_TYPES.apple, TREE_TYPES.normal]
+    },
+    {
         newType: TREE_TYPES.cherry,
         surroundedWith: [[TILE_TYPES.mine, 4]],
         chance: 0.5,
@@ -83,6 +101,12 @@ const TREE_EVOLUTIONS: TreeEvolution[] = [
         surroundedWith: [[TILE_TYPES.windmill, 4]],
         chance: 0.5,
         currentTypes: [TREE_TYPES.normal]
+    },
+    {
+        newType: TREE_TYPES.mango,
+        surroundedWith: [[TILE_TYPES.forest, 4, 'treeType', TREE_TYPES.strawberry]],
+        chance: 0.5,
+        currentTypes: [TREE_TYPES.strawberry]
     },
     {
         newType: TREE_TYPES.pineapple,
@@ -110,6 +134,18 @@ const TREE_EVOLUTIONS: TreeEvolution[] = [
         ],
         chance: 0.5,
         currentTypes: [TREE_TYPES.cherry, TREE_TYPES.apple, TREE_TYPES.normal]
+    },
+    {
+        newType: TREE_TYPES.strawberry,
+        surroundedWith: [[TILE_TYPES.forest, 4, 'treeType', TREE_TYPES.orange]],
+        chance: 0.5,
+        currentTypes: [TREE_TYPES.orange]
+    },
+    {
+        newType: TREE_TYPES.strawberry,
+        surroundedWith: [[TILE_TYPES.forest, 4, 'treeType', TREE_TYPES.strawberry]],
+        chance: 0.5,
+        currentTypes: [TREE_TYPES.orange, TREE_TYPES.pear]
     },
     {
         newType: TREE_TYPES.apple,
@@ -462,8 +498,8 @@ export class ForestTile extends Tile implements ITile {
             displayNameSingular: 'Strawberry',
             displayNamePlural: 'Strawberries',
             icon: '🍓',
-            basePrice: 5,
-            storageBaseSize: 500
+            basePrice: 4,
+            storageBaseSize: 750
         }),
         new Resource(RESOURCE_TYPES.mango, {
             displayNameSingular: 'Mango',
@@ -772,7 +808,6 @@ export class ForestTile extends Tile implements ITile {
                 app.resources.wood.priceMultiplier *= 2
             }
         }),
-        // Fruit Marketing
         new Upgrade({
             name: 'Fruit Marketing',
             displayName: 'Fruit Marketing',
@@ -788,7 +823,8 @@ export class ForestTile extends Tile implements ITile {
             },
             isVisible(app: IApp) {
                 return FRUIT_LIST.some(fruit => app.resources[fruit].totalOwned > 0)
-            }
+            },
+            icon: '🍋'
         })
     ]
 }
