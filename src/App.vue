@@ -30,6 +30,7 @@ const FRAME_TIME = 1 / FPS
 const MIN_CATCHUP_STEPS = 2
 const MAX_CATCHUP_STEPS = (60 * 5) / FRAME_TIME // 5 minutes = 9000 steps
 const SAVE_INTERVAL = 60 // seconds
+const CHECK_VERSION_UPDATE_INTERVAL = 60 * 5 // seconds
 
 const TILE_SIZE = 64
 
@@ -71,6 +72,7 @@ export default {
             gameLoopInterval: 0,
             perSecondInterval: 0,
             saveGameInterval: 0,
+            checkVersionUpdateInterval: 0,
 
             land: [] as Tile[],
             boughtUpgrades: {} as Record<string, number>,
@@ -147,13 +149,17 @@ export default {
             settings: {
                 automation: true,
                 dark: true,
+                sellResourcesPerClick: 1,
                 tileSizeMultiplier: 1
             },
 
-            doWiggleClass: true
+            doWiggleClass: true,
+
+            buildInfo: {} as Record<string, any>,
+            newVersionAvailable: false
         }
     },
-    created() {
+    async created() {
         this.UPGRADES = markRaw([...UPGRADES])
 
         // Initialize resources
@@ -225,6 +231,9 @@ export default {
         }
 
         this.onLandChange()
+
+        // Fetch build info
+        this.buildInfo = await (await fetch('build.json', { cache: 'no-cache' })).json()
     },
     mounted() {
         if (!this.stats.started) {
@@ -235,20 +244,34 @@ export default {
         }
         this.startGameLoop()
 
-        // Bind CTRL+S to saveGame
-        document.addEventListener('keydown', e => {
-            if (e.key === 's' && e.ctrlKey) {
-                e.preventDefault()
-                this.saveGame()
-                this.showMessage('Game saved!')
-            }
-        })
+        document.addEventListener('keydown', this.onKeyDown)
+        window.addEventListener('focus', this.checkVersionUpdate)
 
         if (!this.settings.dark) {
             document.body.classList.remove('dark')
         }
     },
+    unmounted() {
+        clearInterval(this.gameLoopInterval)
+        clearInterval(this.perSecondInterval)
+        clearInterval(this.saveGameInterval)
+        clearInterval(this.checkVersionUpdateInterval)
+        document.removeEventListener('keydown', this.onKeyDown)
+        window.removeEventListener('focus', this.checkVersionUpdate)
+        this.saveGame()
+    },
     methods: {
+        onKeyDown(e: KeyboardEvent) {
+            if (e.key === 'Escape') {
+                this.setClickMode('click')
+            }
+            // Bind CTRL+S to saveGame
+            else if (e.key === 's' && e.ctrlKey) {
+                e.preventDefault()
+                this.saveGame()
+                this.showMessage('Game saved!')
+            }
+        },
         num(n: number) {
             if (typeof n !== 'number') return n
             return bigNum(n)
@@ -281,6 +304,7 @@ export default {
             this.gameLoopInterval = setInterval(this.gameLoop, 1000 / FPS)
             this.perSecondInterval = setInterval(this.perSecond, 1000)
             this.saveGameInterval = setInterval(this.saveGame, SAVE_INTERVAL * 1000)
+            this.checkVersionUpdateInterval = setInterval(this.checkVersionUpdate, CHECK_VERSION_UPDATE_INTERVAL * 1000)
         },
         megaElapse(mins = 1) {
             // Elapse time by 1 min
@@ -451,6 +475,9 @@ export default {
             this.clickMode = mode
             this.movingTileIdx = -1
         },
+        setSellResourcesPerClick(num: number) {
+            this.settings.sellResourcesPerClick = num
+        },
         sellResource(resource: Resource, amount = 0) {
             if (amount === 0) amount = resource.sellNum
             this.money += resource.sell(amount)
@@ -467,6 +494,8 @@ export default {
             this.money += price
             this.stats.moneySpent -= price // You get back all the money you spent on the automator!
             this.boughtUpgrades[automator.upgradeName] -= 1
+
+            this.showMessage(`Sold ${upgrade.displayName} for $ ${this.num(price)}!`)
         },
         buyAutomator(automator: Automator) {
             // Get the cost of the next automator
@@ -479,6 +508,8 @@ export default {
             const price = this.getUpgradeCostNum(upgrade, owned)
             if (!this.incur(price)) return
             this.boughtUpgrades[automator.upgradeName] += 1
+
+            this.showMessage(`Bought ${upgrade.displayName} for $ ${this.num(price)}!`)
         },
         incur(money: number) {
             if (this.money < money) {
@@ -698,6 +729,8 @@ export default {
             if (upgrade.automator) {
                 this.resources.energy.gain(AUTOMATOR_STARTER_ENERGY)
             }
+
+            this.showMessage(`Bought ${upgrade.displayName} for $ ${this.num(cost)}!`)
         },
         hasUpgrade(upgradeName: string) {
             return this.boughtUpgrades[upgradeName] > 0
@@ -832,8 +865,8 @@ export default {
                     },
                     settings: {
                         ...this.settings,
-                        // Except automation, this should be reset
-                        automation: true
+                        automation: true,
+                        sellResourcesPerClick: 1
                     }
                 }
                 localStorage.setItem('saveData', encode(JSON.stringify(saveData)))
@@ -851,6 +884,14 @@ export default {
         },
         doWiggle() {
             setBoolPropTimeout(this, 'doWiggleClass', 'doWiggleClassTimeout', 1000)
+        },
+        async checkVersionUpdate() {
+            if (!this.buildInfo) return;
+            const buildInfo = await (await fetch('build.json', { cache: 'no-cache' })).json()
+            if (buildInfo.build !== this.buildInfo.build) {
+                this.showMessage(`New version available! Refresh to update.`)
+                this.newVersionAvailable = true
+            }
         }
     },
     computed: {
@@ -1015,13 +1056,12 @@ export default {
         },
         tileSize() {
             return this.settings.tileSizeMultiplier * TILE_SIZE
+        },
+
+        buildDate() {
+            if (!this.buildInfo?.build) return ''
+            return new Date(this.buildInfo.build).toLocaleString()
         }
-    },
-    unmounted() {
-        clearInterval(this.gameLoopInterval)
-        clearInterval(this.perSecondInterval)
-        clearInterval(this.saveGameInterval)
-        this.saveGame()
     }
 }
 </script>
@@ -1030,6 +1070,8 @@ export default {
     <h5 :class="{ wiggle: doWiggleClass }" @dblclick="setDebug">
         <i class="wiggle-target fa-solid fa-seedling text-success" @click="doWiggle"></i>
         Supply Chain Prototype
+        <span class="ml-5 text-warning blink position-fixed" v-if="newVersionAvailable">New version
+            available!</span>
     </h5>
 
     <div class="theme-toggle hover-opacity">
@@ -1109,21 +1151,50 @@ export default {
             </h5>
 
             <!-- Resource stats -->
+            <!-- a toolbar, but for selecting the amount sellResourcesPerClick (1, 10, 100, all)-->
+            <div class="toolbar mt-3 mb-2" v-if="sellLevel > 0">
+                <span class="text-muted ml-3">Sell amount:</span>
+                <div class="btn-group">
+                    <button @click="setSellResourcesPerClick(1)"
+                        :class="{ 'active': settings.sellResourcesPerClick === 1 }" class="btn btn-xs btn-tool"
+                        title="Sell 1 resource per click">1</button>
+                    <button @click="setSellResourcesPerClick(10)" v-if="sellLevel > 0"
+                        :class="{ 'active': settings.sellResourcesPerClick === 10 }" class="btn btn-xs btn-tool"
+                        title="Sell 10 resources per click">10</button>
+                    <button @click="setSellResourcesPerClick(100)" v-if="sellLevel > 1"
+                        :class="{ 'active': settings.sellResourcesPerClick === 100 }" class="btn btn-xs btn-tool"
+                        title="Sell 100 resources per click">100
+                    </button>
+                    <button @click="setSellResourcesPerClick(1000)" v-if="sellLevel > 2"
+                        :class="{ 'active': settings.sellResourcesPerClick === 1000 }" class="btn btn-xs btn-tool"
+                        title="Sell all resources per click">1000</button>
+                </div>
+            </div>
             <table>
                 <tr v-for="r in resourcesView">
                     <td class="text-center">{{ r.icon }}</td>
                     <td @click="e => DEBUG && (e.shiftKey ? r.flush() : r.gain(e.ctrlKey ? 1 : r.storageSize))">
                         <span :class="{ 'text-warning': r.owned == r.storageSize }">
-                            <span>{{ r.displayNamePlural }}: {{ num(r.owned) }} / {{ num(r.storageSize) }} {{ r.unit
-                                }}</span>
-                            <span v-if="r.canOverflow && r.lost > 0" class="ml-3 text-danger"
-                                :title="`Lost ${r.displayNamePlural.toLowerCase()}: caused by not having enough storage`">
-                                {{ num(-r.lost) }}</span>
+                            <span>{{ r.displayNamePlural }}: </span>
+
                         </span>
                     </td>
-                    <td>
+                    <td class="text-right">
+                        {{ num(r.owned) }} / {{ num(r.storageSize) }} {{ r.unit
+                        }}
+                    </td>
+                    <td class="w-10">
+                        <span v-if="r.canOverflow && r.lost > 0" class="ml-3 text-danger"
+                            :title="`Lost ${r.displayNamePlural.toLowerCase()}: caused by not having enough storage. Buy a ${r.displayNameSingular.toLowerCase()} reclaimer to get it back.`">
+                            {{ num(-r.lost) }}</span>
+                    </td>
+                    <td class="w-25">
                         <div v-if="r.canTrade">
-                            <button @click="sellResource(r, 1)" :disabled="!r.any" class="btn-xs btn-sell-resource">
+                            <button @click="sellResource(r, settings.sellResourcesPerClick)" :disabled="!r.any"
+                                class="btn-xs btn-sell-resource btn-full">
+                                Sell {{ num(settings.sellResourcesPerClick) }}
+                            </button>
+                            <!-- <button @click="sellResource(r, 1)" :disabled="!r.any" class="btn-xs btn-sell-resource">
                                 Sell 1 <span class="text-success">+ $ {{ num(r.price) }}</span>
                             </button>
                             <button @click="sellResource(r, 10)" :disabled="!r.any" class="btn-xs btn-sell-resource"
@@ -1137,7 +1208,12 @@ export default {
                             <button @click="sellResource(r, r.owned)" :disabled="!r.any"
                                 class="btn-xs btn-sell-resource" v-if="sellLevel > 2">
                                 Sell all <span class="text-success">+ $ {{ num(r.sellPrice(r.owned)) }}</span>
-                            </button>
+                            </button> -->
+                        </div>
+                    </td>
+                    <td class="pl-2 text-right">
+                        <div v-if="r.canTrade">
+                            <span class="text-success">+ $ {{ num(r.sellNumPrice) }}</span>
                         </div>
                     </td>
                 </tr>
@@ -1180,7 +1256,8 @@ export default {
                                 {{ a.icon }} {{ a.displayName }}
                             </span>
                         </td>
-                        <td class="px-3 text-right font-weight-bold" title="Owned">{{ num(boughtUpgrades[a.upgradeName])
+                        <td class="px-3 text-right font-weight-bold" title="Owned">{{
+                            num(boughtUpgrades[a.upgradeName])
                             }}</td>
                         <td class="text-right" title="Energy usage">{{ a.powerUsage }}W</td>
                         <td><button @click="sellAutomator(a)" type="button" :title="`$ ${num(a.sellPrice)}`"
@@ -1201,7 +1278,8 @@ export default {
             <!-- Tab selector -->
             <ul class="nav nav-tabs" id="tab-menu">
                 <li class="nav-item" v-for="t in visibleTabs">
-                    <a class="nav-link" :class="{ 'active': t.id === currentTab }" @click="currentTab = t.id">{{ t.title
+                    <a class="nav-link" :class="{ 'active': t.id === currentTab }" @click="currentTab = t.id">{{
+                        t.title
                         }}</a>
                 </li>
             </ul>
@@ -1226,7 +1304,7 @@ export default {
                                         $ {{ num(item.cost) }}
                                         <span v-for="r in item.resourcesNeeded" class="ml-1">{{ r.icon }}{{
                                             num(r.amount)
-                                        }}</span>
+                                            }}</span>
                                     </small>
                                     <span class="num" v-if="item.owned > 0">{{ num(item.owned) }}</span>
                                     <!-- <span class="group-icon">{{ item.blurred ? '❔' : item.groupIcon }}</span> -->
@@ -1267,7 +1345,8 @@ export default {
                             Tunnels dug: {{ num(stats.tunnelsDug) }}
                         </div>
                         <div v-if="stats.fishCaught > 0" class="mt-3">
-                            <span :title="`Rare fish chance sequence is ${100 * calculated.rareFishLuck}%`">Fish caught:
+                            <span :title="`Rare fish chance sequence is ${100 * calculated.rareFishLuck}%`">Fish
+                                caught:
                                 {{
                                     num(stats.fishCaught) }}</span>
                             <div v-if="stats.fishTank.length > 0">
@@ -1340,6 +1419,7 @@ export default {
                 </div>
                 <!-- Settings tab -->
                 <div v-else-if="currentTab === 'settings'">
+                    <div class="text-right small">v{{ buildInfo.version }} - Built: {{ buildDate }}</div>
                     <div>
                         <a @click="toggleTileSize" class="btn btn-sm btn-secondary">Tile size
                             ({{ settings.tileSizeMultiplier
@@ -1384,7 +1464,8 @@ export default {
             <p v-if="modalObj.tile.product">This Windmill is set to produce <strong>{{
                 modalObj.tile?.product?.name }}</strong>.</p>
             <p>
-                <small>Neighbor bonus: {{ num(modalObj.tile.neighborBonus * 100) }}%{{ modalObj.tile.neighborBonus ===
+                <small>Neighbor bonus: {{ num(modalObj.tile.neighborBonus * 100) }}%{{ modalObj.tile.neighborBonus
+                    ===
                     modalObj.MAX_NEIGHBOR_BONUS ? ' (max)' : '' }}.</small>
             </p>
             <div class="mb-3">
@@ -1399,7 +1480,8 @@ export default {
                         <select @change="modalObj.tile.changeSlot(0, ($event.target as HTMLSelectElement).value)"
                             class="w-100" :value="modalObj.tile.slots[0]" :disabled="modalObj.tile.changingProduct">
                             <option :value="''">Empty (produce energy)</option>
-                            <option v-for="p in modalObj.RESOURCES" :value="p.name">{{ p.displayNameSingular }}</option>
+                            <option v-for="p in modalObj.RESOURCES" :value="p.name">{{ p.displayNameSingular }}
+                            </option>
                         </select>
                     </td>
                 </tr>
@@ -1431,7 +1513,8 @@ export default {
                 </div>
                 <div v-else class="text-center">
                     <h3 class="text-danger">No good!</h3>
-                    This is producing ground {{ resources[modalObj.tile.slots[0]].displayNamePlural.toLocaleLowerCase()
+                    This is producing ground {{
+                        resources[modalObj.tile.slots[0]].displayNamePlural.toLocaleLowerCase()
                     }} that nobody
                     wants. <br>Plus you're not producing any energy!
                 </div>
